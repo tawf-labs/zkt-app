@@ -6,7 +6,7 @@ export default function ProofList({ campaignId }: { campaignId: string }) {
   const proofs = state.donations.filter((d) => d.campaignId === campaignId && d.proofUri)
 
   if (proofs.length === 0) {
-    return <p className="text-sm text-muted-foreground">No proofs published yet.</p>
+    return <p className="text-sm text-muted-foreground">No proofs published yet, please refresh.</p>
   }
 
   return (
