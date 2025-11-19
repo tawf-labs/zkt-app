@@ -9,63 +9,66 @@ type Campaign = {
   imageQuery: string
 }
 
-export function CampaignCard({ campaign }: { campaign: Campaign }) {
+function CampaignCard({ campaign }: { campaign: Campaign }) {
   const { id, title, charity, raised, goal, imageQuery } = campaign
   const pct = Math.max(0, Math.min(100, Math.round((raised / goal) * 100)))
 
   return (
-    <article className="group overflow-hidden rounded-lg border border-border bg-card">
+    <article className="group overflow-hidden rounded-xl border border-border bg-card shadow-sm hover:shadow-md transition-all duration-300">
       <div className="aspect-[16/9] w-full overflow-hidden border-b border-border">
         <img
           src={`/.jpg?key=fgxto&height=360&width=640&query=${imageQuery}`}
           alt={`${title} - ${charity}`}
-          className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.02]"
+          className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
         />
       </div>
-      <div className="space-y-3 p-4">
+      <div className="space-y-3 p-5">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <h3 className="text-base font-semibold text-pretty">{title}</h3>
-            <p className="text-sm text-muted-foreground">{charity}</p>
+            <h3 className="text-lg font-semibold text-pretty leading-tight">{title}</h3>
+            <p className="text-sm text-muted-foreground mt-1">{charity}</p>
           </div>
-          <span className="whitespace-nowrap rounded-full bg-accent px-2 py-1 text-xs text-accent-foreground">
-            {pct}% funded
+          <span className="whitespace-nowrap rounded-full bg-primary/10 text-primary px-3 py-1 text-xs font-medium">
+            {pct}%
           </span>
         </div>
 
-        {/* Progress bar using tokens */}
+        {/* Progress bar */}
         <div
-          className="h-2 w-full rounded-full bg-muted"
+          className="h-2.5 w-full rounded-full bg-muted overflow-hidden"
           role="progressbar"
           aria-valuenow={pct}
           aria-valuemin={0}
           aria-valuemax={100}
-          aria-label="Funding progress"
+          aria-label="Progress donasi"
         >
-          <div className="h-full rounded-full bg-primary" style={{ width: `${pct}%` }} />
+          <div 
+            className="h-full rounded-full bg-primary transition-all duration-500" 
+            style={{ width: `${pct}%` }} 
+          />
         </div>
 
         <div className="flex items-center justify-between text-sm">
-          <span className="text-muted-foreground">
-            {"$"}
-            {raised.toLocaleString()} {"raised"}
+          <span className="font-medium text-foreground">
+            Rp {raised.toLocaleString('id-ID')}
           </span>
           <span className="text-muted-foreground">
-            {"of $"}
-            {goal.toLocaleString()}
+            dari Rp {goal.toLocaleString('id-ID')}
           </span>
         </div>
 
-        <div className="pt-1">
+        <div className="pt-2">
           <Link
             href={`/campaigns/${id}`}
-            className="inline-flex items-center rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:opacity-90"
-            aria-label={`View details for ${title}`}
+            className="inline-flex w-full items-center justify-center rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground hover:opacity-90 transition-opacity"
+            aria-label={`Lihat detail ${title}`}
           >
-            {"Details"}
+            Lihat Detail
           </Link>
         </div>
       </div>
     </article>
   )
 }
+
+export default CampaignCard;
