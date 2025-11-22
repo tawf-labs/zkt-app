@@ -1,85 +1,107 @@
-import { CheckCircle, Shield, FileCheck } from "lucide-react";
-
 export function HowItWorks() {
-  const steps = [
-    {
-      step: "01",
-      icon: Shield,
-      title: "Donasi Secara Privat",
-      desc: "Tunaikan zakat tanpa mengungkap identitas Anda. Donasi tercatat dengan bukti yang menjaga privasi.",
-      color: "from-emerald-500 to-teal-500"
-    },
-    {
-      step: "02",
-      icon: CheckCircle,
-      title: "Review DAO & Syariah",
-      desc: "Proses DAO yang transparan dengan pengawasan syariah memvalidasi kampanye dan permintaan pencairan dana.",
-      color: "from-teal-500 to-cyan-500"
-    },
-    {
-      step: "03",
-      icon: FileCheck,
-      title: "Bukti Terverifikasi",
-      desc: "Dapatkan bukti penyaluran anonim dan terverifikasi sehingga Anda dapat mempercayai dampak donasi Anda.",
-      color: "from-cyan-500 to-blue-500"
-    },
-  ];
-
   return (
-    <section className="bg-gradient-to-b from-emerald-100 via-white  to-emerald-40 py-16">
-      <div className="max-w-md mx-auto px-4">
-        
-        {/* Section Title */}
-        <div className="mb-10 text-center">
-          <h2 className="text-3xl font-bold text-black mb-3 leading-tight">
-            Bagaimana Cara Kerjanya?
-          </h2>
-          <p className="text-black text-base">
-            Tiga langkah mudah untuk berzakat dengan penuh kepercayaan
-          </p>
-        </div>
+    <section className="py-16 lg:py-24 bg-background">
+      <div className="container px-4 mx-auto">
+        <div className="flex flex-col lg:flex-row items-center gap-12">
 
-        {/* Steps with connecting line */}
-        <div className="relative">
-          {/* Vertical connecting line */}
-          <div className="absolute left-6 top-8 bottom-8 w-0.5 bg-gradient-to-b from-emerald-500 via-teal-500 to-cyan-500 opacity-30"></div>
-          
-          <div className="space-y-6">
-            {steps.map((s, index) => (
-              <div 
-                key={s.step}
-                className="relative bg-green/5 backdrop-blur-sm border border-black/10 rounded-2xl p-5 hover:bg-white/10 transition-all duration-300 group"
-              >
-                {/* Icon circle */}
-                <div className={`absolute -left--1 top-14 flex items-center justify-center h-12 w-12 rounded-full bg-gradient-to-br ${s.color} shadow-lg`}>
-                  <s.icon className="w-6 h-6 text-white" />
+          {/* Left Content */}
+          <div className="lg:w-1/2 space-y-6">
+            <h2 className="text-3xl lg:text-4xl font-bold">How ZKT.app Works</h2>
+            <p className="text-lg text-muted-foreground">
+              Experience the future of giving with our seamless, transparent 4-step process.
+            </p>
+
+            <div className="space-y-6 pt-4">
+
+              {/* Step 1 */}
+              <div className="flex gap-4">
+                <div className="flex-none h-8 w-8 rounded-full bg-white/10 text-primary flex items-center justify-center font-bold text-sm">
+                  1
                 </div>
-
-                {/* Content */}
-                <div className="ml-14">
-                  <div className="flex items-center gap-2 mb-2">
-                    <span className="text-xs font-bold text-emerald-400">{s.step}</span>
-                    <div className="h-px flex-1 bg-gradient-to-r from-emerald-400/30 to-transparent"></div>
-                  </div>
-                  
-                  <h3 className="text-lg font-bold text-black mb-2 group-hover:text-emerald-400 transition">
-                    {s.title}
-                  </h3>
-                  
-                  <p className="text-sm text-black leading-relaxed">
-                    {s.desc}
+                <div>
+                  <h3 className="font-bold text-lg">Connect & Verify</h3>
+                  <p className="text-muted-foreground">
+                    Login easily and get your identity verified automatically.
                   </p>
                 </div>
               </div>
-            ))}
-          </div>
-        </div>
 
-        {/* Bottom CTA */}
-        <div className="mt-10 text-center">
-          <button className="bg-gradient-to-r from-emerald-500 to-teal-500 text-white px-8 py-3 rounded-xl font-semibold text-sm hover:shadow-lg hover:shadow-emerald-500/50 transition-all duration-300">
-            Mulai Berzakat Sekarang
-          </button>
+              {/* Step 2 */}
+              <div className="flex gap-4">
+                <div className="flex-none h-8 w-8 rounded-full bg-white/10 text-primary flex items-center justify-center font-bold text-sm">
+                  2
+                </div>
+                <div>
+                  <h3 className="font-bold text-lg">Choose Your Cause</h3>
+                  <p className="text-muted-foreground">
+                    Browse verified campaigns for Zakat, Infaq, or Sodaqah.
+                  </p>
+                </div>
+              </div>
+
+              {/* Step 3 */}
+              <div className="flex gap-4">
+                <div className="flex-none h-8 w-8 rounded-full bg-white/10 text-primary flex items-center justify-center font-bold text-sm">
+                  3
+                </div>
+                <div>
+                  <h3 className="font-bold text-lg">Donate Securely</h3>
+                  <p className="text-muted-foreground">
+                    Pay via Xellar embedded wallet with one click.
+                  </p>
+                </div>
+              </div>
+
+              {/* Step 4 */}
+              <div className="flex gap-4">
+                <div className="flex-none h-8 w-8 rounded-full bg-white/10 text-primary flex items-center justify-center font-bold text-sm">
+                  4
+                </div>
+                <div>
+                  <h3 className="font-bold text-lg">Track Impact</h3>
+                  <p className="text-muted-foreground">
+                    Receive an NFT receipt and track your funds on-chain.
+                  </p>
+                </div>
+              </div>
+
+            </div>
+          </div>
+
+          {/* Right Box */}
+          <div className="lg:w-1/2 bg-white/50 rounded-2xl p-8 lg:p-12">
+            <div className="space-y-4">
+
+              <div className="bg-background p-4 rounded-lg shadow-sm border border-black flex items-center justify-between">
+                <span className="font-medium">Donation Sent</span>
+                <span className="text-primary font-mono font-bold">Confirmed ✓</span>
+              </div>
+
+              <div className="flex justify-center">
+                <div className="h-8 w-0.5 bg-black border-l border-dashed" />
+              </div>
+
+              <div className="bg-background p-4 rounded-lg shadow-sm border border-black flex items-center justify-between">
+                <span className="font-medium">Smart Contract</span>
+                <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded">
+                  Processing
+                </span>
+              </div>
+
+              <div className="flex justify-center">
+                <div className="h-8 w-0.5 bg-black border-l border-dashed" />
+              </div>
+
+              <div className="bg-background p-4 rounded-lg shadow-sm border border-black flex items-center justify-between">
+                <span className="font-medium">NFT Receipt Minted</span>
+                <span className="text-xs bg-purple-100 text-purple-700 px-2 py-1 rounded">
+                  0x83...29a
+                </span>
+              </div>
+
+            </div>
+          </div>
+
         </div>
       </div>
     </section>

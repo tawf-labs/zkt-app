@@ -1,461 +1,288 @@
 "use client";
 
-import { useState } from "react";
-import { Heart, Users, Target, CheckCircle, Shield, FileText, ChevronRight, ArrowLeft } from "lucide-react";
+import { Search, Filter, SlidersHorizontal, Users, Clock, CircleCheck } from 'lucide-react';
+import Image from 'next/image';
 
-// Data campaigns
 const campaigns = [
   {
-    id: "1",
-    title: "Paket Pangan Darurat",
-    charity: "BAZNAS Pusat",
-    raised: 45000000,
-    goal: 150000000,
-    imageQuery: "volunteers-distributing-food-aid",
-    description: "Menyediakan paket pangan esensial untuk keluarga rentan yang menghadapi kekurangan akut. Dukungan Anda membawa bantuan langsung.",
-    beneficiaries: 150,
+    id: 1,
+    title: "Emergency Relief for Earthquake Victims in Cianjur",
+    organization: "Baznas Indonesia",
+    category: "Emergency",
+    raised: 125000,
+    goal: 150000,
+    donors: 2500,
+    daysLeft: 12,
+    image: "/child-with-meal-support.jpg"
+  },
+  {
+    id: 2,
+    title: "Build a Clean Water Well for Remote Village",
+    organization: "Human Initiative",
+    category: "Waqf",
+    raised: 8500,
+    goal: 12000,
+    donors: 170,
+    daysLeft: 45,
     image: "/community-receiving-food-aid-with-dignity.jpg"
   },
   {
-    id: "2",
-    title: "Akses Air Bersih",
-    charity: "LAZ Nasional",
-    raised: 95000000,
-    goal: 200000000,
-    imageQuery: "water-distribution-community-aid",
-    description: "Membangun dan memperbaiki sumur untuk memastikan akses aman dan andal ke air bersih untuk komunitas pedesaan.",
-    beneficiaries: 300,
+    id: 3,
+    title: "Scholarship Fund for 100 Orphan Students",
+    organization: "Rumah Zakat",
+    category: "Zakat",
+    raised: 45000,
+    goal: 50000,
+    donors: 900,
+    daysLeft: 5,
     image: "/happy-family-receiving-aid.jpg"
   },
   {
-    id: "3",
-    title: "Bantuan Medis & Obat-obatan",
-    charity: "Rumah Zakat",
-    raised: 55000000,
-    goal: 120000000,
-    imageQuery: "medical-aid-delivery-to-families",
-    description: "Memasok klinik dengan obat-obatan dan kit pertolongan pertama untuk mendukung kebutuhan kesehatan mendesak.",
-    beneficiaries: 200,
+    id: 4,
+    title: "Food Packages for Families in Need",
+    organization: "Dompet Dhuafa",
+    category: "Sadaqah",
+    raised: 12000,
+    goal: 25000,
+    donors: 240,
+    daysLeft: 20,
     image: "/child-with-meal-support.jpg"
   },
+  {
+    id: 5,
+    title: "Medical Aid for Remote Communities",
+    organization: "Lazismu",
+    category: "Zakat",
+    raised: 35000,
+    goal: 60000,
+    donors: 700,
+    daysLeft: 18,
+    image: "/community-receiving-food-aid-with-dignity.jpg"
+  },
+  {
+    id: 6,
+    title: "Mosque Renovation Project",
+    organization: "BWI",
+    category: "Waqf",
+    raised: 80000,
+    goal: 100000,
+    donors: 1600,
+    daysLeft: 60,
+    image: "/happy-family-receiving-aid.jpg"
+  }
 ];
 
-// Komponen Card Campaign
-function CampaignCard({ campaign, onClick }) {
-  const percentage = Math.round((campaign.raised / campaign.goal) * 100);
+const categories = ["Zakat", "Infaq", "Sadaqah", "Waqf", "Emergency"];
+const locations = ["Indonesia", "Palestine", "Syria", "Yemen", "Global"];
+const organizations = ["Baznas", "Dompet Dhuafa", "Rumah Zakat", "Human Initiative", "Lazismu"];
+
+export default function ExploreCampaigns() {
+  const calculateProgress = (raised, goal) => {
+    const progress = (raised / goal) * 100;
+    return -((100 - progress));
+  };
+
+  const formatCurrency = (amount) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 0
+    }).format(amount);
+  };
 
   return (
-    <div 
-      onClick={onClick}
-      className="bg-white rounded-2xl shadow-xl border border-gray-200 overflow-hidden hover:shadow-2xl transition-all cursor-pointer"
-    >
-      <div className="relative h-48 overflow-hidden">
-        <img 
-          src={campaign.image} 
-          alt={campaign.title}
-          className="w-full h-full object-cover"
-        />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
-        <div className="absolute top-3 right-3 bg-emerald-600 text-white px-4 py-1.5 rounded-full text-xs font-bold shadow-lg">
-          {percentage}%
-        </div>
-      </div>
-      
-      <div className="p-5">
-        <h3 className="font-bold text-gray-900 text-lg leading-tight mb-2">
-          {campaign.title}
-        </h3>
-        
-        <p className="text-xs text-gray-600 mb-4 flex items-center gap-1.5 font-medium">
-          <Shield className="w-3.5 h-3.5 text-emerald-600" />
-          {campaign.charity}
-        </p>
-
-        <div className="mb-4">
-          <div className="h-2.5 w-full rounded-full bg-gray-200 mb-2.5">
-            <div 
-              className="h-full rounded-full bg-gradient-to-r from-emerald-600 to-teal-600 shadow-sm"
-              style={{ width: `${percentage}%` }}
-            />
+    <main className="flex-1 py-8 lg:py-12 bg-background">
+      <div className="container px-4 mx-auto">
+        {/* Header */}
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">Explore Campaigns</h1>
+            <p className="text-muted-foreground">Find and support verified causes that matter to you.</p>
           </div>
-          <div className="flex justify-between text-sm">
-            <span className="font-bold text-emerald-600">
-              Rp {(campaign.raised / 1000000).toFixed(1)}jt
-            </span>
-            <span className="text-gray-500 font-medium">
-              dari Rp {(campaign.goal / 1000000).toFixed(0)}jt
-            </span>
-          </div>
-        </div>
-
-        <div className="flex items-center justify-between pt-4 border-t border-gray-200">
-          <div className="flex items-center gap-1.5 text-sm text-gray-700 font-medium">
-            <Users className="w-4 h-4 text-emerald-600" />
-            <span>{campaign.beneficiaries} Penerima</span>
-          </div>
-          <div className="flex items-center gap-1 text-emerald-600 font-semibold text-sm">
-            <span>Lihat Detail</span>
-            <ChevronRight className="w-4 h-4" />
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// Komponen Detail Campaign
-function CampaignDetail({ campaign, onBack, onDonate }) {
-  const percentage = Math.round((campaign.raised / campaign.goal) * 100);
-  
-  // Mock proofs data
-  const proofs = [
-    {
-      id: "1",
-      date: "15 Nov 2025",
-      amount: 5000000,
-      recipients: 25,
-      location: "Jakarta Timur",
-      verified: true
-    },
-    {
-      id: "2",
-      date: "10 Nov 2025",
-      amount: 8000000,
-      recipients: 40,
-      location: "Bekasi",
-      verified: true
-    },
-    {
-      id: "3",
-      date: "5 Nov 2025",
-      amount: 12000000,
-      recipients: 60,
-      location: "Depok",
-      verified: true
-    }
-  ];
-
-  return (
-    <div className="min-h-screen bg-gradient-to-b from-emerald-50 via-white to-emerald-100">
-      <div className="max-w-md mx-auto px-4 py-8">
-        
-        {/* Logo */}
-        <div className="flex justify-center mb-6">
-          <img
-            src="/logo-name.png"
-            alt="ZKT.app Logo"
-            className="h-16 object-contain"
-          />
-        </div>
-
-        {/* Back Button */}
-        <button 
-          onClick={onBack}
-          className="flex items-center gap-2 text-gray-700 hover:text-emerald-600 mb-6 transition font-semibold"
-        >
-          <ArrowLeft className="w-5 h-5" />
-          <span>Kembali</span>
-        </button>
-
-        {/* Image */}
-        <div className="rounded-2xl overflow-hidden shadow-xl mb-6">
-          <img 
-            src={campaign.image}
-            alt={campaign.title}
-            className="w-full h-64 object-cover"
-          />
-        </div>
-
-        {/* Title & Charity */}
-        <div className="mb-6">
-          <h1 className="text-3xl font-bold text-gray-900 mb-3 leading-tight">
-            {campaign.title}
-          </h1>
-          <p className="text-gray-700 flex items-center gap-2 font-medium">
-            <Shield className="w-5 h-5 text-emerald-600" />
-            oleh {campaign.charity}
-          </p>
-        </div>
-
-        {/* Progress Card */}
-        <div className="bg-white rounded-2xl p-6 shadow-xl border border-gray-200 mb-6">
-          <div className="mb-5">
-            <div className="h-3 w-full rounded-full bg-gray-200 mb-3">
-              <div 
-                className="h-full rounded-full bg-gradient-to-r from-emerald-600 to-teal-600 shadow-sm"
-                style={{ width: `${percentage}%` }}
+          
+          {/* Search and Filter */}
+          <div className="flex items-center gap-2 w-full md:w-auto">
+            <div className="relative flex-1 md:w-64">
+              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+              <input
+                type="search"
+                placeholder="Search campaigns..."
+                className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 pl-9 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
               />
             </div>
-            <div className="flex justify-between mb-5">
-              <div>
-                <p className="font-bold text-3xl text-emerald-600 mb-1">
-                  Rp {(campaign.raised / 1000000).toFixed(1)}jt
-                </p>
-                <p className="text-sm text-gray-600 font-medium">terkumpul</p>
-              </div>
-              <div className="text-right">
-                <p className="font-bold text-xl text-gray-900 mb-1">
-                  Rp {(campaign.goal / 1000000).toFixed(0)}jt
-                </p>
-                <p className="text-sm text-gray-600 font-medium">target</p>
-              </div>
-            </div>
-          </div>
-
-          <button 
-            onClick={onDonate}
-            className="w-full bg-emerald-600 text-white py-4 px-4 rounded-xl font-bold text-base hover:bg-emerald-700 transition shadow-lg shadow-emerald-200 flex items-center justify-center gap-2 mb-4"
-          >
-            <Heart className="w-5 h-5" />
-            Salurkan Donasi
-          </button>
-
-          <div className="pt-4 border-t border-gray-200 space-y-3">
-            <div className="flex items-center gap-2.5 text-sm text-gray-700 font-medium">
-              <Users className="w-5 h-5 text-emerald-600" />
-              <span>{campaign.beneficiaries} Keluarga Terbantu</span>
-            </div>
-            <div className="flex items-center gap-2.5 text-sm text-gray-700 font-medium">
-              <Target className="w-5 h-5 text-emerald-600" />
-              <span>{percentage}% dari Target Tercapai</span>
-            </div>
+            <button className="inline-flex items-center justify-center rounded-md border border-black bg-transparent hover:bg-accent hover:text-accent-foreground h-9 w-9 lg:hidden">
+              <Filter className="h-4 w-4" />
+            </button>
+            <button className="hidden lg:inline-flex items-center justify-center gap-2 rounded-md border border-black bg-transparent hover:bg-accent hover:text-accent-foreground h-9 px-4 py-2">
+              <SlidersHorizontal className="h-4 w-4" />
+              Sort
+            </button>
           </div>
         </div>
 
-        {/* Description */}
-        <div className="bg-white rounded-2xl p-6 shadow-lg border border-gray-200 mb-6">
-          <h2 className="font-bold text-xl text-gray-900 mb-3">
-            Tentang Program
-          </h2>
-          <p className="text-gray-700 leading-relaxed">
-            {campaign.description}
-          </p>
-        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+          {/* Sidebar Filters */}
+          <aside className="hidden lg:block space-y-6">
+            {/* Categories */}
+            <div>
+              <h3 className="font-semibold mb-4">Categories</h3>
+              <div className="space-y-3">
+                {categories.map((cat) => (
+                  <div key={cat} className="flex items-center space-x-2">
+                    <input
+                      type="checkbox"
+                      id={`cat-${cat}`}
+                      className="h-4 w-4 rounded border-input"
+                    />
+                    <label htmlFor={`cat-${cat}`} className="text-sm font-medium leading-none cursor-pointer">
+                      {cat}
+                    </label>
+                  </div>
+                ))}
+              </div>
+            </div>
 
-        {/* Disbursement Proofs */}
-        <div className="bg-white rounded-2xl p-6 shadow-lg border border-gray-200 mb-6">
-          <h2 className="font-bold text-xl text-gray-900 mb-4 flex items-center gap-2">
-            <FileText className="w-5 h-5 text-emerald-600" />
-            Bukti Penyaluran
-          </h2>
-          
-          <div className="space-y-3 mb-4">
-            {proofs.map((proof) => (
-              <div 
-                key={proof.id}
-                className="bg-gradient-to-r from-emerald-50 to-teal-50 rounded-xl p-4 border-2 border-emerald-200 shadow-sm"
-              >
-                <div className="flex items-start justify-between mb-3">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="text-sm font-bold text-gray-900">
-                        {proof.date}
-                      </span>
-                      {proof.verified && (
-                        <CheckCircle className="w-4 h-4 text-emerald-600" />
-                      )}
-                    </div>
-                    <p className="text-sm text-gray-700 font-medium">{proof.location}</p>
+            <div className="h-px w-full bg-border" />
+
+            {/* Locations */}
+            <div>
+              <h3 className="font-semibold mb-4">Location</h3>
+              <div className="space-y-3">
+                {locations.map((loc) => (
+                  <div key={loc} className="flex items-center space-x-2">
+                    <input
+                      type="checkbox"
+                      id={`loc-${loc}`}
+                      className="h-4 w-4 rounded border-input"
+                    />
+                    <label htmlFor={`loc-${loc}`} className="text-sm font-medium leading-none cursor-pointer">
+                      {loc}
+                    </label>
                   </div>
-                  <div className="text-right">
-                    <p className="text-base font-bold text-emerald-600">
-                      Rp {(proof.amount / 1000000).toFixed(1)}jt
-                    </p>
-                    <p className="text-xs text-gray-600 font-medium">
-                      {proof.recipients} penerima
-                    </p>
+                ))}
+              </div>
+            </div>
+
+            <div className="h-px w-full bg-border" />
+
+            {/* Organizations */}
+            <div>
+              <h3 className="font-semibold mb-4">Organization</h3>
+              <div className="space-y-3">
+                {organizations.map((org) => (
+                  <div key={org} className="flex items-center space-x-2">
+                    <input
+                      type="checkbox"
+                      id={`org-${org}`}
+                      className="h-4 w-4 rounded border-input"
+                    />
+                    <label htmlFor={`org-${org}`} className="text-sm font-medium leading-none cursor-pointer">
+                      {org}
+                    </label>
                   </div>
-                </div>
+                ))}
+              </div>
+            </div>
+          </aside>
+
+          {/* Campaign Grid */}
+          <div className="lg:col-span-3">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {campaigns.map((campaign) => {
+                const progress = calculateProgress(campaign.raised, campaign.goal);
                 
-                <div className="flex items-center gap-2 pt-3 border-t border-emerald-200">
-                  <Shield className="w-4 h-4 text-emerald-600 flex-shrink-0" />
-                  <span className="text-xs text-gray-700 font-medium">
-                    Terverifikasi dengan Zero-Knowledge Proof
-                  </span>
-                </div>
-              </div>
-            ))}
-          </div>
+                return (
+                  <div
+                    key={campaign.id}
+                    className="bg-card text-card-foreground rounded-xl gap-6 border py-6 shadow-sm overflow-hidden border-black/60 hover:shadow-lg transition-all duration-300 group h-full flex flex-col"
+                  >
+                    {/* Campaign Image */}
+                    <div className="relative h-48 overflow-hidden">
+                      <Image
+                        src={campaign.image}
+                        alt={campaign.title}
+                        fill
+                        className="object-cover transition-transform duration-500 group-hover:scale-105"
+                      />
+                      
+                      {/* Category Badge */}
+                      <div className="absolute top-3 left-3 flex flex-col gap-2">
+                        <span className="inline-flex items-center justify-center rounded-md px-2 py-0.5 text-xs font-semibold bg-background/90 backdrop-blur-sm border border-transparent w-fit">
+                          {campaign.category}
+                        </span>
+                      </div>
+                      
+                      {/* Verified Badge */}
+                      <div className="absolute bottom-3 right-3">
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium bg-transparent text-white backdrop-blur-sm rounded-md shadow-sm">
+                          <CircleCheck className="h-3 w-3" />
+                          Verified
+                        </span>
+                      </div>
+                    </div>
 
-          <div className="bg-emerald-50 rounded-xl p-4 border-2 border-emerald-200">
-            <p className="text-sm text-gray-800 leading-relaxed font-medium">
-              💡 <strong className="text-gray-900">Privasi Terjaga:</strong> Identitas penerima dilindungi. 
-              Hanya jumlah, lokasi umum, dan verifikasi yang ditampilkan untuk transparansi.
-            </p>
-          </div>
-        </div>
+                    {/* Card Header */}
+                    <div className="@container/card-header grid auto-rows-min grid-rows-[auto_auto] items-start gap-1.5 p-5 pb-2 space-y-2">
+                      <div className="text-xs text-muted-foreground font-medium flex items-center gap-1">
+                        by{' '}
+                        <span className="text-primary font-semibold hover:underline cursor-pointer">
+                          {campaign.organization}
+                        </span>
+                      </div>
+                      <h3 className="font-bold text-lg leading-tight line-clamp-2 group-hover:text-primary transition-colors">
+                        {campaign.title}
+                      </h3>
+                    </div>
 
-        {/* About Charity */}
-        <div className="bg-gradient-to-br from-emerald-600 to-teal-600 rounded-2xl p-6 text-white shadow-xl">
-          <h3 className="font-bold text-lg mb-3 flex items-center gap-2">
-            <Shield className="w-5 h-5" />
-            Tentang Lembaga
-          </h3>
-          <p className="text-sm leading-relaxed text-emerald-50">
-            {campaign.charity} telah terverifikasi dan akuntabel. Penyaluran 
-            ditinjau dengan pengawasan DAO dan dokumentasi privat untuk penerima 
-            menggunakan teknologi Zero-Knowledge Proof.
-          </p>
-        </div>
-      </div>
-    </div>
-  );
-}
+                    {/* Card Content */}
+                    <div className="p-5 pt-2 flex-1">
+                      <div className="space-y-3">
+                        <div className="flex justify-between text-sm">
+                          <span className="font-bold text-foreground">{formatCurrency(campaign.raised)}</span>
+                          <span className="text-muted-foreground">of {formatCurrency(campaign.goal)}</span>
+                        </div>
+                        
+                        {/* Progress Bar */}
+                        <div className="w-full h-2 bg-secondary rounded-full overflow-hidden">
+                          <div
+                            className="bg-primary h-full transition-all"
+                            style={{ transform: `translateX(${progress}%)` }}
+                          />
+                        </div>
+                        
+                        <div className="flex justify-between items-center text-xs text-muted-foreground pt-1">
+                          <div className="flex items-center gap-1">
+                            <Users className="h-3.5 w-3.5" />
+                            <span>{campaign.donors.toLocaleString()} donors</span>
+                          </div>
+                          <div className="flex items-center gap-1 bg-secondary px-2 py-1 rounded-md">
+                            <Clock className="h-3.5 w-3.5" />
+                            <span className="font-medium text-foreground">{campaign.daysLeft} days left</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
 
-// Main Component - Campaign List
-export default function CampaignsPage() {
-  const [selectedCampaign, setSelectedCampaign] = useState(null);
-  const [showDonationForm, setShowDonationForm] = useState(false);
-
-  if (showDonationForm) {
-    return (
-      <div className="min-h-screen bg-gradient-to-b from-emerald-50 via-white to-emerald-100">
-        <div className="max-w-md mx-auto px-4 py-8">
-          
-          {/* Logo */}
-          <div className="flex justify-center mb-6">
-            <img
-              src="/logo-name.png"
-              alt="ZKT.app Logo"
-              className="h-16 object-contain"
-            />
-          </div>
-
-          <button 
-            onClick={() => setShowDonationForm(false)}
-            className="flex items-center gap-2 text-gray-700 hover:text-emerald-600 mb-6 transition font-semibold"
-          >
-            <ArrowLeft className="w-5 h-5" />
-            <span>Kembali</span>
-          </button>
-          
-          <div className="text-center mb-6">
-            <h2 className="text-2xl font-bold text-gray-900 mb-2">
-              Form Donasi
-            </h2>
-            <p className="text-gray-700 font-medium">
-              untuk {selectedCampaign?.title}
-            </p>
-          </div>
-
-          <div className="bg-white rounded-2xl p-8 shadow-xl border border-gray-200">
-            <p className="text-center text-gray-700 font-medium">
-              Form donasi akan ditampilkan di sini...
-            </p>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  if (selectedCampaign) {
-    return (
-      <CampaignDetail 
-        campaign={selectedCampaign}
-        onBack={() => setSelectedCampaign(null)}
-        onDonate={() => setShowDonationForm(true)}
-      />
-    );
-  }
-
-  return (
-    <div className="min-h-screen bg-gradient-to-b from-emerald-50 via-white to-emerald-100">
-      <div className="max-w-md mx-auto px-4 py-8 pb-24">
-        
-        {/* Logo */}
-        <div className="flex justify-center mb-6">
-          <img
-            src="/logo-name.png"
-            alt="ZKT.app Logo"
-            className="h-16 object-contain"
-          />
-        </div>
-
-        {/* Header */}
-        <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-3 leading-tight">
-            Program Penyaluran Zakat{' '}
-            <span className="text-emerald-600">Transparan & Terverifikasi</span>
-          </h1>
-          <p className="text-base text-gray-700 leading-relaxed">
-            Setiap penyaluran dilindungi dengan Zero-Knowledge Proof. Privasi penerima 
-            terjaga, transparansi tetap terjamin.
-          </p>
-        </div>
-
-        {/* Stats */}
-        <div className="grid grid-cols-3 gap-3 mb-8">
-          <div className="bg-white rounded-xl p-4 shadow-lg border border-gray-200 text-center">
-            <p className="text-2xl font-bold text-emerald-600 mb-1">
-              {campaigns.length}
-            </p>
-            <p className="text-xs text-gray-700 font-semibold">Program Aktif</p>
-          </div>
-          <div className="bg-white rounded-xl p-4 shadow-lg border border-gray-200 text-center">
-            <p className="text-2xl font-bold text-emerald-600 mb-1">
-              {campaigns.reduce((sum, c) => sum + c.beneficiaries, 0)}
-            </p>
-            <p className="text-xs text-gray-700 font-semibold">Terbantu</p>
-          </div>
-          <div className="bg-white rounded-xl p-4 shadow-lg border border-gray-200 text-center">
-            <p className="text-2xl font-bold text-emerald-600 mb-1">
-              {(campaigns.reduce((sum, c) => sum + c.raised, 0) / 1000000000).toFixed(1)}M
-            </p>
-            <p className="text-xs text-gray-700 font-semibold">Tersalurkan</p>
-          </div>
-        </div>
-
-        {/* Campaign Cards */}
-        <div className="space-y-5 mb-8">
-          {campaigns.map((campaign) => (
-            <CampaignCard 
-              key={campaign.id}
-              campaign={campaign}
-              onClick={() => setSelectedCampaign(campaign)}
-            />
-          ))}
-        </div>
-
-        {/* Info Banner */}
-        <div className="bg-gradient-to-br from-emerald-600 to-teal-600 rounded-2xl p-6 text-white shadow-xl">
-          <div className="flex items-start gap-3 mb-4">
-            <Shield className="w-6 h-6 flex-shrink-0 mt-1" />
-            <h2 className="text-xl font-bold leading-tight">
-              Mengapa Donasi Melalui ZKT.app?
-            </h2>
-          </div>
-          <div className="space-y-3 text-sm text-emerald-50">
-            <div className="flex gap-2">
-              <span className="font-bold">✓</span>
-              <div>
-                <p className="font-bold text-white mb-0.5">Privasi Donor Terjamin</p>
-                <p className="text-xs">Nominal Anda tidak dipublikasikan</p>
-              </div>
+                    {/* Card Footer */}
+                    <div className="p-5 pt-0">
+                      <button className="w-full border border-black rounded-md h-9 px-4 text-sm font-semibold hover:bg-accent hover:text-accent-foreground transition-all">
+                        Donate Now
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
-            <div className="flex gap-2">
-              <span className="font-bold">✓</span>
-              <div>
-                <p className="font-bold text-white mb-0.5">Identitas Mustahik Dilindungi</p>
-                <p className="text-xs">Zero-Knowledge Proof menjaga martabat</p>
-              </div>
-            </div>
-            <div className="flex gap-2">
-              <span className="font-bold">✓</span>
-              <div>
-                <p className="font-bold text-white mb-0.5">Transparan & Dapat Diaudit</p>
-                <p className="text-xs">Setiap penyaluran terverifikasi</p>
-              </div>
-            </div>
-            <div className="flex gap-2">
-              <span className="font-bold">✓</span>
-              <div>
-                <p className="font-bold text-white mb-0.5">Sesuai Syariah</p>
-                <p className="text-xs">Diawasi oleh lembaga resmi</p>
-              </div>
+
+            {/* Load More Button */}
+            <div className="mt-12 flex justify-center">
+              <button className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-all h-10 px-6 w-full sm:w-auto border border-black bg-transparent hover:bg-accent hover:text-accent-foreground">
+                Load More Campaigns
+              </button>
             </div>
           </div>
         </div>
       </div>
-    </div>
+    </main>
   );
 }

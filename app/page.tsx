@@ -4,11 +4,15 @@ import { Button } from "@/components/ui/button"
 import { Hero } from "@/components/landing/hero"
 import { HowItWorks } from "@/components/landing/how-it-works"
 import { FeaturedCampaigns } from "@/components/landing/featured-campaigns"
+import { Trusted } from "@/components/landing/badge"
+
 
 export default function HomePage() {
   return (
     <main className="min-h-dvh bg-background text-foreground">
       <Hero />
+      <Trusted />
+      <FeaturedCampaigns />
       <HowItWorks />
       <section id="campaigns" className="py-12 md:py-16">
         <div className="container mx-auto px-4">
@@ -18,7 +22,7 @@ export default function HomePage() {
               <Link href="#campaigns">{"Explore more"}</Link>
             </Button>
           </div>
-          <FeaturedCampaigns /> */}
+ */}
         </div>
       </section>
     </main>

@@ -1,141 +1,92 @@
-"use client";
-
-import { useState, useEffect } from "react";
-import { ChevronLeft, ChevronRight, Shield, Eye, CheckCircle, Lock, Users, FileCheck } from "lucide-react";
+import React from 'react';
+import { Shield, TrendingUp } from 'lucide-react';
+import Image from 'next/image';
 
 export function Hero() {
-  const [currentSlide, setCurrentSlide] = useState(0);
-  const [isMounted, setIsMounted] = useState(false);
-
-  useEffect(() => {
-    setIsMounted(true);
-  }, []);
-
-  const slides = [
-    {
-      src: "/community-receiving-food-aid-with-dignity.jpg",
-      alt: "Komunitas menerima bantuan pangan dengan bermartabat",
-    },
-    {
-      src: "/child-with-meal-support.jpg",
-      alt: "Anak dengan makanan bergizi dari donasi",
-    },
-    {
-      src: "/happy-family-receiving-aid.jpg",
-      alt: "Keluarga tersenyum setelah menerima bantuan",
-    },
-  ];
-
-  useEffect(() => {
-    if (!isMounted) return;
-    const timer = setInterval(() => {
-      setCurrentSlide((prev) => (prev + 1) % slides.length);
-    }, 4000);
-    return () => clearInterval(timer);
-  }, [slides.length, isMounted]);
-
-  const prevSlide = () => setCurrentSlide((prev) => (prev - 1 + slides.length) % slides.length);
-  const nextSlide = () => setCurrentSlide((prev) => (prev + 1) % slides.length);
-
-  const features = [
-    { icon: Lock, title: "Privasi Donor", desc: "Nominal dirahasiakan, publik hanya melihat total" },
-    { icon: Shield, title: "Proteksi Mustahik", desc: "Identitas penerima tidak pernah dipublikasikan" },
-    { icon: CheckCircle, title: "ZK Receipt", desc: "Bukti penerimaan tanpa buka data sensitif" },
-    { icon: Eye, title: "Anti Salah Alokasi", desc: "ZK mencegah human error dan double-claim" },
-    { icon: FileCheck, title: "Audit Cepat", desc: "Total masuk vs keluar diverifikasi instan" },
-    { icon: Users, title: "Syariah Compliant", desc: "Sesuai prinsip transparansi dan keadilan Islam" },
-  ];
-
   return (
-    <div className="min-h-screen bg-gradient-to-b from-emerald-50 via-white to-emerald-100" suppressHydrationWarning>
-      <div className="max-w-md mx-auto px-4 py-8">
-        
-        <div className="flex justify-center mb-8">
-          <img
-            src="/logo-name.png"
-            alt="ZKT.app Logo"
-            className="h-17 object-contain"
-          />
-        </div>
-
-        <div className="text-center mb-8">
-         <h1 className="text-3xl font-bold text-gray-900 mb-3 leading-tight">
-          Zakat On-Chain yang Privat dan Terverifikasi.{' '}
-          <span className="text-primary">Aman, Syariah, dan Dapat Diaudit.</span>
-        </h1>
-         <p className="text-base text-muted-foreground leading-relaxed mb-8">
-          ZKT.app menjaga privasi donor, melindungi penerima, dan memastikan setiap penyaluran dapat diverifikasi melalui Zero-Knowledge Proof — tanpa membuka identitas siapa pun.
-        </p>
-        </div>
-
-        {/* CTA BUTTONS */}
-        <div className="flex gap-3 mb-8">
-          <button className="flex-1 bg-emerald-600 text-white py-3 px-4 rounded-xl font-semibold text-sm hover:bg-emerald-700 transition shadow-lg shadow-emerald-200">
-            Lihat Penyaluran
-          </button>
-          <button className="flex-1 border-2 border-emerald-600 text-emerald-600 py-3 px-4 rounded-xl font-semibold text-sm hover:bg-emerald-50 transition">
-            Pelajari
-          </button>
-        </div>
-
-        <div className="relative overflow-hidden rounded-2xl shadow-xl mb-8 group">
-          <div className="relative w-full aspect-video">
-            {slides.map((slide, i) => (
-              <div
-                key={i}
-                className={`absolute inset-0 transition-opacity duration-700 ${i === currentSlide ? 'opacity-100' : 'opacity-0'}`}
-              >
-                <img src={slide.src} alt={slide.alt} className="w-full h-full object-cover" />
-              </div>
-            ))}
-          </div>
-
-          <button
-            onClick={prevSlide}
-            className="absolute left-2 top-1/2 -translate-y-1/2 bg-black/40 hover:bg-black/60 text-white p-1.5 rounded-full opacity-0 group-hover:opacity-100 transition"
-          >
-            <ChevronLeft className="w-4 h-4" />
-          </button>
-          <button
-            onClick={nextSlide}
-            className="absolute right-2 top-1/2 -translate-y-1/2 bg-black/40 hover:bg-black/60 text-white p-1.5 rounded-full opacity-0 group-hover:opacity-100 transition"
-          >
-            <ChevronRight className="w-4 h-4" />
-          </button>
-
-          <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1.5">
-            {slides.map((_, i) => (
-              <button
-                key={i}
-                onClick={() => setCurrentSlide(i)}
-                className={`h-1.5 rounded-full transition-all ${i === currentSlide ? 'w-6 bg-white' : 'w-1.5 bg-white/50'}`}
-              />
-            ))}
-          </div>
-        </div>
-
-        <div className="grid grid-cols-2 gap-3 mb-8">
-          {features.map((feature, i) => (
-            <div key={i} className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 hover:shadow-md transition">
-              <feature.icon className="w-8 h-8 text-emerald-600 mb-2" />
-              <h3 className="font-semibold text-sm text-gray-900 mb-1">{feature.title}</h3>
-              <p className="text-xs text-gray-600 leading-relaxed">{feature.desc}</p>
+    <section className="relative overflow-hidden bg-gradient-to-b from-secondary/50 to-background flex-1 pt-16 pb-20 lg:pt-24 lg:pb-32">
+      <div className="container px-4 mx-auto auto-center gap-12 lg-gap-20">
+        <div className="flex flex-col lg:flex-row items-center gap-16 lg:gap-24">
+          {/* Left Content */}
+          <div className="flex-1 space-y-8 text-center lg:text-left">
+            {/* Badge */}
+            <div className="inline-flex items-center rounded-full border border-black px-4 py-2 text-sm font-medium text-black">
+              Verified by Baznas & Blockchain Traced
             </div>
-          ))}
+
+            {/* Heading */}
+            <h1 className="text-4xl lg:text-6xl font-extrabold tracking-tight text-black">
+              Transparent Giving with <span className="text-black">Blockchain Trust</span>
+            </h1>
+
+            {/* Description */}
+            <p className="text-lg text-muted-foreground max-w-2xl mx-auto lg:mx-0 text-balance leading-relaxed">
+              The world's first fully traceable Zakat and donation platform. Receive NFT receipts, earn governance rights, and see exactly where your money goes.
+            </p>
+
+            {/* CTA Buttons */}
+            <div className="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-4">
+              <button className="text-base font-medium text-black hover:underline">
+                Donate Now
+              </button>
+              <button className="inline-flex items-center justify-center whitespace-nowrap  text-base font-medium border rounded-md border-black text-black bg-white hover:bg-black/5 px-8 py-3 transition-all">
+                Calculate Zakat
+              </button>
+            </div>
+
+            {/* Stats */}
+              <div className="grid grid-cols-3 gap-4 pt-8 border-t border-black/60">
+              <div className="space-y-1">
+                <div className="text-3xl font-bold text-black">$12M+</div>
+                <div className="text-xs text-black font-medium uppercase tracking-wide">
+                  DONATED
+                </div>
+              </div>
+              <div className="space-y-1">
+                <div className="text-3xl font-bold text-black">100%</div>
+                <div className="text-xs text-black font-medium uppercase tracking-wide">
+                  TRACEABLE
+                </div>
+              </div>
+              <div className="space-y-1">
+                <div className="text-3xl font-bold text-black">50k+</div>
+                <div className="text-xs text-black font-medium uppercase tracking-wide">
+                  DONORS
+                </div>
+              </div>
+            </div>
+           </div>
+
+          {/* Right Mockup Section */}
+         <div className="flex-1 w-full max-w-2xl relative">
+          {/* Main Browser/Device Mockup */}
+          <div className="relative rounded-3xl overflow-hidden border-2 border-black bg-gray-100 aspect-[4/3] shadow-2xl">
+
+            {/* IMAGE REPLACEMENT */}
+            <Image
+              src="/your-image.jpg"   // ganti ke gambar lo
+              alt="Preview"
+              fill
+              className="object-cover w-full h-auto"
+            />
+
+            {/* Floating Card - Top Left */}
+            <div className="absolute top-6 left-6 bg-white p-3 rounded-xl border border-black max-w-[160px]">
+              <div className="text-xs font-semibold text-black">Zakat Verified</div>
+            </div>
+
+            {/* Floating Card - Bottom Right */}
+            <div className="absolute bottom-6 right-6 bg-white p-3 rounded-xl border border-black max-w-[200px]">
+              <div className="space-y-1">
+                <div className="text-xs text-gray-600">Impact Tracking</div>
+                <div className="text-sm font-bold text-black">Real-time Audit</div>
+              </div>
+            </div>
+          </div>
         </div>
 
-        <div className="bg-gradient-to-br from-emerald-600 to-teal-600 rounded-2xl p-6 text-white shadow-xl">
-          <h2 className="text-xl font-bold mb-3">Mengapa ZKT.app?</h2>
-          <p className="text-sm leading-relaxed mb-4 text-emerald-50">
-            Donor dapat menunaikan zakat dengan privasi penuh. Baznas tetap memimpin penyaluran. Auditor dapat memverifikasi tanpa membuka identitas. Penerima tetap terlindungi.
-          </p>
-          <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4 border border-white/20">
-            <p className="text-xs italic text-emerald-50">
-              Dibangun untuk melindungi kepercayaan donor, menjaga martabat penerima, dan membantu Baznas menyalurkan zakat tanpa risiko pelanggaran syariah.
-            </p>
-          </div>
         </div>
       </div>
-    </div>
+    </section>
   );
 }
