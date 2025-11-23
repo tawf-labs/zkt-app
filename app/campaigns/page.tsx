@@ -2,6 +2,7 @@
 
 import { Search, Filter, SlidersHorizontal, Users, Clock, CircleCheck } from 'lucide-react';
 import Image from 'next/image';
+import { useRouter } from 'next/navigation';
 
 const campaigns = [
   {
@@ -77,6 +78,8 @@ const locations = ["Indonesia", "Palestine", "Syria", "Yemen", "Global"];
 const organizations = ["Baznas", "Dompet Dhuafa", "Rumah Zakat", "Human Initiative", "Lazismu"];
 
 export default function ExploreCampaigns() {
+  const router = useRouter();
+
   const calculateProgress = (raised, goal) => {
     const progress = (raised / goal) * 100;
     return -((100 - progress));
@@ -88,6 +91,15 @@ export default function ExploreCampaigns() {
       currency: 'USD',
       minimumFractionDigits: 0
     }).format(amount);
+  };
+
+  const handleCardClick = (campaignId) => {
+    router.push(`/campaigns/${campaignId}`);
+  };
+
+  const handleDonateClick = (e, campaignId) => {
+    e.stopPropagation(); // Prevent card click when clicking donate button
+    router.push(`/campaigns/${campaignId}`);
   };
 
   return (
@@ -194,7 +206,8 @@ export default function ExploreCampaigns() {
                 return (
                   <div
                     key={campaign.id}
-                    className="bg-card text-card-foreground rounded-xl gap-6 border py-6 shadow-sm overflow-hidden border-black/60 hover:shadow-lg transition-all duration-300 group h-full flex flex-col"
+                    onClick={() => handleCardClick(campaign.id)}
+                    className="bg-card text-card-foreground rounded-xl gap-6 border py-6 shadow-sm overflow-hidden border-black/60 hover:shadow-lg transition-all duration-300 group h-full flex flex-col cursor-pointer"
                   >
                     {/* Campaign Image */}
                     <div className="relative h-48 overflow-hidden">
@@ -265,7 +278,10 @@ export default function ExploreCampaigns() {
 
                     {/* Card Footer */}
                     <div className="p-5 pt-0">
-                      <button className="w-full border border-black rounded-md h-9 px-4 text-sm font-semibold hover:bg-accent hover:text-accent-foreground transition-all">
+                      <button 
+                        onClick={(e) => handleDonateClick(e, campaign.id)}
+                        className="w-full border border-black rounded-md h-9 px-4 text-sm font-semibold hover:bg-accent hover:text-accent-foreground transition-all"
+                      >
                         Donate Now
                       </button>
                     </div>
