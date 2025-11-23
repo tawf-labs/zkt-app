@@ -1,44 +1,101 @@
 export type Campaign = {
-  id: string
-  title: string
-  charity: string
-  raised: number
-  goal: number
-  imageQuery: string
-  description?: string
-}
+  id: number;
+  title: string;
+  organization: string;
+  category: string;
+  raised: number;
+  goal: number;
+  donors: number;
+  daysLeft: number;
+  image: string;
+};
 
 export const campaigns: Campaign[] = [
   {
-    id: "1",
-    title: "Emergency Food Packs",
-    charity: "Global Relief Network",
-    raised: 1500,
-    goal: 5000,
-    imageQuery: "volunteers%20distributing%20food%20aid",
-    description:
-      "Providing essential food packs to vulnerable families facing acute shortages. Your support brings immediate relief.",
+    id: 1,
+    title: "Emergency Relief for Earthquake Victims in Cianjur",
+    organization: "Baznas Indonesia",
+    category: "Emergency",
+    raised: 125000,
+    goal: 150000,
+    donors: 2500,
+    daysLeft: 12,
+    image: "/child-with-meal-support.jpg"
   },
   {
-    id: "2",
-    title: "Clean Water Access",
-    charity: "Hope Wells",
-    raised: 3800,
-    goal: 8000,
-    imageQuery: "water%20distribution%20community%20aid",
-    description: "Building and repairing wells to ensure safe, reliable access to clean water for rural communities.",
+    id: 2,
+    title: "Build a Clean Water Well for Remote Village",
+    organization: "Human Initiative",
+    category: "Waqf",
+    raised: 8500,
+    goal: 12000,
+    donors: 170,
+    daysLeft: 45,
+    image: "/community-receiving-food-aid-with-dignity.jpg"
   },
   {
-    id: "3",
-    title: "Medical Aid Kits",
-    charity: "CareBridge",
-    raised: 2200,
-    goal: 6000,
-    imageQuery: "medical%20aid%20delivery%20to%20families",
-    description: "Supplying clinics with medicines and first-aid kits to support urgent healthcare needs.",
+    id: 3,
+    title: "Scholarship Fund for 100 Orphan Students",
+    organization: "Rumah Zakat",
+    category: "Zakat",
+    raised: 45000,
+    goal: 50000,
+    donors: 900,
+    daysLeft: 5,
+    image: "/happy-family-receiving-aid.jpg"
   },
-]
+  {
+    id: 4,
+    title: "Food Packages for Families in Need",
+    organization: "Dompet Dhuafa",
+    category: "Sadaqah",
+    raised: 12000,
+    goal: 25000,
+    donors: 240,
+    daysLeft: 20,
+    image: "/child-with-meal-support.jpg"
+  },
+  {
+    id: 5,
+    title: "Medical Aid for Remote Communities",
+    organization: "Lazismu",
+    category: "Zakat",
+    raised: 35000,
+    goal: 60000,
+    donors: 700,
+    daysLeft: 18,
+    image: "/community-receiving-food-aid-with-dignity.jpg"
+  },
+  {
+    id: 6,
+    title: "Mosque Renovation Project",
+    organization: "BWI",
+    category: "Waqf",
+    raised: 80000,
+    goal: 100000,
+    donors: 1600,
+    daysLeft: 60,
+    image: "/happy-family-receiving-aid.jpg"
+  }
+];
 
-export function getCampaignById(id: string) {
-  return campaigns.find((c) => c.id === id)
-}
+export const categories = ["Zakat", "Infaq", "Sadaqah", "Waqf", "Emergency"];
+export const locations = ["Indonesia", "Palestine", "Syria", "Yemen", "Global"];
+export const organizations = ["Baznas", "Dompet Dhuafa", "Rumah Zakat", "Human Initiative", "Lazismu"];
+
+export const calculateProgress = (raised: number, goal: number) => {
+  const progress = (raised / goal) * 100;
+  return -((100 - progress));
+};
+
+export const formatCurrency = (amount: number) => {
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    minimumFractionDigits: 0
+  }).format(amount);
+};
+
+export const getCampaignById = (id: number) => {
+  return campaigns.find((campaign) => campaign.id === id);
+};

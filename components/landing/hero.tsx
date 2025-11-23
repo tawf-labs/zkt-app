@@ -1,6 +1,7 @@
 import React from 'react';
 import { Shield, TrendingUp } from 'lucide-react';
 import Image from 'next/image';
+import Link from 'next/link';
 
 export function Hero() {
   return (
@@ -26,12 +27,12 @@ export function Hero() {
 
             {/* CTA Buttons */}
             <div className="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-4">
-              <button className="text-base font-medium text-black hover:underline">
+              <Link href="/campaigns" className="text-base font-medium text-black hover:underline">
                 Donate Now
-              </button>
-              <button className="inline-flex items-center justify-center whitespace-nowrap  text-base font-medium border rounded-md border-black text-black bg-white hover:bg-black/5 px-8 py-3 transition-all">
+              </Link>
+              <Link href="/zakat" className="inline-flex items-center justify-center whitespace-nowrap  text-base font-medium border rounded-md border-black text-black bg-white hover:bg-black/5 px-8 py-3 transition-all">
                 Calculate Zakat
-              </button>
+              </Link>
             </div>
 
             {/* Stats */}

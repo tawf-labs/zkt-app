@@ -1,8 +1,7 @@
 "use client";
 
 import { useState } from 'react';
-import { ArrowLeft, Users, Clock, CircleCheck, Share2, Heart, MapPin, Calendar, Target, TrendingUp } from 'lucide-react';
-import Image from 'next/image';
+import { ArrowLeft, Users, Clock, CircleCheck, Share2, Heart, MapPin, Calendar, Target, TrendingUp, Shield, FileText } from 'lucide-react';
 
 const campaignDetail = {
   id: 1,
@@ -19,11 +18,11 @@ const campaignDetail = {
   donors: 2500,
   daysLeft: 12,
   createdDate: "Oct 15, 2024",
-  image: "/child-with-meal-support.jpg",
+  image: "https://images.unsplash.com/photo-1488521787991-ed7bbaae773c?w=800&h=600&fit=crop",
   images: [
-    "/child-with-meal-support.jpg",
-    "/community-receiving-food-aid-with-dignity.jpg",
-    "/happy-family-receiving-aid.jpg"
+    "https://images.unsplash.com/photo-1488521787991-ed7bbaae773c?w=800&h=600&fit=crop",
+    "https://images.unsplash.com/photo-1469571486292-0ba58a3f068b?w=800&h=600&fit=crop",
+    "https://images.unsplash.com/photo-1532629345422-7515f3d16bb6?w=800&h=600&fit=crop"
   ],
   description: `The devastating earthquake that struck Cianjur has left thousands of families without homes, food, and basic necessities. The disaster has affected over 10,000 residents, with many losing everything they owned.
 
@@ -81,7 +80,7 @@ export default function CampaignDetail() {
 
   return (
     <main className="flex-1 py-8 lg:py-12 bg-background">
-      <div className="container px-4 mx-auto">
+      <div className="container px-4 mx-auto max-w-7xl">
         {/* Back Button */}
         <button className="inline-flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground mb-6 transition-colors">
           <ArrowLeft className="h-4 w-4" />
@@ -93,24 +92,23 @@ export default function CampaignDetail() {
           <div className="lg:col-span-2 space-y-6">
             {/* Image Gallery */}
             <div className="space-y-3">
-              <div className="relative h-[400px] rounded-xl overflow-hidden border border-black/60">
-                <Image
+              <div className="relative h-[400px] rounded-xl overflow-hidden border border-border">
+                <img
                   src={campaignDetail.images[selectedImage]}
                   alt={campaignDetail.title}
-                  fill
-                  className="object-cover"
+                  className="w-full h-full object-cover"
                 />
                 
                 {/* Category Badge */}
                 <div className="absolute top-4 left-4">
-                  <span className="inline-flex items-center justify-center rounded-md px-3 py-1 text-sm font-semibold bg-background/90 backdrop-blur-sm border border-transparent">
+                  <span className="inline-flex items-center justify-center rounded-md px-3 py-1 text-sm font-semibold bg-background/90 backdrop-blur-sm border border-border">
                     {campaignDetail.category}
                   </span>
                 </div>
 
                 {/* Verified Badge */}
                 <div className="absolute top-4 right-4">
-                  <span className="inline-flex items-center gap-1 px-3 py-1 text-sm font-medium bg-background/90 backdrop-blur-sm rounded-md border">
+                  <span className="inline-flex items-center gap-1 px-3 py-1 text-sm font-medium bg-background/90 backdrop-blur-sm rounded-md border border-border">
                     <CircleCheck className="h-4 w-4 text-green-600" />
                     Verified Campaign
                   </span>
@@ -127,11 +125,10 @@ export default function CampaignDetail() {
                       selectedImage === idx ? 'border-primary' : 'border-border hover:border-primary/50'
                     }`}
                   >
-                    <Image
+                    <img
                       src={img}
                       alt={`Gallery ${idx + 1}`}
-                      fill
-                      className="object-cover"
+                      className="w-full h-full object-cover"
                     />
                   </button>
                 ))}
@@ -168,17 +165,17 @@ export default function CampaignDetail() {
 
                 {/* Action Buttons */}
                 <div className="flex gap-2">
-                  <button className="inline-flex items-center justify-center rounded-md border border-black bg-transparent hover:bg-accent hover:text-accent-foreground h-9 w-9">
+                  <button className="inline-flex items-center justify-center rounded-md border border-border bg-transparent hover:bg-accent hover:text-accent-foreground h-9 w-9">
                     <Share2 className="h-4 w-4" />
                   </button>
-                  <button className="inline-flex items-center justify-center rounded-md border border-black bg-transparent hover:bg-accent hover:text-accent-foreground h-9 w-9">
+                  <button className="inline-flex items-center justify-center rounded-md border border-border bg-transparent hover:bg-accent hover:text-accent-foreground h-9 w-9">
                     <Heart className="h-4 w-4" />
                   </button>
                 </div>
               </div>
 
               {/* Progress Section */}
-              <div className="bg-card border border-black/60 rounded-xl p-6 space-y-4">
+              <div className="bg-card border border-border rounded-xl p-6 space-y-4">
                 <div className="flex justify-between items-baseline">
                   <div>
                     <div className="text-3xl font-bold text-foreground">
@@ -218,7 +215,7 @@ export default function CampaignDetail() {
               </div>
 
               {/* Milestones */}
-              <div className="bg-card border border-black/60 rounded-xl p-6">
+              <div className="bg-card border border-border rounded-xl p-6">
                 <div className="flex items-center gap-2 mb-4">
                   <Target className="h-5 w-5" />
                   <h3 className="font-bold text-lg">Campaign Milestones</h3>
@@ -272,14 +269,49 @@ export default function CampaignDetail() {
                 >
                   Updates ({campaignDetail.updates.length})
                 </button>
+                <button
+                  onClick={() => setActiveTab('donors')}
+                  className={`pb-3 px-1 text-sm font-medium border-b-2 transition-colors ${
+                    activeTab === 'donors'
+                      ? 'border-primary text-primary'
+                      : 'border-transparent text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  Donors
+                </button>
+                <button
+                  onClick={() => setActiveTab('blockchain')}
+                  className={`pb-3 px-1 text-sm font-medium border-b-2 transition-colors ${
+                    activeTab === 'blockchain'
+                      ? 'border-primary text-primary'
+                      : 'border-transparent text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  Blockchain
+                </button>
               </div>
             </div>
 
             {/* Tab Content */}
             {activeTab === 'story' && (
-              <div className="prose prose-sm max-w-none">
-                <div className="whitespace-pre-line text-foreground leading-relaxed">
-                  {campaignDetail.description}
+              <div className="space-y-6">
+                <div className="prose prose-sm max-w-none">
+                  <div className="whitespace-pre-line text-foreground leading-relaxed">
+                    {campaignDetail.description}
+                  </div>
+                </div>
+                
+                {/* Blockchain Verified Badge */}
+                <div className="bg-primary/5 border border-primary/20 rounded-xl p-4">
+                  <div className="flex items-start gap-3">
+                    <Shield className="h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
+                    <div className="space-y-1">
+                      <div className="font-semibold">Blockchain Verified</div>
+                      <p className="text-sm text-muted-foreground">
+                        All donations are recorded on the blockchain. You'll receive an NFT receipt as permanent proof.
+                      </p>
+                    </div>
+                  </div>
                 </div>
               </div>
             )}
@@ -287,7 +319,7 @@ export default function CampaignDetail() {
             {activeTab === 'updates' && (
               <div className="space-y-6">
                 {campaignDetail.updates.map((update, idx) => (
-                  <div key={idx} className="bg-card border border-black/60 rounded-xl p-6">
+                  <div key={idx} className="bg-card border border-border rounded-xl p-6">
                     <div className="flex items-start gap-3 mb-3">
                       <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
                         <TrendingUp className="h-5 w-5 text-primary" />
@@ -302,12 +334,92 @@ export default function CampaignDetail() {
                 ))}
               </div>
             )}
+
+            {activeTab === 'donors' && (
+              <div className="space-y-4">
+                <p className="text-sm text-muted-foreground mb-2">Recent donors supporting this campaign</p>
+                {Array.from({ length: 10 }, (_, i) => (
+                  <div key={i} className="bg-card border border-border rounded-xl p-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center font-semibold text-primary">
+                          {String.fromCharCode(65 + i)}
+                        </div>
+                        <div>
+                          <div className="font-medium">Anonymous Donor</div>
+                          <div className="text-sm text-muted-foreground">
+                            {i === 0 ? '2 mins ago' : `${Math.floor(Math.random() * 24) + 1} hours ago`}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="font-bold text-primary">
+                        ${(Math.random() * 450 + 50).toFixed(0)}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {activeTab === 'blockchain' && (
+              <div className="space-y-6">
+                {/* Smart Contract */}
+                <div className="bg-muted/50 border border-border rounded-xl p-6">
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-2">
+                      <FileText className="h-5 w-5 text-primary" />
+                      <h4 className="font-semibold">Smart Contract</h4>
+                    </div>
+                    <div className="font-mono text-xs bg-background p-3 rounded border border-border break-all">
+                      0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb7
+                    </div>
+                    <button className="w-full border border-border rounded-md h-9 px-4 text-sm font-semibold hover:bg-accent transition-all">
+                      View on Block Explorer
+                    </button>
+                  </div>
+                </div>
+
+                {/* Chain Info */}
+                <div className="bg-muted/50 border border-border rounded-xl p-6">
+                  <div className="space-y-3">
+                    <h4 className="font-semibold text-lg">Chain: Base Mainnet</h4>
+                    <div className="space-y-2 text-sm">
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Total Transactions</span>
+                        <span className="font-semibold">2,500</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Last Update</span>
+                        <span className="font-semibold">2 mins ago</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Gas Used</span>
+                        <span className="font-semibold">0.0045 ETH</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Transparency Note */}
+                <div className="bg-primary/5 border border-primary/20 rounded-xl p-4">
+                  <div className="flex items-start gap-3">
+                    <Shield className="h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
+                    <div className="space-y-1">
+                      <div className="font-semibold">100% Transparent</div>
+                      <p className="text-sm text-muted-foreground">
+                        Every donation and fund distribution is recorded on the blockchain, ensuring complete transparency and accountability.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Donation Sidebar */}
           <div className="lg:col-span-1">
             <div className="sticky top-8">
-              <div className="bg-card border border-black/60 rounded-xl p-6 shadow-sm">
+              <div className="bg-card border border-border rounded-xl p-6 shadow-sm">
                 <h3 className="font-bold text-xl mb-6">Make a Donation</h3>
 
                 {/* Donation Amounts */}
@@ -322,7 +434,7 @@ export default function CampaignDetail() {
                       className={`border rounded-lg py-3 px-4 text-center font-semibold transition-all ${
                         selectedAmount === amount
                           ? 'border-primary bg-primary text-primary-foreground'
-                          : 'border-black/60 hover:border-primary hover:bg-accent'
+                          : 'border-border hover:border-primary hover:bg-accent'
                       }`}
                     >
                       ${amount}
@@ -353,7 +465,7 @@ export default function CampaignDetail() {
                 </div>
 
                 {/* Donate Button */}
-                <button className="w-full bg-primary text-primary-foreground hover:bg-primary/90 border border-black rounded-md h-11 px-4 text-sm font-bold transition-all shadow-sm mb-4">
+                <button className="w-full bg-primary text-primary-foreground hover:bg-primary/90 border border-transparent rounded-md h-11 px-4 text-sm font-bold transition-all shadow-sm mb-4">
                   Donate Now
                 </button>
 
@@ -375,7 +487,7 @@ export default function CampaignDetail() {
               </div>
 
               {/* Organization Info */}
-              <div className="bg-card border border-black/60 rounded-xl p-6 shadow-sm mt-6">
+              <div className="bg-card border border-border rounded-xl p-6 shadow-sm mt-6">
                 <h3 className="font-bold text-lg mb-4">About Organization</h3>
                 <div className="flex items-start gap-3 mb-4">
                   <div className="h-12 w-12 rounded-full bg-secondary flex items-center justify-center font-bold text-primary">
@@ -389,7 +501,7 @@ export default function CampaignDetail() {
                     <p className="text-sm text-muted-foreground">Verified Organization</p>
                   </div>
                 </div>
-                <button className="w-full border border-black rounded-md h-9 px-4 text-sm font-semibold hover:bg-accent transition-all">
+                <button className="w-full border border-border rounded-md h-9 px-4 text-sm font-semibold hover:bg-accent transition-all">
                   View Profile
                 </button>
               </div>

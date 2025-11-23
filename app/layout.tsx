@@ -12,6 +12,7 @@ import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
 import { WalletProvider } from "@/components/providers/web3-provider";
 import { CurrencyProvider } from "@/components/providers/currency-provider";
+import { SearchProvider } from "@/components/shared/SearchContext";
 
 export const metadata: Metadata = {
   title: "ZK Zakat",
@@ -28,14 +29,16 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body className={`font-sans ${GeistSans.variable} ${GeistMono.variable}`}>
         <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false}>
-<WalletProvider>
-					<CurrencyProvider>
-            <Header />
-            <Suspense fallback={null}>{children}</Suspense>
-            <Footer />
-            <Toaster />
-          </CurrencyProvider>
-</WalletProvider>
+          <WalletProvider>
+            <CurrencyProvider>
+              <SearchProvider>
+                <Header />
+                <Suspense fallback={null}>{children}</Suspense>
+                <Footer />
+                <Toaster />
+              </SearchProvider>
+            </CurrencyProvider>
+          </WalletProvider>
         </ThemeProvider>
         <Analytics />
       </body>

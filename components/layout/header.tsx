@@ -1,135 +1,112 @@
 "use client";
 
-import Link from "next/link"
-import { Menu, Search, ChevronDown } from "lucide-react"
-import { ConnectWalletButton } from "@/components/wallet/connect-wallet-button"
-import { useState } from "react"
+import Link from "next/link";
+import { Menu, Search, ChevronDown } from "lucide-react";
+import { useState } from "react";
+import { useSearch } from "@/components/shared/SearchContext";
+import { SearchDropdown } from "@/components/shared/SearchDropdown";
+import { ConnectWalletButton } from "@/components/wallet/connect-wallet-button";
 
 export function Header() {
-const [isDropdownOpen, setDropdownOpen] = useState(false)
+  const [isDropdownOpen, setDropdownOpen] = useState(false);
+  const { searchQuery, setSearchQuery, isSearchOpen, setIsSearchOpen } =
+    useSearch();
 
-return (
-   <header className="sticky top-0 z-50 w-full border-b border-black bg-transparent backdrop-blur"> 
-   <div className="container mx-auto flex h-16 items-center justify-between px-4">
+  const handleEnter = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      setIsSearchOpen(false);
+      window.location.href = `/campaigns?search=${encodeURIComponent(
+        searchQuery
+      )}`;
+    }
+  };
 
-    {/* Left: Logo + Navigation */}
-    <div className="flex items-center gap-6 lg:gap-10">
+  return (
+    <header className="sticky top-0 z-50 w-full border-b border-black bg-transparent backdrop-blur">
+      <div className="container mx-auto flex h-16 items-center justify-between px-4">
+        
+        {/* LEFT */}
+        <div className="flex items-center gap-10">
+          <Link href="/" className="flex items-center">
+            <img src="/logo-name.png" className="h-8 object-contain" />
+          </Link>
 
-      {/* Logo */}
-      <Link href="/" className="flex items-center space-x-2">
-        <img
-          src="/logo-name.png"
-          alt="ZKT.app Logo"
-          className="h-6 sm:h-8 md:h-10 object-contain translate-y-[-3px]"
-        />
-      </Link>
+          <nav className="hidden md:flex items-center gap-6 text-sm font-medium">
+            <Link href="/zakat">Zakat</Link>
+            <Link href="/campaigns">Explore</Link>
 
-      {/* Navigation */}
-      <nav className="hidden md:flex items-center gap-6 text-sm font-medium text-black">
-        <Link href="/zakat" className="transition-colors hover:text-gray-700">
-          Zakat
-        </Link>
+            {/* Dashboard dropdown */}
+            <div className="relative">
+              <button
+                onClick={() => setDropdownOpen(!isDropdownOpen)}
+                className="flex items-center gap-1"
+              >
+                Dashboard
+                <ChevronDown className="w-4 h-4" />
+              </button>
 
-        <Link href="/campaigns" className="transition-colors hover:text-gray-700">
-          Explore
-        </Link>
-
-        {/* Dashboard with dropdown */}
-        <div className="relative">
-          <button
-            onClick={() => setDropdownOpen(!isDropdownOpen)}
-            className="flex items-center gap-1 transition-colors hover:text-gray-700"
-          >
-            Dashboard
-            <ChevronDown className="w-4 h-4" />
-          </button>
-
-          {isDropdownOpen && (
-            <div className="absolute right-0 mt-2 w-56 bg-transparent backdrop-blur-md border border-black/60 rounded-md shadow-lg z-50">
-              <ul className="flex flex-col p-2">
-                <li>
-                  <Link
-                    href="/dashboard/donor"
-                    className="block px-4 py-2 rounded-md hover:bg-white/50"
-                  >
-                    Donor Dashboard
-                  </Link>
-                </li>
-                <li>
-                  <Link
-                    href="/dashboard/organization"
-                    className="block px-4 py-2 rounded-md hover:bg-white/50"
-                  >
-                    Organization Dashboard
-                  </Link>
-                </li>
-                <li>
-                  <Link
-                    href="/dashboard/auditor"
-                    className="block px-4 py-2 rounded-md hover:bg-white/50"
-                  >
-                    Auditor (BASNAZ) Dashboard
-                  </Link>
-                </li>
-              </ul>
+              {isDropdownOpen && (
+                <div className="absolute right-0 mt-2 w-56 bg-transparent backdrop-blur-md border border-black/60 rounded-md shadow-lg z-50">
+                  <ul className="flex flex-col p-2">
+                    <li>
+                      <Link href="/dashboard/donor" className="block px-4 py-2 hover:bg-gray-100">
+                        Donor Dashboard
+                      </Link>
+                    </li>
+                    <li>
+                      <Link href="/dashboard/organization" className="block px-4 py-2 hover:bg-gray-100">
+                        Organization Dashboard
+                      </Link>
+                    </li>
+                    <li>
+                      <Link href="/dashboard/auditor" className="block px-4 py-2 hover:bg-gray-100">
+                        Auditor Dashboard
+                      </Link>
+                    </li>
+                  </ul>
+                </div>
+              )}
             </div>
-          )}
+
+            <Link href="/governance">Governance</Link>
+          </nav>
         </div>
 
-        <Link href="/about" className="transition-colors hover:text-gray-700">
-          How it works
-        </Link>
-      </nav>
-    </div>
+        {/* RIGHT */}
+        <div className="flex items-center gap-4">
 
-    {/* Right Section */}
-    <div className="flex items-center gap-4">
+          {/* SEARCH BAR */}
+          <div className="relative hidden lg:block w-80">
+            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
 
-      {/* Search */}
-      <div className="relative hidden lg:block w-80">
-        <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
-        <input
-          type="search"
-          placeholder="Search for campaigns..."
-          className="bg-transparent border-none shadow-none outline-none
-          text-black placeholder:text-gray-400
-          pl-9 py-1.5 h-9 w-full
-          focus:ring-0 focus:outline-none"
-        />
-      </div>
+            <input
+              type="search"
+              placeholder="Search for campaigns..."
+              value={searchQuery}
+              onChange={(e) => {
+                setSearchQuery(e.target.value);
+                setIsSearchOpen(true);
+              }}
+              onKeyDown={handleEnter}
+              className="w-full pl-9 py-1.5 h-9 bg-transparent border-none outline-none"
+            />
 
-      {/* Buttons */}
-      <div className="flex items-center gap-2">
+            {/* DROPDOWN */}
+            {isSearchOpen && searchQuery && <SearchDropdown />}
+          </div>
 
-        {/* Start Campaign */}
-        <button
-          className="hidden sm:flex items-center gap-2 justify-center whitespace-nowrap rounded-md text-sm font-medium 
-          border h-9 px-4 py-2 border-black text-black hover:bg-black/5"
-        >
-          Start a Campaign
-        </button>
+          <button className="hidden sm:flex items-center gap-2 border h-9 px-4 rounded-md hover:bg-black/5">
+            Start a Campaign
+          </button>
 
-        {/* Connect Wallet */}
-        <ConnectWalletButton />
+          <ConnectWalletButton />
 
-        {/* Mobile Menu Button */}
-        <div className="md:hidden">
-          <button
-            type="button"
-            className="inline-flex items-center justify-center gap-2 size-9 rounded-md text-black transition-all 
-            hover:bg-black/5"
-          >
-            <Menu className="h-5 w-5" />
-            <span className="sr-only">Toggle menu</span>
+          <button className="md:hidden size-9 flex items-center justify-center rounded-md hover:bg-black/5">
+            <Menu className="w-5 h-5" />
           </button>
         </div>
-
       </div>
-    </div>
-
-  </div>
-</header>
-
-
-)
+    </header>
+  );
 }
