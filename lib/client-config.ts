@@ -1,5 +1,5 @@
 import { defaultConfig } from "@xellar/kit";
-import { liskSepolia } from "viem/chains";
+import { baseSepolia } from "viem/chains";
 import type { Config } from "wagmi";
 
 const walletConnectProjectId = process.env.NEXT_PUBLIC_WALLET_CONNECT_PROJECT_ID || "YOUR_WALLET_CONNECT_PROJECT_ID";
@@ -14,6 +14,6 @@ export const getClientConfig = (): Config | null => {
     walletConnectProjectId,
     xellarAppId,
     xellarEnv,
-    chains: [liskSepolia],
+    chains: [baseSepolia],
   }) as Config;
 };
