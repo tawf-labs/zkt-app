@@ -1,9 +1,18 @@
 "use client";
 
 import { useState } from "react";
-import { Calculator, Wallet, Heart, Users, Home, Loader2, Info, ChevronDown } from "lucide-react";
+import { Calculator, Wallet, Heart, Users, Home, Loader2, Info, ChevronDown, Check } from "lucide-react";
+import { useWallet } from "@/components/providers/web3-provider";
+import { useLanguage } from "@/components/providers/language-provider";
+import { campaigns, formatCurrency } from "@/data/campaigns";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { useToast } from "@/hooks/use-toast";
 
 export default function ZakatPage() {
+  const { isConnected, idrxBalance, address, donate } = useWallet();
+  const { toast } = useToast();
+  const { t } = useLanguage();
   const [selectedTab, setSelectedTab] = useState("maal");
   const [zakatType, setZakatType] = useState("income");
   const [incomeType, setIncomeType] = useState("monthly");
@@ -12,6 +21,12 @@ export default function ZakatPage() {
   const [peopleCount, setPeopleCount] = useState("");
   const [hasDeductions, setHasDeductions] = useState(false);
   const [expenses, setExpenses] = useState("");
+  
+  // Dialog states
+  const [showCampaignDialog, setShowCampaignDialog] = useState(false);
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+  const [selectedCampaign, setSelectedCampaign] = useState<typeof campaigns[0] | null>(null);
+  const [isProcessing, setIsProcessing] = useState(false);
 
   const goldPrice = 2650.00;
   const nisabThreshold = 7296.88;
@@ -19,9 +34,14 @@ export default function ZakatPage() {
   const fitrahPerPerson = 50000;
 
   const calculateZakat = () => {
-    if (!monthlyIncome) return 0;
-    const yearlyIncome = incomeType === "monthly" ? parseFloat(monthlyIncome) * 12 : parseFloat(monthlyIncome);
-    const deductedIncome = hasDeductions && expenses ? yearlyIncome - parseFloat(expenses) : yearlyIncome;
+    if (!monthlyIncome || monthlyIncome.trim() === "") return 0;
+    
+    const income = parseFloat(monthlyIncome);
+    if (isNaN(income) || income <= 0) return 0;
+    
+    const yearlyIncome = incomeType === "monthly" ? income * 12 : income;
+    const deductedIncome = hasDeductions && expenses ? yearlyIncome - parseFloat(expenses || "0") : yearlyIncome;
+    
     if (deductedIncome < nisabThreshold) return 0;
     return deductedIncome * (zakatRate / 100);
   };
@@ -29,20 +49,86 @@ export default function ZakatPage() {
   const calculatedZakat = calculateZakat();
   const totalFitrah = peopleCount ? parseFloat(peopleCount) * fitrahPerPerson : 0;
 
+  const handlePayZakatClick = () => {
+    setShowCampaignDialog(true);
+  };
+
+  const handleCampaignSelect = (campaign: typeof campaigns[0]) => {
+    setSelectedCampaign(campaign);
+    setShowCampaignDialog(false);
+    setShowConfirmDialog(true);
+  };
+
+  const handleConfirmPayment = async () => {
+    if (!selectedCampaign) return;
+    
+    try {
+      setIsProcessing(true);
+      
+      // Simulate processing delay
+      await new Promise((resolve) => setTimeout(resolve, 1500));
+      
+      const { txHash } = donate({
+        campaignId: selectedCampaign.id.toString(),
+        campaignTitle: selectedCampaign.title,
+        amountIDRX: calculatedZakat,
+      });
+      
+      setIsProcessing(false);
+      setShowConfirmDialog(false);
+      
+      toast({
+        title: t("toast.success"),
+        description: `${t("toast.zakatPaid")} ${selectedCampaign.title}. ${t("toast.txHash")}: ${txHash.slice(0, 10)}...${txHash.slice(-8)}`,
+      });
+      
+      // Reset form
+      setMonthlyIncome("");
+      setSelectedCampaign(null);
+    } catch (error: any) {
+      setIsProcessing(false);
+      toast({
+        variant: "destructive",
+        title: t("toast.error"),
+        description: error?.message || t("toast.paymentFailed"),
+      });
+    }
+  };
+
   return (
-    <div className="min-h-screen bg-white py-8 px-4">
+    <div className="min-h-screen bg-gradient-to-b from-white to-secondary/20 py-12 px-4">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="text-center mb-12">
-          <h1 className="text-4xl font-bold tracking-tight mb-3">Zakat Calculator</h1>
-          <p className="text-muted-foreground text-lg">Calculate and fulfill your religious obligation with transparency</p>
+          <h1 className="text-4xl font-bold tracking-tight mb-3">{t("zakat.title")}</h1>
+          <p className="text-muted-foreground text-lg">{t("zakat.subtitle")}</p>
         </div>
 
         <div className="grid lg:grid-cols-3 gap-8">
           {/* Main Content */}
           <div className="lg:col-span-2">
+            {/* Wallet Balance Card */}
+            {isConnected && (
+              <div className="bg-gradient-to-r from-primary to-primary/90 rounded-2xl shadow-lg shadow-primary/20 p-6 mb-6 text-white">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-2">
+                    <Wallet className="h-5 w-5" />
+                    <h3 className="text-lg font-semibold">{t("zakat.walletBalance")}</h3>
+                  </div>
+                  <code className="text-sm font-mono bg-white/20 px-3 py-1 rounded">
+                    {address ? `${address.slice(0, 6)}...${address.slice(-4)}` : ''}
+                  </code>
+                </div>
+                <div className="flex items-baseline gap-2">
+                  <span className="text-3xl font-bold">{idrxBalance.toLocaleString('id-ID', { maximumFractionDigits: 0 })}</span>
+                  <span className="text-white/90 font-medium">IDRX</span>
+                </div>
+                <p className="text-sm text-white/90 mt-1">Available for Zakat payment</p>
+              </div>
+            )}
+
             {/* Nisab Information Card */}
-            <div className="bg-card rounded-xl border border-black shadow-sm p-6 mb-6">
+            <div className="bg-white rounded-2xl border border-border shadow-sm p-6 mb-6">
               <div className="flex items-center justify-between mb-6">
                 <div className="flex items-center gap-2">
                   <Wallet className="h-5 w-5 text-primary" />
@@ -55,20 +141,20 @@ export default function ZakatPage() {
               </div>
 
               <div className="grid grid-cols-3 gap-4">
-                <div className="text-center p-4 bg-secondary/30 rounded-lg border border-black">
+                <div className="text-center p-4 bg-secondary rounded-lg border border-border">
                   <div className="text-xs text-muted-foreground mb-1">Gold Price</div>
                   <div className="text-lg font-bold">${goldPrice.toFixed(2)}/oz</div>
-                  <span className="inline-flex items-center justify-center rounded-md px-2 py-0.5 text-xs font-semibold bg-green-100 text-green-700 mt-1">
+                  <span className="inline-flex items-center justify-center rounded-md px-2 py-0.5 text-xs font-semibold bg-primary/10 text-primary mt-1">
                     Live
                   </span>
                 </div>
 
-                <div className="text-center p-4 bg-secondary/30 rounded-lg border border-black">
+                <div className="text-center p-4 bg-secondary rounded-lg border border-border">
                   <div className="text-xs text-muted-foreground mb-1">Nisab (85g Gold)</div>
                   <div className="text-lg font-bold">${nisabThreshold.toFixed(2)}</div>
                 </div>
 
-                <div className="text-center p-4 bg-secondary/30 rounded-lg border border-black">
+                <div className="text-center p-4 bg-secondary rounded-lg border border-border">
                   <div className="text-xs text-muted-foreground mb-1">Zakat Rate</div>
                   <div className="text-lg font-bold">{zakatRate}%</div>
                 </div>
@@ -80,15 +166,15 @@ export default function ZakatPage() {
             </div>
 
             {/* Tabs */}
-            <div className="bg-card rounded-xl border border-black shadow-sm overflow-hidden">
+            <div className="bg-white rounded-2xl border border-border shadow-sm overflow-hidden">
               {/* Tab Headers */}
-              <div className="grid grid-cols-2 border-b border-black">
+              <div className="grid grid-cols-2 border-b border-border">
                 <button
                   onClick={() => setSelectedTab("maal")}
                   className={`px-6 py-4 text-sm font-medium transition-colors ${
                     selectedTab === "maal"
-                      ? "bg-primary/5 text-primary border-b-2 border-black"
-                      : "text-muted-foreground hover:text-foreground"
+                      ? "bg-primary/5 text-primary border-b-2 border-primary"
+                      : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
                   }`}
                 >
                   Wealth Zakat
@@ -97,8 +183,8 @@ export default function ZakatPage() {
                   onClick={() => setSelectedTab("fitrah")}
                   className={`px-6 py-4 text-sm font-medium transition-colors ${
                     selectedTab === "fitrah"
-                      ? "bg-primary/5 text-primary border-b-2 border-black"
-                      : "text-muted-foreground hover:text-foreground"
+                      ? "bg-primary/5 text-primary border-b-2 border-primary"
+                      : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
                   }`}
                 >
                   Fitrah Zakat
@@ -214,9 +300,9 @@ export default function ZakatPage() {
                         )}
 
                         {/* Payment Obligation */}
-                        <div className="p-4 bg-secondary/30 rounded-lg border border-black">
+                        <div className="p-4 bg-secondary rounded-lg border border-border">
                           <div className="text-sm font-medium mb-1">Payment Obligation</div>
-                          <div className={`text-sm ${calculatedZakat > 0 ? "text-red-600" : "text-muted-foreground"}`}>
+                          <div className={`text-sm ${calculatedZakat > 0 ? "text-primary font-medium" : "text-muted-foreground"}`}>
                             {calculatedZakat > 0
                               ? "Required to Pay Zakat"
                               : "Not Required to Pay Zakat, but Can Give Charity"}
@@ -227,7 +313,7 @@ export default function ZakatPage() {
 
                     {/* Calculated Amount */}
                     {calculatedZakat > 0 && (
-                      <div className="p-6 rounded-lg border border-white/30 bg-primary/5">
+                      <div className="p-6 rounded-lg border border-primary/30 bg-primary/5 shadow-sm">
                         <div className="text-center">
                           <p className="text-sm text-muted-foreground mb-2">Your Zakat Amount:</p>
                           <p className="text-4xl font-bold text-primary mb-1">
@@ -242,17 +328,18 @@ export default function ZakatPage() {
 
                     {/* Pay Button */}
                     <button
-                      disabled={calculatedZakat === 0}
-                      className="w-full py-3 px-4 bg-primary text-primary-foreground rounded-lg font-semibold hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                      onClick={handlePayZakatClick}
+                      disabled={!isConnected || calculatedZakat === 0}
+                      className="w-full py-3.5 px-4 bg-primary text-white rounded-lg font-semibold hover:bg-primary/90 hover:shadow-lg hover:shadow-primary/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                     >
                       <Wallet className="h-4 w-4" />
-                      Pay Zakat
+                      {!isConnected ? "Connect Wallet to Pay" : "Pay Zakat"}
                     </button>
                   </div>
                 ) : (
                   <div className="space-y-6">
                     {/* Fitrah Amount Display */}
-                    <div className="p-6 bg-secondary/30 rounded-lg border border-black">
+                    <div className="p-6 bg-secondary rounded-lg border border-border">
                       <div className="text-center">
                         <p className="text-sm text-muted-foreground mb-2">Fitrah Zakat per person:</p>
                         <p className="text-3xl font-bold mb-1">
@@ -295,7 +382,7 @@ export default function ZakatPage() {
                     {/* Pay Button */}
                     <button
                       disabled={!peopleCount || totalFitrah === 0}
-                      className="w-full py-3 px-4 bg-primary text-primary-foreground rounded-lg font-semibold hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                      className="w-full py-3.5 px-4 bg-primary text-white rounded-lg font-semibold hover:bg-primary/90 hover:shadow-lg hover:shadow-primary/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                     >
                       <Wallet className="h-4 w-4" />
                       Pay Zakat Fitrah
@@ -309,12 +396,12 @@ export default function ZakatPage() {
           {/* Sidebar */}
           <div className="space-y-6">
             {/* Impact Areas */}
-            <div className="bg-card rounded-xl border border-black shadow-sm overflow-hidden">
-              <div className="p-4 border-b border-black">
+            <div className="bg-white rounded-2xl border border-border shadow-sm overflow-hidden">
+              <div className="p-4 border-b border-border">
                 <h3 className="font-semibold text-sm">Impact Areas</h3>
               </div>
               <div className="p-4 space-y-3">
-                <div className="flex items-center gap-3 p-3 bg-secondary/30 rounded-lg">
+                <div className="flex items-center gap-3 p-3 bg-secondary rounded-lg hover:bg-primary/5 transition-colors">
                   <Heart className="h-5 w-5 text-primary flex-shrink-0" />
                   <div>
                     <div className="text-sm font-medium">Orphans</div>
@@ -322,7 +409,7 @@ export default function ZakatPage() {
                   </div>
                 </div>
 
-                <div className="flex items-center gap-3 p-3 bg-white/30 rounded-lg">
+                <div className="flex items-center gap-3 p-3 bg-accent rounded-lg hover:bg-primary/5 transition-colors">
                   <Users className="h-5 w-5 text-primary flex-shrink-0" />
                   <div>
                     <div className="text-sm font-medium">Refugees</div>
@@ -330,7 +417,7 @@ export default function ZakatPage() {
                   </div>
                 </div>
 
-                <div className="flex items-center gap-3 p-3 bg-secondary/30 rounded-lg">
+                <div className="flex items-center gap-3 p-3 bg-secondary rounded-lg hover:bg-primary/5 transition-colors">
                   <Home className="h-5 w-5 text-primary flex-shrink-0" />
                   <div>
                     <div className="text-sm font-medium">Local Aid</div>
@@ -341,31 +428,31 @@ export default function ZakatPage() {
             </div>
 
             {/* Transparency Guarantee */}
-            <div className="bg-card rounded-xl border border-black shadow-sm overflow-hidden">
-              <div className="p-4 border-b border-black">
+            <div className="bg-white rounded-2xl border border-border shadow-sm overflow-hidden">
+              <div className="p-4 border-b border-border">
                 <h3 className="font-semibold text-sm">Transparency Guarantee</h3>
               </div>
               <div className="p-4 space-y-3">
                 <div className="flex items-center gap-2">
-                  <span className="inline-flex items-center justify-center rounded-md px-2 py-0.5 text-xs font-semibold bg-white/10 text-primary">
+                  <span className="inline-flex items-center justify-center rounded-md px-2 py-0.5 text-xs font-semibold bg-primary/10 text-primary">
                     ✓
                   </span>
                   <span className="text-xs text-muted-foreground">Blockchain verified</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="inline-flex items-center justify-center rounded-md px-2 py-0.5 text-xs font-semibold bg-white/10 text-primary">
+                  <span className="inline-flex items-center justify-center rounded-md px-2 py-0.5 text-xs font-semibold bg-primary/10 text-primary">
                     ✓
                   </span>
                   <span className="text-xs text-muted-foreground">Real-time tracking</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="inline-flex items-center justify-center rounded-md px-2 py-0.5 text-xs font-semibold bg-white/10 text-primary">
+                  <span className="inline-flex items-center justify-center rounded-md px-2 py-0.5 text-xs font-semibold bg-primary/10 text-primary">
                     ✓
                   </span>
                   <span className="text-xs text-muted-foreground">Impact reports</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="inline-flex items-center justify-center rounded-md px-2 py-0.5 text-xs font-semibold bg-white/10 text-primary">
+                  <span className="inline-flex items-center justify-center rounded-md px-2 py-0.5 text-xs font-semibold bg-primary/10 text-primary">
                     ✓
                   </span>
                   <span className="text-xs text-muted-foreground">NFT certificates</span>
@@ -374,8 +461,8 @@ export default function ZakatPage() {
             </div>
 
             {/* Global Impact */}
-            <div className="bg-card rounded-xl border border-black shadow-sm overflow-hidden">
-              <div className="p-4 border-b border-black">
+            <div className="bg-white rounded-2xl border border-border shadow-sm overflow-hidden">
+              <div className="p-4 border-b border-border">
                 <h3 className="font-semibold text-sm">Global Impact</h3>
               </div>
               <div className="p-4 space-y-3 text-sm">
@@ -395,6 +482,124 @@ export default function ZakatPage() {
             </div>
           </div>
         </div>
+
+        {/* Campaign Selection Dialog */}
+        <Dialog open={showCampaignDialog} onOpenChange={setShowCampaignDialog}>
+          <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto bg-white">
+            <DialogHeader>
+              <DialogTitle>{t("campaignSelect.title")}</DialogTitle>
+              <DialogDescription>
+                {t("campaignSelect.description")} Rp {calculatedZakat.toLocaleString('id-ID', { maximumFractionDigits: 0 })}
+              </DialogDescription>
+            </DialogHeader>
+            
+            <div className="grid gap-4 py-4">
+              {campaigns.map((campaign) => (
+                <button
+                  key={campaign.id}
+                  onClick={() => handleCampaignSelect(campaign)}
+                  className="flex items-start gap-4 p-4 border border-border rounded-lg hover:bg-accent hover:border-primary/30 transition-colors text-left"
+                >
+                  <img
+                    src={campaign.image}
+                    alt={campaign.title}
+                    className="w-24 h-24 object-cover rounded-lg flex-shrink-0"
+                  />
+                  <div className="flex-1 min-w-0">
+                    <h4 className="font-semibold text-sm mb-1 line-clamp-2">{campaign.title}</h4>
+                    <p className="text-xs text-muted-foreground mb-2">{campaign.organization}</p>
+                    <div className="flex items-center gap-4 text-xs">
+                      <span className="text-primary font-medium">{formatCurrency(campaign.raised)} raised</span>
+                      <span className="text-muted-foreground">of {formatCurrency(campaign.goal)}</span>
+                    </div>
+                    <div className="mt-2 h-1.5 bg-secondary rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-gradient-to-r from-primary to-primary/80 transition-all"
+                        style={{ width: `${Math.min((campaign.raised / campaign.goal) * 100, 100)}%` }}
+                      />
+                    </div>
+                  </div>
+                  <span className="inline-flex items-center justify-center rounded-md px-2 py-1 text-xs font-semibold bg-primary/10 text-primary">
+                    {campaign.category}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Confirmation Dialog */}
+        <Dialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
+          <DialogContent className="bg-white">
+            <DialogHeader>
+              <DialogTitle>{t("confirm.title")}</DialogTitle>
+              <DialogDescription>
+                {t("confirm.description")}
+              </DialogDescription>
+            </DialogHeader>
+            
+            {selectedCampaign && (
+              <div className="space-y-4 py-4">
+                <div className="p-4 bg-secondary rounded-lg border border-border">
+                  <div className="text-sm font-medium mb-2">{t("confirm.campaign")}</div>
+                  <div className="text-sm text-muted-foreground">{selectedCampaign.title}</div>
+                  <div className="text-xs text-muted-foreground mt-1">{selectedCampaign.organization}</div>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="p-4 bg-secondary rounded-lg border border-border">
+                    <div className="text-xs text-muted-foreground mb-1">{t("confirm.amount")}</div>
+                    <div className="text-xl font-bold text-primary">Rp {calculatedZakat.toLocaleString('id-ID', { maximumFractionDigits: 0 })}</div>
+                  </div>
+                  
+                  <div className="p-4 bg-secondary rounded-lg border border-border">
+                    <div className="text-xs text-muted-foreground mb-1">{t("confirm.currentBalance")}</div>
+                    <div className="text-xl font-bold">{idrxBalance.toLocaleString('id-ID', { maximumFractionDigits: 0 })} IDRX</div>
+                  </div>
+                </div>
+
+                <div className="p-4 bg-primary/5 border border-primary/20 rounded-lg">
+                  <div className="flex items-start gap-2">
+                    <Check className="h-5 w-5 text-primary flex-shrink-0 mt-0.5" />
+                    <div>
+                      <div className="text-sm font-medium text-primary">{t("confirm.blockchain")}</div>
+                      <div className="text-xs text-muted-foreground mt-1">
+                        {t("confirm.blockchainNote")}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <DialogFooter className="flex gap-2">
+              <Button
+                variant="outline"
+                onClick={() => setShowConfirmDialog(false)}
+                disabled={isProcessing}
+              >
+                {t("confirm.goBack")}
+              </Button>
+              <Button
+                onClick={handleConfirmPayment}
+                disabled={isProcessing}
+                className="bg-primary text-white hover:bg-primary/90 shadow-md shadow-primary/20"
+              >
+                {isProcessing ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    {t("confirm.processing")}
+                  </>
+                ) : (
+                  <>
+                    <Wallet className="mr-2 h-4 w-4" />
+                    {t("confirm.confirmPayment")}
+                  </>
+                )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   );

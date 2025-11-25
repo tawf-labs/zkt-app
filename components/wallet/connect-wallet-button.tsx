@@ -13,6 +13,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useToast } from "@/hooks/use-toast";
+import { useLanguage } from "@/components/providers/language-provider";
 
 export function ConnectWalletButton() {
   const [mounted, setMounted] = useState(false);
@@ -22,6 +23,7 @@ export function ConnectWalletButton() {
   const chainId = useChainId();
   const { switchChain, chains } = useSwitchChain();
   const { toast } = useToast();
+  const { t } = useLanguage();
 
   useEffect(() => {
     setMounted(true);
@@ -53,7 +55,7 @@ export function ConnectWalletButton() {
     disconnect();
     localStorage.removeItem("access_token");
     toast({
-      title: "Wallet Disconnected",
+      title: t("header.disconnect"),
       description: "Your wallet has been disconnected successfully",
     });
   };
@@ -62,7 +64,7 @@ export function ConnectWalletButton() {
     return (
       <Button variant="default" size="default" disabled>
         <Wallet className="mr-2 h-4 w-4" />
-        Connect Wallet
+        {t("header.connectWallet")}
       </Button>
     );
   }
@@ -71,7 +73,7 @@ export function ConnectWalletButton() {
     return (
       <Button variant="default" size="default" onClick={open}>
         <Wallet className="mr-2 h-4 w-4" />
-        Connect Wallet
+        {t("header.connectWallet")}
       </Button>
     );
   }
@@ -146,7 +148,7 @@ export function ConnectWalletButton() {
             className="cursor-pointer text-red-600 focus:text-red-600"
           >
             <LogOut className="mr-2 h-4 w-4" />
-            Disconnect
+            {t("header.disconnect")}
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>

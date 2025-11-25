@@ -31,7 +31,7 @@ export function CampaignCard({
   return (
     <div
       onClick={handleCardClick}
-      className="bg-card text-card-foreground rounded-xl gap-6 border py-6 shadow-sm overflow-hidden border-black/60 hover:shadow-lg transition-all duration-300 group h-full flex flex-col cursor-pointer"
+      className="bg-white text-card-foreground rounded-xl gap-6 border border-border hover:shadow-xl hover:border-primary/30 transition-all duration-300 group h-full flex flex-col cursor-pointer overflow-hidden"
     >
       {/* Image Section */}
       <div className="relative h-48 overflow-hidden">
@@ -45,14 +45,14 @@ export function CampaignCard({
         <div className="absolute top-3 left-3 flex flex-col gap-2">
           <span
             data-slot="badge"
-            className="inline-flex items-center justify-center rounded-md px-2 py-0.5 text-xs font-semibold bg-background/90 backdrop-blur-sm border border-transparent w-fit"
+            className="inline-flex items-center justify-center rounded-md px-3 py-1 text-xs font-semibold bg-white/95 backdrop-blur-sm border border-primary/20 text-primary w-fit"
           >
             {campaign.category}
           </span>
         </div>
 
         <div className="absolute bottom-3 right-3">
-          <span className="badge bg-transparent text-white backdrop-blur-sm flex items-center gap-1 shadow-sm">
+          <span className="inline-flex items-center gap-1.5 bg-primary text-white px-2.5 py-1 rounded-md text-xs font-medium shadow-md">
             <CircleCheck className="h-3 w-3" /> Verified
           </span>
         </div>
@@ -84,9 +84,9 @@ export function CampaignCard({
             </span>
           </div>
 
-          <div className="w-full h-2 bg-secondary rounded-full overflow-hidden">
+          <div className="w-full h-2.5 bg-secondary rounded-full overflow-hidden">
             <div
-              className="bg-primary h-full transition-all"
+              className="bg-gradient-to-r from-primary to-primary/80 h-full transition-all"
               style={{ transform: `translateX(${progress}%)` }}
             />
           </div>
@@ -111,7 +111,7 @@ export function CampaignCard({
       <div className="p-5 pt-0">
         <button
           onClick={handleDonateClick}
-          className="w-full border border-black rounded-md h-9 px-4 text-sm font-semibold hover:bg-accent hover:text-accent-foreground transition-all"
+          className="w-full h-11 rounded-lg bg-primary text-white font-semibold hover:bg-primary/90 hover:shadow-md hover:shadow-primary/20 transition-all"
         >
           Donate Now
         </button>

@@ -12,6 +12,7 @@ import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
 import { WalletProvider } from "@/components/providers/web3-provider";
 import { CurrencyProvider } from "@/components/providers/currency-provider";
+import { LanguageProvider } from "@/components/providers/language-provider";
 import { SearchProvider } from "@/components/shared/SearchContext";
 
 export const metadata: Metadata = {
@@ -29,16 +30,18 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body className={`font-sans ${GeistSans.variable} ${GeistMono.variable}`}>
         <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false}>
-          <WalletProvider>
-            <CurrencyProvider>
-              <SearchProvider>
-                <Header />
-                <Suspense fallback={null}>{children}</Suspense>
-                <Footer />
-                <Toaster />
-              </SearchProvider>
-            </CurrencyProvider>
-          </WalletProvider>
+          <LanguageProvider>
+            <WalletProvider>
+              <CurrencyProvider>
+                <SearchProvider>
+                  <Header />
+                  <Suspense fallback={null}>{children}</Suspense>
+                  <Footer />
+                  <Toaster />
+                </SearchProvider>
+              </CurrencyProvider>
+            </WalletProvider>
+          </LanguageProvider>
         </ThemeProvider>
         <Analytics />
       </body>

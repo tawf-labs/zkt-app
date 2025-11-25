@@ -12,22 +12,32 @@ import { getClientConfig } from "@/lib/client-config";
 
 const queryClient = new QueryClient();
 
+type DonationParams = {
+	campaignId: string;
+	campaignTitle: string;
+	amountIDRX: number;
+};
+
 type WalletContextType = {
 	address: string | undefined;
 	isConnected: boolean;
 	balance: string;
+	idrxBalance: number;
 	connect: () => Promise<void>;
 	disconnect: () => void;
+	donate: (params: DonationParams) => { txHash: string };
 };
 
 const WalletContext = createContext<WalletContextType>({
 	address: undefined,
 	isConnected: false,
 	balance: "0",
+	idrxBalance: 0,
 	connect: async () => {
 		console.warn("Connect function should be triggered by XellarKit UI components.");
 	},
 	disconnect: () => {},
+	donate: () => ({ txHash: "0x0" }),
 });
 
 export const useWallet = () => useContext(WalletContext);
@@ -35,6 +45,7 @@ export const useWallet = () => useContext(WalletContext);
 // Inner component to handle context logic and wagmi hooks
 function WalletStateController({ children }: { children: ReactNode }) {
 	const { toast } = useToast();
+	const [mockIdrxBalance, setMockIdrxBalance] = useState(15800000); // 15.8 million IDRX (~1000 USDT equivalent)
 
 	const { address: wagmiAddress, isConnected: wagmiIsConnected, status: wagmiStatus } = useAccount();
 	const { data: wagmiBalanceData } = useBalance({ address: wagmiAddress });
@@ -94,6 +105,29 @@ function WalletStateController({ children }: { children: ReactNode }) {
 		}
 	}, [wagmiStatus, address, toast]);
 
+	const donate = (params: DonationParams) => {
+		const { campaignId, campaignTitle, amountIDRX } = params;
+		if (!amountIDRX || amountIDRX <= 0) {
+			throw new Error("Invalid amount");
+		}
+		if (!isConnected || !address) {
+			throw new Error("Wallet not connected");
+		}
+		if (amountIDRX > mockIdrxBalance) {
+			throw new Error("Insufficient IDRX balance");
+		}
+		
+		// Deduct balance
+		setMockIdrxBalance((prev) => Number((prev - amountIDRX).toFixed(2)));
+		
+		// Generate mock transaction hash
+		const txHash = `0x${Math.random().toString(16).slice(2).padEnd(64, "0")}`;
+		
+		console.log(`Donated ${amountIDRX} IDRX to ${campaignTitle} (${campaignId})`);
+		
+		return { txHash };
+	};
+
 	const connect = async () => {
 		console.warn("Programmatic connect via context is not standard with XellarKit. Please use XellarKit's UI components.");
 		toast({
@@ -121,8 +155,10 @@ function WalletStateController({ children }: { children: ReactNode }) {
 				address,
 				isConnected,
 				balance,
+				idrxBalance: mockIdrxBalance,
 				connect,
 				disconnect,
+				donate,
 			}}
 		>
 			{children}

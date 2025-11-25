@@ -6,11 +6,13 @@ import { useState } from "react";
 import { useSearch } from "@/components/shared/SearchContext";
 import { SearchDropdown } from "@/components/shared/SearchDropdown";
 import { ConnectWalletButton } from "@/components/wallet/connect-wallet-button";
+import { useLanguage } from "@/components/providers/language-provider";
 
 export function Header() {
   const [isDropdownOpen, setDropdownOpen] = useState(false);
   const { searchQuery, setSearchQuery, isSearchOpen, setIsSearchOpen } =
     useSearch();
+  const { language, setLanguage, t } = useLanguage();
 
   const handleEnter = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter") {
@@ -23,8 +25,8 @@ export function Header() {
   };
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b border-black bg-transparent backdrop-blur">
-      <div className="container mx-auto flex h-16 items-center justify-between px-4">
+    <header className="sticky top-0 z-50 w-full border-b border-border bg-white/95 backdrop-blur-sm shadow-sm">
+      <div className="container mx-auto flex h-16 items-center justify-between px-4 md:px-6">
         
         {/* LEFT */}
         <div className="flex items-center gap-10">
@@ -32,9 +34,9 @@ export function Header() {
             <img src="/logo-name.png" className="h-8 object-contain" />
           </Link>
 
-          <nav className="hidden md:flex items-center gap-6 text-sm font-medium">
-            <Link href="/zakat">Zakat</Link>
-            <Link href="/campaigns">Explore</Link>
+          <nav className="hidden md:flex items-center gap-8 text-sm font-medium">
+            <Link href="/zakat" className="text-foreground hover:text-primary transition-colors">{t("header.zakat")}</Link>
+            <Link href="/campaigns" className="text-foreground hover:text-primary transition-colors">{t("header.campaigns")}</Link>
 
             {/* Dashboard dropdown */}
             <div className="relative">
@@ -42,26 +44,26 @@ export function Header() {
                 onClick={() => setDropdownOpen(!isDropdownOpen)}
                 className="flex items-center gap-1"
               >
-                Dashboard
+                {t("header.dashboard")}
                 <ChevronDown className="w-4 h-4" />
               </button>
 
               {isDropdownOpen && (
-                <div className="absolute right-0 mt-2 w-56 bg-transparent backdrop-blur-md border border-black/60 rounded-md shadow-lg z-50">
+                <div className="absolute right-0 mt-2 w-56 bg-white border border-border rounded-lg shadow-lg z-50">
                   <ul className="flex flex-col p-2">
                     <li>
-                      <Link href="/dashboard/donor" className="block px-4 py-2 hover:bg-gray-100">
-                        Donor Dashboard
+                      <Link href="/dashboard/donor" className="block px-4 py-2.5 rounded-md text-sm hover:bg-accent hover:text-primary transition-colors">
+                        {t("dashboard.donor")}
                       </Link>
                     </li>
                     <li>
-                      <Link href="/dashboard/organization" className="block px-4 py-2 hover:bg-gray-100">
-                        Organization Dashboard
+                      <Link href="/dashboard/organization" className="block px-4 py-2.5 rounded-md text-sm hover:bg-accent hover:text-primary transition-colors">
+                        {t("dashboard.organization")}
                       </Link>
                     </li>
                     <li>
-                      <Link href="/dashboard/auditor" className="block px-4 py-2 hover:bg-gray-100">
-                        Auditor Dashboard
+                      <Link href="/dashboard/auditor" className="block px-4 py-2.5 rounded-md text-sm hover:bg-accent hover:text-primary transition-colors">
+                        {t("dashboard.auditor")}
                       </Link>
                     </li>
                   </ul>
@@ -69,7 +71,7 @@ export function Header() {
               )}
             </div>
 
-            <Link href="/governance">Governance</Link>
+            <Link href="/governance" className="text-foreground hover:text-primary transition-colors">{t("header.governance")}</Link>
           </nav>
         </div>
 
@@ -82,27 +84,51 @@ export function Header() {
 
             <input
               type="search"
-              placeholder="Search for campaigns..."
+              placeholder={t("header.search")}
               value={searchQuery}
               onChange={(e) => {
                 setSearchQuery(e.target.value);
                 setIsSearchOpen(true);
               }}
               onKeyDown={handleEnter}
-              className="w-full pl-9 py-1.5 h-9 bg-transparent border-none outline-none"
+              className="w-full pl-9 py-1.5 h-10 bg-accent/50 border border-border rounded-lg outline-none focus:ring-2 focus:ring-primary/20 transition-all text-sm"
             />
 
             {/* DROPDOWN */}
             {isSearchOpen && searchQuery && <SearchDropdown />}
           </div>
 
-          <button className="hidden sm:flex items-center gap-2 border h-9 px-4 rounded-md hover:bg-black/5">
+          {/* Language Toggle */}
+          <div className="hidden sm:flex items-center gap-1 border border-border rounded-lg p-1 bg-accent/30">
+            <button
+              onClick={() => setLanguage("id")}
+              className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
+                language === "id"
+                  ? "bg-primary text-white shadow-sm"
+                  : "text-foreground/60 hover:text-foreground hover:bg-white/50"
+              }`}
+            >
+              ID
+            </button>
+            <button
+              onClick={() => setLanguage("en")}
+              className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
+                language === "en"
+                  ? "bg-primary text-white shadow-sm"
+                  : "text-foreground/60 hover:text-foreground hover:bg-white/50"
+              }`}
+            >
+              EN
+            </button>
+          </div>
+
+          <button className="hidden sm:flex items-center gap-2 border border-border h-10 px-5 rounded-lg hover:bg-accent hover:border-primary/30 transition-all text-sm font-medium">
             Start a Campaign
           </button>
 
           <ConnectWalletButton />
 
-          <button className="md:hidden size-9 flex items-center justify-center rounded-md hover:bg-black/5">
+          <button className="md:hidden size-10 flex items-center justify-center rounded-lg hover:bg-accent transition-colors">
             <Menu className="w-5 h-5" />
           </button>
         </div>

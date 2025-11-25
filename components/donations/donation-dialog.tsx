@@ -13,8 +13,8 @@ import {
   DialogTrigger,
   DialogFooter,
 } from "@/components/ui/dialog"
-import { useWallet } from "@/components/wallet/wallet-context"
-import { useToast } from "@/components/ui/use-toast"
+import { useWallet } from "@/components/providers/web3-provider"
+import { useToast } from "@/hooks/use-toast"
 
 type Props = {
   campaignId: string
@@ -22,7 +22,7 @@ type Props = {
 }
 
 export function DonationDialog({ campaignId, campaignTitle }: Props) {
-  const { state, donate } = useWallet()
+  const { isConnected, usdtBalance, donate } = useWallet()
   const { toast } = useToast()
   const [open, setOpen] = React.useState(false)
   const [amount, setAmount] = React.useState<string>("25")
@@ -30,7 +30,7 @@ export function DonationDialog({ campaignId, campaignTitle }: Props) {
   const [isDonating, setIsDonating] = React.useState(false)
   const [approved, setApproved] = React.useState(false)
 
-  const canDonate = state.isConnected && Number(amount) > 0 && Number(amount) <= state.usdtBalance && approved
+  const canDonate = isConnected && Number(amount) > 0 && Number(amount) <= usdtBalance && approved
 
   async function handleApprove() {
     setIsApproving(true)
@@ -90,11 +90,11 @@ export function DonationDialog({ campaignId, campaignTitle }: Props) {
               onChange={(e) => setAmount(e.target.value)}
               placeholder="25"
             />
-            <p className="text-xs text-muted-foreground">Balance: {state.usdtBalance.toFixed(2)} USDT</p>
+            <p className="text-xs text-muted-foreground">Balance: {usdtBalance.toFixed(2)} USDT</p>
           </div>
-          {!state.isConnected && <p className="text-sm text-destructive">Please connect your wallet first.</p>}
+          {!isConnected && <p className="text-sm text-destructive">Please connect your wallet first.</p>}
           <div className="flex items-center gap-2">
-            <Button variant="outline" onClick={handleApprove} disabled={!state.isConnected || isApproving || approved}>
+            <Button variant="outline" onClick={handleApprove} disabled={!isConnected || isApproving || approved}>
               {approved ? "Approved" : isApproving ? "Approving…" : "Approve USDT"}
             </Button>
             <Button

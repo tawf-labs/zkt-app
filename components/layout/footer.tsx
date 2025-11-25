@@ -3,7 +3,7 @@ import Link from "next/link"
 
 export function Footer() {
   return (
-    <footer className="bg-secondary/30 border-t border-black/60 pt-16 pb-8">
+    <footer className="bg-gradient-to-b from-white to-secondary/50 border-t border-border pt-16 pb-8">
       <div className="container px-4 mx-auto">
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-12 mb-12">
@@ -24,19 +24,19 @@ export function Footer() {
 
             {/* Social Icons */}
             <div className="flex gap-4">
-              <a href="#" className="text-black hover:text-black transition-colors">
+              <a href="#" className="text-muted-foreground hover:text-primary transition-colors">
                 <Twitter className="h-5 w-5" />
               </a>
 
-              <a href="#" className="text-black hover:text-black transition-colors">
+              <a href="#" className="text-muted-foreground hover:text-primary transition-colors">
                 <Linkedin className="h-5 w-5" />
               </a>
 
-              <a href="#" className="text-black hover:text-black transition-colors">
+              <a href="#" className="text-muted-foreground hover:text-primary transition-colors">
                 <Github className="h-5 w-5" />
               </a>
 
-              <a href="#" className="text-black hover:text-black transition-colors">
+              <a href="#" className="text-muted-foreground hover:text-primary transition-colors">
                 <Instagram className="h-5 w-5" />
               </a>
             </div>
@@ -78,10 +78,10 @@ export function Footer() {
         </div>
 
         {/* Bottom Section */}
-        <div className="pt-8 border-t border-black flex flex-col md:flex-row justify-between items-center gap-4">
-          <p className="text-sm text-black">© 2025 ZKT.app. All rights reserved.</p>
+        <div className="pt-8 border-t border-border flex flex-col md:flex-row justify-between items-center gap-4">
+          <p className="text-sm text-muted-foreground">© 2025 ZKT.app. All rights reserved.</p>
 
-          <div className="flex gap-6 text-sm text-black">
+          <div className="flex gap-6 text-sm text-muted-foreground">
             <span>Powered by Xellar</span>
             <span>Audited by Baznas</span>
           </div>

@@ -29,13 +29,13 @@ interface CurrencyProviderProps {
 }
 
 export function CurrencyProvider({ children }: CurrencyProviderProps) {
-	const [currency, setCurrency] = useState<Currency>("USDT"); // Default to USDT as requested
-	const [exchangeRate, setExchangeRate] = useState<number>(15800); // Fallback rate USDT to IDRX
+	const [currency, setCurrency] = useState<Currency>("IDRX"); // Default to IDRX
+	const [exchangeRate, setExchangeRate] = useState<number>(15800); // Fallback rate: 1 USDT = 15800 IDRX
 	const [isLoadingRate, setIsLoadingRate] = useState<boolean>(false);
 
 	// Fetch exchange rate from a free API
 	const fetchExchangeRate = async () => {
-		if (currency === "USDT") return; // No need to fetch rate for USDT
+		if (currency === "IDRX") return; // No need to fetch rate for IDRX (base currency)
 
 		setIsLoadingRate(true);
 		try {
@@ -53,9 +53,9 @@ export function CurrencyProvider({ children }: CurrencyProviderProps) {
 		}
 	};
 
-	// Fetch exchange rate on mount and when currency changes to IDRX
+	// Fetch exchange rate on mount and when currency changes to USDT
 	useEffect(() => {
-		if (currency === "IDRX") {
+		if (currency === "USDT") {
 			fetchExchangeRate();
 			// Update rate every 30 minutes
 			const interval = setInterval(fetchExchangeRate, 30 * 60 * 1000);
@@ -63,19 +63,20 @@ export function CurrencyProvider({ children }: CurrencyProviderProps) {
 		}
 	}, [currency]);
 
-	const convertToSelectedCurrency = (USDTAmount: number): number => {
-		if (currency === "USDT") {
-			return USDTAmount;
+	const convertToSelectedCurrency = (idrxAmount: number): number => {
+		if (currency === "IDRX") {
+			return idrxAmount;
 		}
-		return USDTAmount * exchangeRate;
+		// Convert IDRX to USDT
+		return idrxAmount / exchangeRate;
 	};
 
 	const formatCurrency = (amount: number): string => {
-		if (currency === "USDT") {
-			return `$${amount.toFixed(2)}`;
+		if (currency === "IDRX") {
+			// Format IDRX with proper thousand separators
+			return `Rp ${amount.toLocaleString("id-ID", { maximumFractionDigits: 0 })}`;
 		}
-		// Format IDRX with proper thousand separators
-		return `Rp ${amount.toLocaleString("id-ID", { maximumFractionDigits: 0 })}`;
+		return `$${amount.toFixed(2)}`;
 	};
 
 	const value: CurrencyContextType = {
