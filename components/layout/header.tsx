@@ -37,6 +37,7 @@ export function Header() {
           <nav className="hidden md:flex items-center gap-8 text-sm font-medium">
             <Link href="/zakat" className="text-foreground hover:text-primary transition-colors">{t("header.zakat")}</Link>
             <Link href="/campaigns" className="text-foreground hover:text-primary transition-colors">{t("header.campaigns")}</Link>
+            <Link href="/explorer" className="text-foreground hover:text-primary transition-colors">{t("header.explorer")}</Link>
 
             {/* Dashboard dropdown */}
             <div className="relative">

@@ -162,7 +162,7 @@ export default function GovernancePage() {
               <Users className="h-4 w-4 text-gray-600" />
             </div>
             <div className="text-2xl font-bold">3,421</div>
-            <div className="text-xs text-black mt-1">SBT holders</div>
+            <div className="text-xs text-black mt-1">vZKT holders</div>
           </div>
           
           <div className="bg-white rounded-xl border border-black p-6 shadow-sm">
@@ -183,7 +183,7 @@ export default function GovernancePage() {
                 <Users className="h-5 w-5 text-black" />
                 <h2 className="font-semibold">Layer 1: Community DAO</h2>
               </div>
-              <p className="text-sm text-black mt-1">Donors with SBT tokens vote on platform proposals</p>
+              <p className="text-sm text-black mt-1">Donors with vZKT tokens vote on platform proposals</p>
             </div>
             <div className="p-6 space-y-2 text-sm">
               <div className="flex items-center gap-2">
