@@ -20,7 +20,7 @@ export const campaigns: Campaign[] = [
     goal: 150000,
     donors: 2500,
     daysLeft: 12,
-    image: "/child-with-meal-support.jpg"
+    image: "https://www.ypp.co.id/site/uploads/slides/6391630281061-header-cianjur-2.jpeg"
   },
   {
     id: 2,
@@ -31,7 +31,7 @@ export const campaigns: Campaign[] = [
     goal: 12000,
     donors: 170,
     daysLeft: 45,
-    image: "/community-receiving-food-aid-with-dignity.jpg"
+    image: "https://waterwellsforafrica.org/wp-content/uploads/2023/11/home-helping-kids-02-1200x800-1-768x512.jpg"
   },
   {
     id: 3,
@@ -42,7 +42,7 @@ export const campaigns: Campaign[] = [
     goal: 50000,
     donors: 900,
     daysLeft: 5,
-    image: "/happy-family-receiving-aid.jpg"
+    image: "https://orphanlifefoundation.org/wp-content/uploads/2021/07/Children-smiling.png"
   },
   {
     id: 4,
@@ -53,7 +53,7 @@ export const campaigns: Campaign[] = [
     goal: 25000,
     donors: 240,
     daysLeft: 20,
-    image: "/child-with-meal-support.jpg"
+    image: "https://www.globalgiving.org/pfil/50448/pict_large.jpg"
   },
   {
     id: 5,
@@ -64,7 +64,7 @@ export const campaigns: Campaign[] = [
     goal: 60000,
     donors: 700,
     daysLeft: 18,
-    image: "/community-receiving-food-aid-with-dignity.jpg"
+    image: "https://iwifoundation.org/wp-content/uploads/2019/07/Reaching-Rural-Communities.png"
   },
   {
     id: 6,
@@ -75,7 +75,7 @@ export const campaigns: Campaign[] = [
     goal: 100000,
     donors: 1600,
     daysLeft: 60,
-    image: "/happy-family-receiving-aid.jpg"
+    image: "https://ychef.files.bbci.co.uk/1280x720/p08ytl9r.jpg"
   }
 ];
 

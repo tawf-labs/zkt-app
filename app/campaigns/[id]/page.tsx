@@ -18,11 +18,11 @@ const campaignDetail = {
   donors: 2500,
   daysLeft: 12,
   createdDate: "Oct 15, 2024",
-  image: "https://images.unsplash.com/photo-1488521787991-ed7bbaae773c?w=800&h=600&fit=crop",
+  image: "https://www.ypp.co.id/site/uploads/slides/6391630281061-header-cianjur-2.jpeg",
   images: [
-    "https://images.unsplash.com/photo-1488521787991-ed7bbaae773c?w=800&h=600&fit=crop",
-    "https://images.unsplash.com/photo-1469571486292-0ba58a3f068b?w=800&h=600&fit=crop",
-    "https://images.unsplash.com/photo-1532629345422-7515f3d16bb6?w=800&h=600&fit=crop"
+    "https://www.ypp.co.id/site/uploads/slides/6391630281061-header-cianjur-2.jpeg",
+    "https://img.jakpost.net/c/2023/03/09/2023_03_09_136404_1678347888._medium.jpg",
+    "https://cdn.antaranews.com/cache/1200x800/2022/12/10/es-center.jpg"
   ],
   description: `The devastating earthquake that struck Cianjur has left thousands of families without homes, food, and basic necessities. The disaster has affected over 10,000 residents, with many losing everything they owned.
 

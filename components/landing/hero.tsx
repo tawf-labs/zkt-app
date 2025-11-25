@@ -70,7 +70,7 @@ export function Hero() {
 
             {/* IMAGE REPLACEMENT */}
             <Image
-              src="/your-image.jpg"   // ganti ke gambar lo
+              src="https://www.globalgiving.org/pfil/50448/pict_large.jpg"   
               alt="Preview"
               fill
               className="object-cover w-full h-auto"
