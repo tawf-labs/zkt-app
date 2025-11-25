@@ -378,7 +378,7 @@ export default function CampaignDetail() {
                 {/* Chain Info */}
                 <div className="bg-muted/50 border border-border rounded-xl p-6">
                   <div className="space-y-3">
-                    <h4 className="font-semibold text-lg">Chain: Base Mainnet</h4>
+                    <h4 className="font-semibold text-lg">Chain: Base Sepolia Testnet</h4>
                     <div className="space-y-2 text-sm">
                       <div className="flex justify-between">
                         <span className="text-muted-foreground">Total Transactions</span>
