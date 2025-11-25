@@ -4,6 +4,9 @@ export const CONTRACT_ADDRESSES = {
   ZKTCore: '0x827a10a3bcc12c315774e134235046f378c7699d' as const,
   MockIDRX: '0x8790ec119e8fcdc46305246662ddf6a4a5d9ad04' as const,
   DonationReceiptNFT: '0x9c2c6ad056f508dd9d2a3e7747843decc54cb4c5' as const,
+  VotingToken: '0x8b015d081f03cc7a7c329d1582d9ec43270c733b' as const,
+  VotingManager: '0x6e2b5b1bbf99d44f01dc15d81a59a5caaddc37fa' as const,
+  ShariaReviewManager: '0xce976dadd27e70e8a9fb2a7cad24ebb2c5b43b2e' as const,
 } as const;
 
 export const ZKTCoreABI = [
@@ -246,9 +249,23 @@ export const MockIDRXABI = [
   {
     type: 'function',
     name: 'faucet',
-    inputs: [{ name: 'amount', type: 'uint256', internalType: 'uint256' }],
+    inputs: [],
     outputs: [],
     stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'canClaimFaucet',
+    inputs: [{ name: 'account', type: 'address', internalType: 'address' }],
+    outputs: [{ name: '', type: 'bool', internalType: 'bool' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'lastClaimTime',
+    inputs: [{ name: 'account', type: 'address', internalType: 'address' }],
+    outputs: [{ name: '', type: 'uint256', internalType: 'uint256' }],
+    stateMutability: 'view',
   },
   {
     type: 'function',
@@ -311,6 +328,71 @@ export const MockIDRXABI = [
       { name: 'value', type: 'uint256', indexed: false, internalType: 'uint256' },
     ],
     anonymous: false,
+  },
+] as const;
+
+// VotingToken ABI (ERC20-based governance token)
+export const VotingTokenABI = [
+  {
+    type: 'function',
+    name: 'balanceOf',
+    inputs: [{ name: 'account', type: 'address', internalType: 'address' }],
+    outputs: [{ name: '', type: 'uint256', internalType: 'uint256' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'totalSupply',
+    inputs: [],
+    outputs: [{ name: '', type: 'uint256', internalType: 'uint256' }],
+    stateMutability: 'view',
+  },
+] as const;
+
+// DonationReceiptNFT ABI (Soulbound NFT for donation receipts)
+export const DonationReceiptNFTABI = [
+  {
+    type: 'function',
+    name: 'balanceOf',
+    inputs: [{ name: 'owner', type: 'address', internalType: 'address' }],
+    outputs: [{ name: '', type: 'uint256', internalType: 'uint256' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'tokenOfOwnerByIndex',
+    inputs: [
+      { name: 'owner', type: 'address', internalType: 'address' },
+      { name: 'index', type: 'uint256', internalType: 'uint256' },
+    ],
+    outputs: [{ name: '', type: 'uint256', internalType: 'uint256' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'tokenURI',
+    inputs: [{ name: 'tokenId', type: 'uint256', internalType: 'uint256' }],
+    outputs: [{ name: '', type: 'string', internalType: 'string' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'getReceiptData',
+    inputs: [{ name: 'tokenId', type: 'uint256', internalType: 'uint256' }],
+    outputs: [
+      {
+        name: '',
+        type: 'tuple',
+        internalType: 'struct DonationReceiptNFT.Receipt',
+        components: [
+          { name: 'poolId', type: 'uint256', internalType: 'uint256' },
+          { name: 'donor', type: 'address', internalType: 'address' },
+          { name: 'amount', type: 'uint256', internalType: 'uint256' },
+          { name: 'timestamp', type: 'uint256', internalType: 'uint256' },
+        ],
+      },
+    ],
+    stateMutability: 'view',
   },
 ] as const;
 

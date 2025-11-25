@@ -65,13 +65,10 @@ export default function ZakatPage() {
     try {
       setIsProcessing(true);
       
-      // Simulate processing delay
-      await new Promise((resolve) => setTimeout(resolve, 1500));
-      
-      const { txHash } = donate({
-        campaignId: selectedCampaign.id.toString(),
+      const { txHash } = await donate({
+        poolId: BigInt(selectedCampaign.id),
         campaignTitle: selectedCampaign.title,
-        amountIDRX: calculatedZakat,
+        amountIDRX: BigInt(Math.floor(calculatedZakat * 1e18)), // Convert to wei
       });
       
       setIsProcessing(false);
@@ -120,7 +117,7 @@ export default function ZakatPage() {
                   </code>
                 </div>
                 <div className="flex items-baseline gap-2">
-                  <span className="text-3xl font-bold">{idrxBalance.toLocaleString('id-ID', { maximumFractionDigits: 0 })}</span>
+                  <span className="text-3xl font-bold">{idrxBalance ? Number(idrxBalance / BigInt(1e18)).toLocaleString('id-ID', { maximumFractionDigits: 0 }) : '0'}</span>
                   <span className="text-white/90 font-medium">IDRX</span>
                 </div>
                 <p className="text-sm text-white/90 mt-1">Available for Zakat payment</p>
@@ -554,7 +551,7 @@ export default function ZakatPage() {
                   
                   <div className="p-4 bg-secondary rounded-lg border border-border">
                     <div className="text-xs text-muted-foreground mb-1">{t("confirm.currentBalance")}</div>
-                    <div className="text-xl font-bold">{idrxBalance.toLocaleString('id-ID', { maximumFractionDigits: 0 })} IDRX</div>
+                    <div className="text-xl font-bold">{idrxBalance ? Number(idrxBalance / BigInt(1e18)).toLocaleString('id-ID', { maximumFractionDigits: 0 }) : '0'} IDRX</div>
                   </div>
                 </div>
 

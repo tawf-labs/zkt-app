@@ -17,79 +17,89 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
-import { Vote, Users, Clock, CheckCircle2, Shield, Plus, ThumbsUp, ThumbsDown, LayoutDashboard, FileText, Settings, Download, TrendingUp } from "lucide-react"
-
-// Mock proposals data
-const proposals = [
-  {
-    id: "1",
-    title: "Add Water Aid as verified partner organization",
-    description:
-      "Proposal to onboard Water Aid as an officially verified partner for water infrastructure projects across Southeast Asia.",
-    status: "Active",
-    type: "Community",
-    votesFor: 1245,
-    votesAgainst: 234,
-    totalVotes: 1479,
-    quorum: 2000,
-    endsIn: "5 days",
-    createdBy: "0x71C7...3A92",
-    shariahApproved: null,
-  },
-  {
-    id: "2",
-    title: "Adjust admin fee from 2.5% to 2%",
-    description:
-      "Lower the platform administration fee to increase net donations to campaigns. This will reduce operational overhead but improve donor satisfaction.",
-    status: "Active",
-    type: "Community",
-    votesFor: 856,
-    votesAgainst: 412,
-    totalVotes: 1268,
-    quorum: 2000,
-    endsIn: "12 days",
-    createdBy: "0x893b...2cDf",
-    shariahApproved: null,
-  },
-  {
-    id: "3",
-    title: "Implement monthly transparency reports",
-    description:
-      "Require all Laznas to publish monthly fund allocation reports for improved transparency and donor trust.",
-    status: "Pending Review",
-    type: "Sharia Council",
-    votesFor: 1890,
-    votesAgainst: 145,
-    totalVotes: 2035,
-    quorum: 2000,
-    endsIn: "Awaiting Council",
-    createdBy: "0x123a...def4",
-    shariahApproved: null,
-  },
-  {
-    id: "4",
-    title: "Enable recurring donation subscriptions",
-    description: "Add functionality for donors to set up automatic monthly or annual donations to preferred campaigns.",
-    status: "Approved",
-    type: "Community",
-    votesFor: 2234,
-    votesAgainst: 312,
-    totalVotes: 2546,
-    quorum: 2000,
-    endsIn: "Passed",
-    createdBy: "0x456b...abc8",
-    shariahApproved: true,
-  },
-]
+import { Vote, Users, Clock, CheckCircle2, Shield, Plus, ThumbsUp, ThumbsDown, LayoutDashboard, FileText, Settings, Download, TrendingUp, Loader2 } from "lucide-react"
+import { useProposals } from "@/hooks/useProposals"
+import { useVotingPower } from "@/hooks/useVotingPower"
+import { useAccount, useWriteContract, useWaitForTransactionReceipt } from "wagmi"
+import { CONTRACT_ADDRESSES, ZKTCoreABI } from "@/lib/abi"
+import { handleTransactionError, handleWalletError } from "@/lib/errors"
+import { useToast } from "@/hooks/use-toast"
 
 export default function GovernancePage() {
+  const { toast } = useToast()
+  const { address, isConnected } = useAccount()
   const [hasVoted, setHasVoted] = useState<Record<string, boolean>>({})
-  const [userVotingPower] = useState(245)
+  
+  // Get real voting power from blockchain
+  const { votingPower, formattedVotingPower, isLoading: isLoadingVotingPower } = useVotingPower()
+  
+  // Get real proposals from blockchain
+  const { proposals: blockchainProposals, isLoading: isLoadingProposals, refetch: refetchProposals } = useProposals([0, 1, 2, 3])
+  
+  // Contract write for voting
+  const { writeContractAsync, isPending: isVoting } = useWriteContract()
+  const [pendingVoteProposalId, setPendingVoteProposalId] = useState<string | null>(null)
 
-  const handleVote = (proposalId: string, voteType: "for" | "against") => {
-    setHasVoted({ ...hasVoted, [proposalId]: true })
-    // In real app, submit vote to blockchain
+  const handleVote = async (proposalId: string, voteType: "for" | "against") => {
+    if (!isConnected) {
+      handleWalletError(new Error("not-connected"), { toast })
+      return
+    }
+
+    setPendingVoteProposalId(proposalId)
+    
+    try {
+      const voteSupport = voteType === "for" // true = for, false = against
+      
+      const txHash = await writeContractAsync({
+        address: CONTRACT_ADDRESSES.ZKTCore,
+        abi: ZKTCoreABI,
+        functionName: "vote",
+        args: [BigInt(proposalId), voteSupport],
+      })
+
+      toast({
+        title: "Vote Cast! 🗳️",
+        description: `Your vote ${voteType === "for" ? "for" : "against"} the proposal has been recorded.`,
+      })
+
+      setHasVoted({ ...hasVoted, [proposalId]: true })
+      await refetchProposals()
+    } catch (error) {
+      handleTransactionError(error, { toast, action: "vote" })
+    } finally {
+      setPendingVoteProposalId(null)
+    }
   }
+
+  const userVotingPower = Number(votingPower || BigInt(0))
+  const isLoading = isLoadingVotingPower || isLoadingProposals
+
+  // Map blockchain proposals to UI format
+  const proposals = blockchainProposals.map((p) => {
+    const totalVotes = p.votesFor + p.votesAgainst + p.votesAbstain
+    const now = BigInt(Math.floor(Date.now() / 1000))
+    const isActive = now >= p.startTime && now <= p.endTime && !p.executed && !p.cancelled
+    const isPending = p.executed === false && p.cancelled === false && now > p.endTime
+    const isApproved = p.executed
+
+    const daysLeft = p.endTime > now ? Number((p.endTime - now) / BigInt(86400)) : 0
+
+    return {
+      id: p.id.toString(),
+      title: p.title || `Proposal ${p.id}`,
+      description: p.description || "No description provided",
+      status: isActive ? "Active" : isPending ? "Pending Review" : "Approved",
+      type: p.proposalType === "sharia" ? "Sharia Council" : "Community",
+      votesFor: Number(p.votesFor),
+      votesAgainst: Number(p.votesAgainst),
+      totalVotes: Number(totalVotes),
+      quorum: 2000, // This should come from contract
+      endsIn: isActive ? `${daysLeft} days` : isApproved ? "Passed" : "Awaiting Council",
+      createdBy: p.proposer.slice(0, 6) + "..." + p.proposer.slice(-4),
+      shariahApproved: p.executed ? true : null,
+    }
+  })
 
   return (
     <div className="flex min-h-screen bg-gray-50">
@@ -143,7 +153,13 @@ export default function GovernancePage() {
               <div className="text-sm font-medium text-black">Your Voting Power</div>
               <Vote className="h-4 w-4 text-gray-600" />
             </div>
-            <div className="text-2xl font-bold">{userVotingPower}</div>
+            <div className="text-2xl font-bold">
+              {isLoadingVotingPower ? (
+                <Loader2 className="h-6 w-6 animate-spin" />
+              ) : (
+                formattedVotingPower
+              )}
+            </div>
             <div className="text-xs text-black mt-1">From donations</div>
           </div>
           

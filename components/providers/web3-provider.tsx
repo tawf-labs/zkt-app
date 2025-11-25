@@ -2,42 +2,49 @@
 
 import { createContext, useContext, type ReactNode, useEffect, useState } from "react";
 import { useToast } from "@/hooks/use-toast";
-import { useSignMessage, WagmiProvider, type Config } from "wagmi";
+import { useSignMessage, WagmiProvider, type Config, useWriteContract, useWaitForTransactionReceipt } from "wagmi";
 import { useAccount, useBalance, useDisconnect } from "wagmi";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { XellarKitProvider, defaultConfig, darkTheme, useConnectModal } from "@xellar/kit";
 import axios from "axios";
-import { liskSepolia } from "viem/chains";
+import { baseSepolia } from "viem/chains";
 import { getClientConfig } from "@/lib/client-config";
+import { useIDRXBalance } from "@/hooks/useIDRXBalance";
+import { CONTRACT_ADDRESSES, MockIDRXABI, ZKTCoreABI } from "@/lib/abi";
+import { handleTransactionError, handleWalletError } from "@/lib/errors";
 
 const queryClient = new QueryClient();
 
 type DonationParams = {
-	campaignId: string;
+	poolId: bigint;
 	campaignTitle: string;
-	amountIDRX: number;
+	amountIDRX: bigint;
 };
 
 type WalletContextType = {
 	address: string | undefined;
 	isConnected: boolean;
 	balance: string;
-	idrxBalance: number;
+	idrxBalance: bigint | undefined;
+	formattedIdrxBalance: string;
 	connect: () => Promise<void>;
 	disconnect: () => void;
-	donate: (params: DonationParams) => { txHash: string };
+	donate: (params: DonationParams) => Promise<{ txHash: string }>;
+	isDonating: boolean;
 };
 
 const WalletContext = createContext<WalletContextType>({
 	address: undefined,
 	isConnected: false,
 	balance: "0",
-	idrxBalance: 0,
+	idrxBalance: undefined,
+	formattedIdrxBalance: "0",
 	connect: async () => {
 		console.warn("Connect function should be triggered by XellarKit UI components.");
 	},
 	disconnect: () => {},
-	donate: () => ({ txHash: "0x0" }),
+	donate: async () => ({ txHash: "0x0" }),
+	isDonating: false,
 });
 
 export const useWallet = () => useContext(WalletContext);
@@ -45,12 +52,19 @@ export const useWallet = () => useContext(WalletContext);
 // Inner component to handle context logic and wagmi hooks
 function WalletStateController({ children }: { children: ReactNode }) {
 	const { toast } = useToast();
-	const [mockIdrxBalance, setMockIdrxBalance] = useState(15800000); // 15.8 million IDRX (~1000 USDT equivalent)
+	const [isDonating, setIsDonating] = useState(false);
 
 	const { address: wagmiAddress, isConnected: wagmiIsConnected, status: wagmiStatus } = useAccount();
 	const { data: wagmiBalanceData } = useBalance({ address: wagmiAddress });
 	const { disconnect: wagmiDisconnect } = useDisconnect();
 	const { signMessageAsync } = useSignMessage();
+	
+	// Get real IDRX balance from blockchain
+	const { balance: idrxBalance, formattedBalance: formattedIdrxBalance, refetch: refetchBalance } = useIDRXBalance();
+	
+	// Contract write hooks for donation flow
+	const { writeContractAsync: writeApprove } = useWriteContract();
+	const { writeContractAsync: writeDonate } = useWriteContract();
 
 	const address = wagmiAddress;
 	const isConnected = wagmiIsConnected;
@@ -105,27 +119,72 @@ function WalletStateController({ children }: { children: ReactNode }) {
 		}
 	}, [wagmiStatus, address, toast]);
 
-	const donate = (params: DonationParams) => {
-		const { campaignId, campaignTitle, amountIDRX } = params;
-		if (!amountIDRX || amountIDRX <= 0) {
+	const donate = async (params: DonationParams): Promise<{ txHash: string }> => {
+		const { poolId, campaignTitle, amountIDRX } = params;
+		
+		// Validation
+		if (!amountIDRX || amountIDRX <= BigInt(0)) {
+			handleWalletError(new Error("Invalid amount"), { toast });
 			throw new Error("Invalid amount");
 		}
 		if (!isConnected || !address) {
+			handleWalletError(new Error("not-connected"), { toast });
 			throw new Error("Wallet not connected");
 		}
-		if (amountIDRX > mockIdrxBalance) {
+		if (idrxBalance && amountIDRX > idrxBalance) {
+			handleWalletError(new Error("insufficient-balance"), { toast });
 			throw new Error("Insufficient IDRX balance");
 		}
 		
-		// Deduct balance
-		setMockIdrxBalance((prev) => Number((prev - amountIDRX).toFixed(2)));
+		setIsDonating(true);
 		
-		// Generate mock transaction hash
-		const txHash = `0x${Math.random().toString(16).slice(2).padEnd(64, "0")}`;
-		
-		console.log(`Donated ${amountIDRX} IDRX to ${campaignTitle} (${campaignId})`);
-		
-		return { txHash };
+		try {
+			// Step 1: Approve ZKTCore to spend IDRX
+			toast({
+				title: "Approval Required",
+				description: "Please approve the contract to spend your IDRX tokens",
+			});
+			
+			const approvalTxHash = await writeApprove({
+				address: CONTRACT_ADDRESSES.MockIDRX,
+				abi: MockIDRXABI,
+				functionName: "approve",
+				args: [CONTRACT_ADDRESSES.ZKTCore, amountIDRX],
+			});
+			
+			console.log("Approval transaction:", approvalTxHash);
+			
+			toast({
+				title: "Approval Confirmed",
+				description: "Now processing your donation...",
+			});
+			
+			// Step 2: Execute donation
+			const donateTxHash = await writeDonate({
+				address: CONTRACT_ADDRESSES.ZKTCore,
+				abi: ZKTCoreABI,
+				functionName: "donate",
+				args: [poolId, amountIDRX],
+			});
+			
+			console.log(`Donated ${amountIDRX} IDRX to ${campaignTitle} (Pool ID: ${poolId})`);
+			
+			toast({
+				title: "Donation Successful! 🎉",
+				description: `You donated ${amountIDRX.toString()} IDRX to ${campaignTitle}`,
+			});
+			
+			// Refetch balance after successful donation
+			await refetchBalance();
+			
+			return { txHash: donateTxHash };
+		} catch (error: any) {
+			console.error("Donation error:", error);
+			handleTransactionError(error, { toast, action: "donate" });
+			throw error;
+		} finally {
+			setIsDonating(false);
+		}
 	};
 
 	const connect = async () => {
@@ -155,10 +214,12 @@ function WalletStateController({ children }: { children: ReactNode }) {
 				address,
 				isConnected,
 				balance,
-				idrxBalance: mockIdrxBalance,
+				idrxBalance,
+				formattedIdrxBalance,
 				connect,
 				disconnect,
 				donate,
+				isDonating,
 			}}
 		>
 			{children}

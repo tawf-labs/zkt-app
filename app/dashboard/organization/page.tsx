@@ -1,7 +1,12 @@
-import React from 'react';
-import { LayoutDashboard, TrendingUp, Users, FileText, Settings, Download, Plus, ArrowUpRight, ArrowDownRight } from 'lucide-react';
+"use client";
+
+import React, { useState } from 'react';
+import { LayoutDashboard, TrendingUp, Users, FileText, Settings, Download, Plus, ArrowUpRight, ArrowDownRight, CheckCircle2, DollarSign, Calendar } from 'lucide-react';
+
+type SidebarTab = 'overview' | 'campaigns' | 'donors' | 'reports' | 'settings';
 
 export default function BaznasDashboard() {
+  const [sidebarTab, setSidebarTab] = useState<SidebarTab>('overview');
   const donations = [
     { donor: 'Anonymous Donor', address: '0x72...9a2', campaign: 'Emergency Relief for...', amount: '$150.00', status: 'Verified' },
     { donor: 'Anonymous Donor', address: '0x72...9a2', campaign: 'Emergency Relief for...', amount: '$150.00', status: 'Verified' },
@@ -31,23 +36,48 @@ export default function BaznasDashboard() {
           </div>
           
           <nav className="space-y-1">
-            <button className="w-full flex items-center gap-2 px-4 py-2 rounded-md bg-white shadow-sm font-semibold text-gray-900">
+            <button 
+              onClick={() => setSidebarTab('overview')}
+              className={`w-full flex items-center gap-2 px-4 py-2 rounded-md ${
+                sidebarTab === 'overview' ? 'bg-white shadow-sm font-semibold text-gray-900' : 'text-gray-600 hover:bg-gray-100'
+              }`}
+            >
               <LayoutDashboard className="h-4 w-4" />
               Overview
             </button>
-            <button className="w-full flex items-center gap-2 px-4 py-2 rounded-md text-gray-600 hover:bg-gray-100">
+            <button 
+              onClick={() => setSidebarTab('campaigns')}
+              className={`w-full flex items-center gap-2 px-4 py-2 rounded-md ${
+                sidebarTab === 'campaigns' ? 'bg-white shadow-sm font-semibold text-gray-900' : 'text-gray-600 hover:bg-gray-100'
+              }`}
+            >
               <TrendingUp className="h-4 w-4" />
               Campaigns
             </button>
-            <button className="w-full flex items-center gap-2 px-4 py-2 rounded-md text-gray-600 hover:bg-gray-100">
+            <button 
+              onClick={() => setSidebarTab('donors')}
+              className={`w-full flex items-center gap-2 px-4 py-2 rounded-md ${
+                sidebarTab === 'donors' ? 'bg-white shadow-sm font-semibold text-gray-900' : 'text-gray-600 hover:bg-gray-100'
+              }`}
+            >
               <Users className="h-4 w-4" />
               Donors
             </button>
-            <button className="w-full flex items-center gap-2 px-4 py-2 rounded-md text-gray-600 hover:bg-gray-100">
+            <button 
+              onClick={() => setSidebarTab('reports')}
+              className={`w-full flex items-center gap-2 px-4 py-2 rounded-md ${
+                sidebarTab === 'reports' ? 'bg-white shadow-sm font-semibold text-gray-900' : 'text-gray-600 hover:bg-gray-100'
+              }`}
+            >
               <FileText className="h-4 w-4" />
               Reports
             </button>
-            <button className="w-full flex items-center gap-2 px-4 py-2 rounded-md text-gray-600 hover:bg-gray-100">
+            <button 
+              onClick={() => setSidebarTab('settings')}
+              className={`w-full flex items-center gap-2 px-4 py-2 rounded-md ${
+                sidebarTab === 'settings' ? 'bg-white shadow-sm font-semibold text-gray-900' : 'text-gray-600 hover:bg-gray-100'
+              }`}
+            >
               <Settings className="h-4 w-4" />
               Settings
             </button>
@@ -68,6 +98,9 @@ export default function BaznasDashboard() {
 
       {/* Main Content */}
       <main className="flex-1 p-6 lg:p-8 overflow-y-auto bg-white">
+        {/* Overview Tab */}
+        {sidebarTab === 'overview' && (
+          <>
         {/* Header */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
           <div>
@@ -222,6 +255,225 @@ export default function BaznasDashboard() {
             </div>
           </div>
         </div>
+        </>
+        )}
+
+        {/* Campaigns Tab */}
+        {sidebarTab === 'campaigns' && (
+          <>
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
+              <div>
+                <h1 className="text-3xl font-bold tracking-tight">Campaigns</h1>
+                <p className="text-black">Manage all your fundraising campaigns</p>
+              </div>
+              <button className="flex items-center gap-2 px-4 py-2 rounded-md bg-primary text-white shadow-md hover:bg-primary/90">
+                <Plus className="h-4 w-4" />
+                New Campaign
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+              <div className="bg-white rounded-xl border border-black p-6 shadow-sm">
+                <div className="text-sm font-medium text-black mb-2">Active Campaigns</div>
+                <div className="text-2xl font-bold">8</div>
+              </div>
+              <div className="bg-white rounded-xl border border-black p-6 shadow-sm">
+                <div className="text-sm font-medium text-black mb-2">Completed Campaigns</div>
+                <div className="text-2xl font-bold">24</div>
+              </div>
+              <div className="bg-white rounded-xl border border-black p-6 shadow-sm">
+                <div className="text-sm font-medium text-black mb-2">Total Raised</div>
+                <div className="text-2xl font-bold">$2,450,000</div>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-xl border border-black shadow-sm">
+              <div className="p-6 border-b border-black">
+                <h2 className="font-semibold">All Campaigns</h2>
+              </div>
+              <div className="p-6">
+                <div className="space-y-4">
+                  {[
+                    { name: 'Emergency Relief Fund', target: '$50,000', raised: '$38,500', percentage: 77, status: 'Active' },
+                    { name: 'Education for All', target: '$30,000', raised: '$24,000', percentage: 80, status: 'Active' },
+                    { name: 'Clean Water Initiative', target: '$40,000', raised: '$40,000', percentage: 100, status: 'Completed' },
+                  ].map((campaign, idx) => (
+                    <div key={idx} className="border border-border rounded-lg p-4">
+                      <div className="flex items-start justify-between mb-3">
+                        <div>
+                          <h3 className="font-semibold">{campaign.name}</h3>
+                          <p className="text-sm text-muted-foreground mt-1">
+                            {campaign.raised} raised of {campaign.target} target
+                          </p>
+                        </div>
+                        <span className={`px-2 py-1 rounded-md text-xs font-medium ${
+                          campaign.status === 'Active' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'
+                        }`}>
+                          {campaign.status}
+                        </span>
+                      </div>
+                      <div className="w-full bg-gray-200 rounded-full h-2 mb-2">
+                        <div className="bg-primary h-2 rounded-full" style={{ width: `${campaign.percentage}%` }}></div>
+                      </div>
+                      <div className="text-sm text-muted-foreground">{campaign.percentage}% complete</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </>
+        )}
+
+        {/* Donors Tab */}
+        {sidebarTab === 'donors' && (
+          <>
+            <div className="mb-8">
+              <h1 className="text-3xl font-bold tracking-tight">Donors</h1>
+              <p className="text-black">Manage your donor community</p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+              <div className="bg-white rounded-xl border border-black p-6 shadow-sm">
+                <div className="text-sm font-medium text-black mb-2">Total Donors</div>
+                <div className="text-2xl font-bold">12,543</div>
+                <div className="flex items-center gap-1 text-xs text-green-600 mt-1">
+                  <ArrowUpRight className="h-3 w-3" />
+                  +8% new donors
+                </div>
+              </div>
+              <div className="bg-white rounded-xl border border-black p-6 shadow-sm">
+                <div className="text-sm font-medium text-black mb-2">Recurring Donors</div>
+                <div className="text-2xl font-bold">3,421</div>
+              </div>
+              <div className="bg-white rounded-xl border border-black p-6 shadow-sm">
+                <div className="text-sm font-medium text-black mb-2">Average Donation</div>
+                <div className="text-2xl font-bold">$195</div>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-xl border border-black shadow-sm">
+              <div className="p-6 border-b border-black">
+                <h2 className="font-semibold">Top Donors</h2>
+              </div>
+              <div className="p-6">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-black">
+                      <th className="text-left py-2 px-2 font-medium text-black">Donor</th>
+                      <th className="text-left py-2 px-2 font-medium text-black">Total Donated</th>
+                      <th className="text-left py-2 px-2 font-medium text-black">Campaigns</th>
+                      <th className="text-left py-2 px-2 font-medium text-black">Last Donation</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {[
+                      { name: 'Anonymous Donor', address: '0x72...9a2', total: '$5,000', campaigns: 12, lastDate: 'Nov 20, 2025' },
+                      { name: 'Anonymous Donor', address: '0x8b...4f3', total: '$3,500', campaigns: 8, lastDate: 'Nov 18, 2025' },
+                      { name: 'Anonymous Donor', address: '0x3d...7c1', total: '$2,800', campaigns: 15, lastDate: 'Nov 15, 2025' },
+                    ].map((donor, idx) => (
+                      <tr key={idx} className="border-b border-black hover:bg-gray-50">
+                        <td className="py-3 px-2">
+                          <div className="font-medium">{donor.name}</div>
+                          <div className="text-xs text-black">{donor.address}</div>
+                        </td>
+                        <td className="py-3 px-2 font-bold text-green-600">{donor.total}</td>
+                        <td className="py-3 px-2">{donor.campaigns}</td>
+                        <td className="py-3 px-2 text-black">{donor.lastDate}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </>
+        )}
+
+        {/* Reports Tab */}
+        {sidebarTab === 'reports' && (
+          <>
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
+              <div>
+                <h1 className="text-3xl font-bold tracking-tight">Reports</h1>
+                <p className="text-black">Generate and download compliance reports</p>
+              </div>
+              <button className="flex items-center gap-2 px-4 py-2 rounded-md border border-black bg-white shadow-sm hover:bg-gray-50">
+                <Download className="h-4 w-4" />
+                Generate Report
+              </button>
+            </div>
+
+            <div className="bg-white rounded-xl border border-black shadow-sm mb-6">
+              <div className="p-6 border-b border-black">
+                <h2 className="font-semibold">Available Reports</h2>
+              </div>
+              <div className="p-6 space-y-4">
+                {[
+                  { title: 'Monthly Financial Report', desc: 'Detailed breakdown of all donations and expenditures', period: 'November 2025' },
+                  { title: 'Impact Assessment Report', desc: 'Measurable outcomes and beneficiary statistics', period: 'Q4 2025' },
+                  { title: 'Donor Transparency Report', desc: 'Public report showing fund allocation', period: 'November 2025' },
+                  { title: 'Baznas Compliance Report', desc: 'Regulatory compliance documentation', period: 'November 2025' },
+                ].map((report, idx) => (
+                  <div key={idx} className="flex items-center justify-between p-4 border border-border rounded-lg hover:bg-accent/50">
+                    <div>
+                      <h3 className="font-semibold">{report.title}</h3>
+                      <p className="text-sm text-muted-foreground mt-1">{report.desc}</p>
+                      <p className="text-xs text-muted-foreground mt-1">Period: {report.period}</p>
+                    </div>
+                    <button className="px-4 py-2 rounded-md border border-black hover:bg-gray-50 text-sm font-medium">
+                      <Download className="h-4 w-4" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </>
+        )}
+
+        {/* Settings Tab */}
+        {sidebarTab === 'settings' && (
+          <>
+            <div className="mb-8">
+              <h1 className="text-3xl font-bold tracking-tight">Organization Settings</h1>
+              <p className="text-black">Manage your organization profile and preferences</p>
+            </div>
+
+            <div className="bg-white rounded-xl border border-black shadow-sm mb-6">
+              <div className="p-6 border-b border-border">
+                <h3 className="font-semibold text-lg">Organization Information</h3>
+              </div>
+              <div className="p-6 space-y-4">
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">Organization Name</label>
+                  <input type="text" defaultValue="Baznas Indonesia" className="w-full mt-1 px-3 py-2 border border-border rounded-md" />
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">Registration Number</label>
+                  <input type="text" defaultValue="REG-2025-001" className="w-full mt-1 px-3 py-2 border border-border rounded-md" />
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">Contact Email</label>
+                  <input type="email" defaultValue="contact@baznas.org" className="w-full mt-1 px-3 py-2 border border-border rounded-md" />
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-xl border border-black shadow-sm">
+              <div className="p-6 border-b border-border">
+                <h3 className="font-semibold text-lg">Compliance Status</h3>
+              </div>
+              <div className="p-6">
+                <div className="flex items-center gap-3 mb-4">
+                  <CheckCircle2 className="h-6 w-6 text-green-600" />
+                  <div>
+                    <div className="font-semibold">Verified Organization</div>
+                    <div className="text-sm text-muted-foreground">Your organization is fully verified and compliant</div>
+                  </div>
+                </div>
+                <div className="text-xs text-muted-foreground">Last audit: 2 days ago</div>
+              </div>
+            </div>
+          </>
+        )}
       </main>
     </div>
   );
