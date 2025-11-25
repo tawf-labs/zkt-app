@@ -56,7 +56,7 @@ We are working closely with local authorities and volunteers to ensure that aid 
   ]
 };
 
-const donationAmounts = [10, 25, 50, 100, 250, 500];
+const donationAmounts = [10000, 25000, 50000, 100000, 250000, 500000];
 
 export default function CampaignDetail() {
   const [selectedAmount, setSelectedAmount] = useState(null);
@@ -69,11 +69,7 @@ export default function CampaignDetail() {
   };
 
   const formatCurrency = (amount) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 0
-    }).format(amount);
+    return `${amount.toLocaleString('id-ID', { maximumFractionDigits: 0 })} IDRX`;
   };
 
   const progress = calculateProgress(campaignDetail.raised, campaignDetail.goal);
@@ -353,7 +349,7 @@ export default function CampaignDetail() {
                         </div>
                       </div>
                       <div className="font-bold text-primary">
-                        ${(Math.random() * 450 + 50).toFixed(0)}
+                        {((Math.random() * 450 + 50) * 1000).toFixed(0).toLocaleString('id-ID')} IDRX
                       </div>
                     </div>
                   </div>
@@ -437,7 +433,7 @@ export default function CampaignDetail() {
                           : 'border-border hover:border-primary hover:bg-accent'
                       }`}
                     >
-                      ${amount}
+                      {(amount / 1000).toFixed(0)}K IDRX
                     </button>
                   ))}
                 </div>
@@ -445,12 +441,9 @@ export default function CampaignDetail() {
                 {/* Custom Amount */}
                 <div className="mb-6">
                   <label className="text-sm font-medium mb-2 block">
-                    Or enter custom amount
+                    Or enter custom amount (IDRX)
                   </label>
                   <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
-                      $
-                    </span>
                     <input
                       type="number"
                       value={customAmount}
@@ -459,8 +452,11 @@ export default function CampaignDetail() {
                         setSelectedAmount(null);
                       }}
                       placeholder="0"
-                      className="flex h-10 w-full rounded-md border border-input bg-transparent px-3 pl-7 py-2 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                      className="flex h-10 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                     />
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">
+                      IDRX
+                    </span>
                   </div>
                 </div>
 
@@ -477,7 +473,7 @@ export default function CampaignDetail() {
                 <div className="mt-6 pt-6 border-t border-border space-y-3">
                   <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">Average donation</span>
-                    <span className="font-semibold">$50</span>
+                    <span className="font-semibold">50,000 IDRX</span>
                   </div>
                   <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">Recent donation</span>

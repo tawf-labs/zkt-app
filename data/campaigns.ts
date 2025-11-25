@@ -89,11 +89,7 @@ export const calculateProgress = (raised: number, goal: number) => {
 };
 
 export const formatCurrency = (amount: number) => {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-    minimumFractionDigits: 0
-  }).format(amount);
+  return `${amount.toLocaleString('id-ID', { maximumFractionDigits: 0 })} IDRX`;
 };
 
 export const getCampaignById = (id: number) => {

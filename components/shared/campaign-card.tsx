@@ -1,9 +1,11 @@
 "use client";
 
+import { useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { Users, Clock, CircleCheck } from "lucide-react";
 import { Campaign } from "@/data/campaigns";
+import { DonationDialog } from "@/components/donations/donation-dialog";
 
 interface CampaignCardProps {
   campaign: Campaign;
@@ -17,6 +19,7 @@ export function CampaignCard({
   formatCurrency 
 }: CampaignCardProps) {
   const router = useRouter();
+  const [showDonationDialog, setShowDonationDialog] = useState(false);
   const progress = calculateProgress(campaign.raised, campaign.goal);
 
   const handleCardClick = () => {
@@ -25,7 +28,7 @@ export function CampaignCard({
 
   const handleDonateClick = (e: React.MouseEvent) => {
     e.stopPropagation();
-    router.push(`/campaigns/${campaign.id}`);
+    setShowDonationDialog(true);
   };
 
   return (
@@ -116,6 +119,16 @@ export function CampaignCard({
           Donate Now
         </button>
       </div>
+
+      {/* Donation Dialog */}
+      <DonationDialog
+        open={showDonationDialog}
+        onOpenChange={setShowDonationDialog}
+        campaignId={campaign.id}
+        campaignTitle={campaign.title}
+        campaignGoal={campaign.goal}
+        campaignRaised={campaign.raised}
+      />
     </div>
   );
 }
