@@ -16,7 +16,7 @@ import { LanguageProvider } from "@/components/providers/language-provider";
 import { SearchProvider } from "@/components/shared/SearchContext";
 
 export const metadata: Metadata = {
-  title: "ZK Zakat",
+  title: "zkt.app - Transparent and Traceable donation",
   description: "Private, verifiable Zakat with ZK proofs",
   generator: "v0.app",
 };

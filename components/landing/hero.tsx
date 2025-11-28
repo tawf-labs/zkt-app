@@ -17,7 +17,7 @@ export function Hero() {
           <div className="flex-1 space-y-8 text-center lg:text-left">
             {/* Badge */}
             <div className="inline-flex items-center rounded-full border border-primary/20 bg-primary/5 px-4 py-2 text-sm font-medium text-primary">
-              ✓ Verified by Baznas & Blockchain Traced
+              ✓ Blockchain Traced
             </div>
 
             {/* Heading */}
@@ -43,7 +43,7 @@ export function Hero() {
             {/* Stats */}
               <div className="grid grid-cols-3 gap-4 pt-8 border-t border-border">
               <div className="space-y-1">
-                <div className="text-3xl font-bold text-primary">$12M+</div>
+                <div className="text-3xl font-bold text-primary">$10+</div>
                 <div className="text-xs text-muted-foreground font-medium uppercase tracking-wide">
                   DONATED
                 </div>
@@ -55,7 +55,7 @@ export function Hero() {
                 </div>
               </div>
               <div className="space-y-1">
-                <div className="text-3xl font-bold text-primary">50k+</div>
+                <div className="text-3xl font-bold text-primary">50+</div>
                 <div className="text-xs text-muted-foreground font-medium uppercase tracking-wide">
                   DONORS
                 </div>

@@ -11,7 +11,7 @@ export default function HomePage() {
   return (
     <main className="min-h-dvh bg-background text-foreground">
       <Hero />
-      <Trusted />
+      {/* <Trusted /> */}
       <FeaturedCampaigns />
       <HowItWorks />
       <section id="campaigns" className="py-12 md:py-16">
