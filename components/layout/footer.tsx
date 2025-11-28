@@ -12,7 +12,7 @@ export function Footer() {
           <div className="lg:col-span-2 space-y-6">
              <Link href="/" className="flex items-center space-x-2">
             <img
-              src="/logo-name.png"
+              src="/logo.png"
               alt="ZKT.app Logo"
               className="h-6 sm:h-8 md:h-10 object-contain translate-y-[-3px]"
             />
