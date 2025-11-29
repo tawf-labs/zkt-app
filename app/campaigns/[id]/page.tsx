@@ -59,16 +59,16 @@ We are working closely with local authorities and volunteers to ensure that aid 
 const donationAmounts = [10000, 25000, 50000, 100000, 250000, 500000];
 
 export default function CampaignDetail() {
-  const [selectedAmount, setSelectedAmount] = useState(null);
+  const [selectedAmount, setSelectedAmount] = useState<number | null>(null);
   const [customAmount, setCustomAmount] = useState('');
   const [activeTab, setActiveTab] = useState('story');
   const [selectedImage, setSelectedImage] = useState(0);
 
-  const calculateProgress = (raised, goal) => {
+  const calculateProgress = (raised: number, goal: number) => {
     return (raised / goal) * 100;
   };
 
-  const formatCurrency = (amount) => {
+  const formatCurrency = (amount: number) => {
     return `${amount.toLocaleString('id-ID', { maximumFractionDigits: 0 })} IDRX`;
   };
 
@@ -349,7 +349,7 @@ export default function CampaignDetail() {
                         </div>
                       </div>
                       <div className="font-bold text-primary">
-                        {((Math.random() * 450 + 50) * 1000).toFixed(0).toLocaleString('id-ID')} IDRX
+                        {Math.floor((Math.random() * 450 + 50) * 1000).toLocaleString('id-ID')} IDRX
                       </div>
                     </div>
                   </div>
