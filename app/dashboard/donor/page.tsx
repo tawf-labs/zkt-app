@@ -3,16 +3,59 @@
 import React, { useState } from 'react';
 import { Award, FileText, Vote, Wallet, ShieldCheck, Download, ExternalLink, TrendingUp, CheckCircle2, XCircle, Clock, Settings, Loader2 } from 'lucide-react';
 import { useDonationReceipts } from '@/hooks/useDonationReceipts';
-import { useAccount } from 'wagmi';
-import { formatIDRX, formatAddress, formatTimestamp } from '@/lib/abi';
+import { useProposals } from '@/hooks/useProposals';
+import { useVotingPower } from '@/hooks/useVotingPower';
+import { useAccount, useWriteContract } from 'wagmi';
+import { formatIDRX, formatAddress, formatTimestamp, CONTRACT_ADDRESSES, ZKTCoreABI } from '@/lib/abi';
+import { handleTransactionError, handleWalletError } from '@/lib/errors';
+import { useToast } from '@/hooks/use-toast';
 
 type SidebarTab = 'overview' | 'tax-reports' | 'governance-dao' | 'wallet-settings';
 
 const DonorDashboard: React.FC = () => {
+  const { toast } = useToast();
   const { address, isConnected } = useAccount();
   const { receipts, isLoading } = useDonationReceipts();
+  const { proposals, isLoading: isLoadingProposals, refetch: refetchProposals } = useProposals([0, 1, 2, 3]);
+  const { votingPower, formattedVotingPower, isLoading: isLoadingVotingPower } = useVotingPower();
+  const { writeContractAsync, isPending: isVoting } = useWriteContract();
+  
   const [sidebarTab, setSidebarTab] = useState<SidebarTab>('overview');
   const [activeTab, setActiveTab] = useState<'receipts' | 'history' | 'governance'>('receipts');
+  const [hasVoted, setHasVoted] = useState<Record<string, boolean>>({});
+  const [pendingVoteProposalId, setPendingVoteProposalId] = useState<string | null>(null);
+
+  const handleVote = async (proposalId: string, voteType: "for" | "against") => {
+    if (!isConnected) {
+      handleWalletError(new Error("not-connected"), { toast });
+      return;
+    }
+
+    setPendingVoteProposalId(proposalId);
+    
+    try {
+      const voteSupport = voteType === "for";
+      
+      const txHash = await writeContractAsync({
+        address: CONTRACT_ADDRESSES.ZKTCore,
+        abi: ZKTCoreABI,
+        functionName: "vote",
+        args: [BigInt(proposalId), voteSupport],
+      });
+
+      toast({
+        title: "Vote Cast! 🗳️",
+        description: `Your vote ${voteType === "for" ? "for" : "against"} the proposal has been recorded.`,
+      });
+
+      setHasVoted({ ...hasVoted, [proposalId]: true });
+      await refetchProposals();
+    } catch (error) {
+      handleTransactionError(error, { toast, action: "vote" });
+    } finally {
+      setPendingVoteProposalId(null);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-white">
@@ -222,25 +265,21 @@ const DonorDashboard: React.FC = () => {
                       {/* Monthly Summary */}
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div className="bg-white text-card-foreground rounded-xl border border-black shadow-sm p-4">
-                          <div className="text-sm text-muted-foreground mb-1">This Month</div>
-                          <div className="text-2xl font-bold">Rp 790.000</div>
-                          <div className="flex items-center gap-1 text-xs text-green-600 mt-1">
-                            <TrendingUp className="h-3 w-3" />
-                            +25% vs last month
+                          <div className="text-sm text-muted-foreground mb-1">Total Donated</div>
+                          <div className="text-2xl font-bold">
+                            {isConnected ? formatIDRX(receipts.reduce((sum, r) => sum + r.amount, BigInt(0))) : '0'} IDRX
                           </div>
+                          <div className="text-xs text-muted-foreground mt-1">Lifetime donations</div>
                         </div>
                         <div className="bg-white text-card-foreground rounded-xl border border-black shadow-sm p-4">
-                          <div className="text-sm text-muted-foreground mb-1">Total Impact</div>
-                          <div className="text-2xl font-bold">542 people</div>
-                          <div className="text-xs text-muted-foreground mt-1">Directly helped</div>
+                          <div className="text-sm text-muted-foreground mb-1">Donations Made</div>
+                          <div className="text-2xl font-bold">{isConnected ? receipts.length : '0'}</div>
+                          <div className="text-xs text-muted-foreground mt-1">Total transactions</div>
                         </div>
                         <div className="bg-white text-card-foreground rounded-xl border border-black shadow-sm p-4">
-                          <div className="text-sm text-muted-foreground mb-1">Categories</div>
-                          <div className="flex gap-2 mt-2">
-                            <span className="inline-flex items-center rounded-md border px-2 py-1 text-xs font-medium bg-primary/10 text-primary border-primary/20">Zakat</span>
-                            <span className="inline-flex items-center rounded-md border px-2 py-1 text-xs font-medium bg-purple-100 text-purple-700 border-purple-200">Education</span>
-                            <span className="inline-flex items-center rounded-md border px-2 py-1 text-xs font-medium bg-blue-100 text-blue-700 border-blue-200">Health</span>
-                          </div>
+                          <div className="text-sm text-muted-foreground mb-1">NFT Receipts</div>
+                          <div className="text-2xl font-bold">{isConnected ? receipts.length : '0'}</div>
+                          <div className="text-xs text-muted-foreground mt-1">Collected</div>
                         </div>
                       </div>
 
@@ -248,91 +287,58 @@ const DonorDashboard: React.FC = () => {
                       <div className="bg-white text-card-foreground rounded-xl border border-black shadow-sm">
                         <div className="p-6">
                           <h3 className="font-semibold text-lg mb-4">Recent Donations</h3>
-                          <div className="overflow-x-auto">
-                            <table className="w-full">
-                              <thead>
-                                <tr className="border-b border-border">
-                                  <th className="text-left text-sm font-medium text-muted-foreground py-3 px-4">Date</th>
-                                  <th className="text-left text-sm font-medium text-muted-foreground py-3 px-4">Campaign</th>
-                                  <th className="text-left text-sm font-medium text-muted-foreground py-3 px-4">Amount</th>
-                                  <th className="text-left text-sm font-medium text-muted-foreground py-3 px-4">Type</th>
-                                  <th className="text-left text-sm font-medium text-muted-foreground py-3 px-4">Transaction</th>
-                                </tr>
-                              </thead>
-                              <tbody>
-                                <tr className="border-b border-border hover:bg-accent/50">
-                                  <td className="py-4 px-4 text-sm">Nov 20, 2025</td>
-                                  <td className="py-4 px-4 text-sm font-medium">Emergency Relief Fund</td>
-                                  <td className="py-4 px-4 text-sm font-semibold">Rp 158.000</td>
-                                  <td className="py-4 px-4">
-                                    <span className="inline-flex items-center rounded-md border px-2 py-1 text-xs font-medium bg-primary/10 text-primary border-primary/20">Zakat</span>
-                                  </td>
-                                  <td className="py-4 px-4">
-                                    <a href="#" className="inline-flex items-center gap-1 text-sm text-primary hover:underline">
-                                      0x7f3d...a21c
-                                      <ExternalLink className="h-3 w-3" />
-                                    </a>
-                                  </td>
-                                </tr>
-                                <tr className="border-b border-border hover:bg-accent/50">
-                                  <td className="py-4 px-4 text-sm">Nov 18, 2025</td>
-                                  <td className="py-4 px-4 text-sm font-medium">Children Education Fund</td>
-                                  <td className="py-4 px-4 text-sm font-semibold">Rp 316.000</td>
-                                  <td className="py-4 px-4">
-                                    <span className="inline-flex items-center rounded-md border px-2 py-1 text-xs font-medium bg-purple-100 text-purple-700 border-purple-200">Education</span>
-                                  </td>
-                                  <td className="py-4 px-4">
-                                    <a href="#" className="inline-flex items-center gap-1 text-sm text-primary hover:underline">
-                                      0x9e2a...b34f
-                                      <ExternalLink className="h-3 w-3" />
-                                    </a>
-                                  </td>
-                                </tr>
-                                <tr className="border-b border-border hover:bg-accent/50">
-                                  <td className="py-4 px-4 text-sm">Nov 15, 2025</td>
-                                  <td className="py-4 px-4 text-sm font-medium">Clean Water Initiative</td>
-                                  <td className="py-4 px-4 text-sm font-semibold">Rp 158.000</td>
-                                  <td className="py-4 px-4">
-                                    <span className="inline-flex items-center rounded-md border px-2 py-1 text-xs font-medium bg-blue-100 text-blue-700 border-blue-200">Health</span>
-                                  </td>
-                                  <td className="py-4 px-4">
-                                    <a href="#" className="inline-flex items-center gap-1 text-sm text-primary hover:underline">
-                                      0x4c8e...d92a
-                                      <ExternalLink className="h-3 w-3" />
-                                    </a>
-                                  </td>
-                                </tr>
-                                <tr className="border-b border-border hover:bg-accent/50">
-                                  <td className="py-4 px-4 text-sm">Nov 12, 2025</td>
-                                  <td className="py-4 px-4 text-sm font-medium">Emergency Relief Fund</td>
-                                  <td className="py-4 px-4 text-sm font-semibold">Rp 79.000</td>
-                                  <td className="py-4 px-4">
-                                    <span className="inline-flex items-center rounded-md border px-2 py-1 text-xs font-medium bg-primary/10 text-primary border-primary/20">Zakat</span>
-                                  </td>
-                                  <td className="py-4 px-4">
-                                    <a href="#" className="inline-flex items-center gap-1 text-sm text-primary hover:underline">
-                                      0x1b5f...e87d
-                                      <ExternalLink className="h-3 w-3" />
-                                    </a>
-                                  </td>
-                                </tr>
-                                <tr className="hover:bg-accent/50">
-                                  <td className="py-4 px-4 text-sm">Nov 8, 2025</td>
-                                  <td className="py-4 px-4 text-sm font-medium">Medical Equipment Fund</td>
-                                  <td className="py-4 px-4 text-sm font-semibold">Rp 79.000</td>
-                                  <td className="py-4 px-4">
-                                    <span className="inline-flex items-center rounded-md border px-2 py-1 text-xs font-medium bg-blue-100 text-blue-700 border-blue-200">Health</span>
-                                  </td>
-                                  <td className="py-4 px-4">
-                                    <a href="#" className="inline-flex items-center gap-1 text-sm text-primary hover:underline">
-                                      0x6a9c...f13b
-                                      <ExternalLink className="h-3 w-3" />
-                                    </a>
-                                  </td>
-                                </tr>
-                              </tbody>
-                            </table>
-                          </div>
+                          {isLoading ? (
+                            <div className="flex items-center justify-center py-10">
+                              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                            </div>
+                          ) : !isConnected ? (
+                            <div className="text-center py-10 text-muted-foreground">
+                              Please connect your wallet to view donation history
+                            </div>
+                          ) : receipts.length === 0 ? (
+                            <div className="text-center py-10 text-muted-foreground">
+                              No donations yet. Make your first donation to get started!
+                            </div>
+                          ) : (
+                            <div className="overflow-x-auto">
+                              <table className="w-full">
+                                <thead>
+                                  <tr className="border-b border-border">
+                                    <th className="text-left text-sm font-medium text-muted-foreground py-3 px-4">Date</th>
+                                    <th className="text-left text-sm font-medium text-muted-foreground py-3 px-4">Campaign</th>
+                                    <th className="text-left text-sm font-medium text-muted-foreground py-3 px-4">Amount</th>
+                                    <th className="text-left text-sm font-medium text-muted-foreground py-3 px-4">NFT ID</th>
+                                    <th className="text-left text-sm font-medium text-muted-foreground py-3 px-4">Transaction</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {receipts.map((receipt) => (
+                                    <tr key={receipt.tokenId.toString()} className="border-b border-border hover:bg-accent/50">
+                                      <td className="py-4 px-4 text-sm">{formatTimestamp(Number(receipt.timestamp))}</td>
+                                      <td className="py-4 px-4 text-sm font-medium">Campaign #{receipt.poolId.toString()}</td>
+                                      <td className="py-4 px-4 text-sm font-semibold">{formatIDRX(receipt.amount)} IDRX</td>
+                                      <td className="py-4 px-4">
+                                        <span className="inline-flex items-center rounded-md border px-2 py-1 text-xs font-medium bg-primary/10 text-primary border-primary/20">
+                                          #{receipt.tokenId.toString()}
+                                        </span>
+                                      </td>
+                                      <td className="py-4 px-4">
+                                        <a 
+                                          href={`https://sepolia.basescan.org/nft/${CONTRACT_ADDRESSES.DonationReceiptNFT}/${receipt.tokenId.toString()}`}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          className="inline-flex items-center gap-1 text-sm text-primary hover:underline"
+                                        >
+                                          View NFT
+                                          <ExternalLink className="h-3 w-3" />
+                                        </a>
+                                      </td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -340,173 +346,162 @@ const DonorDashboard: React.FC = () => {
                   {activeTab === 'governance' && (
                     <div className="space-y-6">
                       {/* Voting Power Card */}
-                      <div className="bg-gradient-to-br from-purple-50 to-white text-card-foreground rounded-xl border border-purple-200 shadow-sm p-6">
-                        <div className="flex items-start justify-between">
-                          <div>
-                            <h3 className="font-semibold text-lg mb-2">Your Voting Power</h3>
-                            <div className="text-3xl font-bold text-purple-600 mb-2">850 vZKT</div>
-                            <p className="text-sm text-muted-foreground mb-4">Soul-bound tokens earned through donations</p>
-                            <div className="flex gap-4 text-sm">
-                              <div>
-                                <div className="text-muted-foreground">Proposals Voted</div>
-                                <div className="font-semibold">12</div>
-                              </div>
-                              <div>
-                                <div className="text-muted-foreground">Participation Rate</div>
-                                <div className="font-semibold">85%</div>
+                      <div className="bg-white text-card-foreground rounded-xl border border-black shadow-sm p-6">
+                        <div className="flex items-center justify-between mb-4">
+                          <h3 className="font-semibold text-lg">Your Voting Power</h3>
+                          <Vote className="h-5 w-5 text-primary" />
+                        </div>
+                        {isLoadingVotingPower ? (
+                          <div className="flex items-center justify-center py-6">
+                            <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                          </div>
+                        ) : !isConnected ? (
+                          <div className="text-center py-6 text-muted-foreground">
+                            Please connect your wallet to view voting power
+                          </div>
+                        ) : (
+                          <>
+                            <div className="text-3xl font-bold mb-2">{formattedVotingPower} vZKT</div>
+                            <p className="text-sm text-muted-foreground">Based on your donation history and participation</p>
+                            <div className="mt-4 pt-4 border-t border-border">
+                              <div className="text-sm text-muted-foreground mb-2">Voting Status</div>
+                              <div className="flex gap-2">
+                                {(votingPower || BigInt(0)) > BigInt(0) ? (
+                                  <>
+                                    <span className="inline-flex items-center rounded-md border px-2 py-1 text-xs font-medium bg-green-100 text-green-700 border-green-200">
+                                      <CheckCircle2 className="h-3 w-3 mr-1" />
+                                      Eligible to Vote
+                                    </span>
+                                    <span className="inline-flex items-center rounded-md border px-2 py-1 text-xs font-medium bg-blue-100 text-blue-700 border-blue-200">
+                                      Active Voter
+                                    </span>
+                                  </>
+                                ) : (
+                                  <span className="inline-flex items-center rounded-md border px-2 py-1 text-xs font-medium bg-yellow-100 text-yellow-700 border-yellow-200">
+                                    <Clock className="h-3 w-3 mr-1" />
+                                    Make a donation to earn voting power
+                                  </span>
+                                )}
                               </div>
                             </div>
-                          </div>
-                          <div className="text-right">
-                            <span className="inline-flex items-center rounded-md border px-3 py-1 text-sm font-medium bg-purple-100 text-purple-700 border-purple-200">Top 15%</span>
-                          </div>
-                        </div>
+                          </>
+                        )}
                       </div>
 
                       {/* Active Proposals */}
-                      <div>
+                      <div className="bg-white text-card-foreground rounded-xl border border-black shadow-sm p-6">
                         <h3 className="font-semibold text-lg mb-4">Active Proposals</h3>
-                        <div className="space-y-4">
-                          {/* Proposal 1 */}
-                          <div className="bg-white text-card-foreground rounded-xl border border-black shadow-sm p-6">
-                            <div className="flex items-start justify-between mb-4">
-                              <div className="flex-1">
-                                <div className="flex items-center gap-2 mb-2">
-                                  <span className="inline-flex items-center rounded-md border px-2 py-1 text-xs font-medium bg-green-100 text-green-700 border-green-200">
-                                    <Clock className="h-3 w-3 mr-1" />
-                                    Active
-                                  </span>
-                                  <span className="text-xs text-muted-foreground">Proposal #17</span>
-                                </div>
-                                <h4 className="font-semibold text-base mb-2">Increase Education Fund Allocation to 35%</h4>
-                                <p className="text-sm text-muted-foreground mb-4">
-                                  Proposal to increase the percentage of total donations allocated to education-related campaigns from 25% to 35%, focusing on underprivileged children's access to quality education.
-                                </p>
-                              </div>
-                            </div>
-                            <div className="space-y-3">
-                              <div>
-                                <div className="flex justify-between text-sm mb-1">
-                                  <span className="text-muted-foreground">For: 2,450 vZKT (68%)</span>
-                                  <span className="text-muted-foreground">Against: 1,150 vZKT (32%)</span>
-                                </div>
-                                <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
-                                  <div className="bg-green-500 h-2" style={{ width: '68%' }}></div>
-                                </div>
-                              </div>
-                              <div className="flex items-center justify-between pt-2 border-t border-border">
-                                <span className="text-xs text-muted-foreground">Ends in 3 days</span>
-                                <div className="flex gap-2">
-                                  <button className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-all border shadow-xs h-9 px-4 py-2 bg-green-500 text-white border-green-600 hover:bg-green-600">
-                                    <CheckCircle2 className="h-4 w-4" />
-                                    Vote For
-                                  </button>
-                                  <button className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-all border shadow-xs h-9 px-4 py-2 bg-white border-black hover:bg-gray-50">
-                                    <XCircle className="h-4 w-4" />
-                                    Vote Against
-                                  </button>
-                                </div>
-                              </div>
-                            </div>
+                        {isLoadingProposals ? (
+                          <div className="flex items-center justify-center py-10">
+                            <Loader2 className="h-8 w-8 animate-spin text-primary" />
                           </div>
-
-                          {/* Proposal 2 */}
-                          <div className="bg-white text-card-foreground rounded-xl border border-black shadow-sm p-6">
-                            <div className="flex items-start justify-between mb-4">
-                              <div className="flex-1">
-                                <div className="flex items-center gap-2 mb-2">
-                                  <span className="inline-flex items-center rounded-md border px-2 py-1 text-xs font-medium bg-green-100 text-green-700 border-green-200">
-                                    <Clock className="h-3 w-3 mr-1" />
-                                    Active
-                                  </span>
-                                  <span className="text-xs text-muted-foreground">Proposal #16</span>
-                                </div>
-                                <h4 className="font-semibold text-base mb-2">Implement Quarterly Impact Reports</h4>
-                                <p className="text-sm text-muted-foreground mb-4">
-                                  Require all organizations to submit detailed quarterly impact reports with measurable outcomes and beneficiary testimonials to increase transparency.
-                                </p>
-                              </div>
-                            </div>
-                            <div className="space-y-3">
-                              <div>
-                                <div className="flex justify-between text-sm mb-1">
-                                  <span className="text-muted-foreground">For: 3,120 vZKT (82%)</span>
-                                  <span className="text-muted-foreground">Against: 685 vZKT (18%)</span>
-                                </div>
-                                <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
-                                  <div className="bg-green-500 h-2" style={{ width: '82%' }}></div>
-                                </div>
-                              </div>
-                              <div className="flex items-center justify-between pt-2 border-t border-border">
-                                <span className="text-xs text-muted-foreground">Ends in 5 days</span>
-                                <div className="flex gap-2">
-                                  <button className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-all border shadow-xs h-9 px-4 py-2 bg-green-500 text-white border-green-600 hover:bg-green-600">
-                                    <CheckCircle2 className="h-4 w-4" />
-                                    Vote For
-                                  </button>
-                                  <button className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-all border shadow-xs h-9 px-4 py-2 bg-white border-black hover:bg-gray-50">
-                                    <XCircle className="h-4 w-4" />
-                                    Vote Against
-                                  </button>
-                                </div>
-                              </div>
-                            </div>
+                        ) : !isConnected ? (
+                          <div className="text-center py-10 text-muted-foreground">
+                            Please connect your wallet to view proposals
                           </div>
-
-                          {/* Proposal 3 */}
-                          <div className="bg-white text-card-foreground rounded-xl border border-black shadow-sm p-6 opacity-60">
-                            <div className="flex items-start justify-between mb-4">
-                              <div className="flex-1">
-                                <div className="flex items-center gap-2 mb-2">
-                                  <span className="inline-flex items-center rounded-md border px-2 py-1 text-xs font-medium bg-blue-100 text-blue-700 border-blue-200">
-                                    Passed
-                                  </span>
-                                  <span className="text-xs text-muted-foreground">Proposal #15</span>
-                                </div>
-                                <h4 className="font-semibold text-base mb-2">Add Emergency Response Category</h4>
-                                <p className="text-sm text-muted-foreground mb-4">
-                                  Create a new campaign category for emergency disaster response with expedited approval process for verified relief organizations.
-                                </p>
-                              </div>
-                            </div>
-                            <div className="space-y-3">
-                              <div>
-                                <div className="flex justify-between text-sm mb-1">
-                                  <span className="text-muted-foreground">For: 4,200 vZKT (91%)</span>
-                                  <span className="text-muted-foreground">Against: 415 vZKT (9%)</span>
-                                </div>
-                                <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
-                                  <div className="bg-blue-500 h-2" style={{ width: '91%' }}></div>
-                                </div>
-                              </div>
-                              <div className="flex items-center justify-between pt-2 border-t border-border">
-                                <span className="text-xs text-muted-foreground">Ended Nov 10, 2025</span>
-                                <span className="inline-flex items-center rounded-md border px-2 py-1 text-xs font-medium bg-blue-100 text-blue-700 border-blue-200">
-                                  Implemented
-                                </span>
-                              </div>
-                            </div>
+                        ) : proposals.length === 0 ? (
+                          <div className="text-center py-10 text-muted-foreground">
+                            No active proposals at the moment
                           </div>
-                        </div>
-                      </div>
+                        ) : (
+                          <div className="space-y-4">
+                            {proposals.map((proposal) => {
+                              const totalVotes = proposal.votesFor + proposal.votesAgainst;
+                              const forPercentage = totalVotes > BigInt(0) 
+                                ? Number((proposal.votesFor * BigInt(100)) / totalVotes) 
+                                : 0;
+                              const againstPercentage = 100 - forPercentage;
+                              
+                              const statusConfig = {
+                                'Pending': { color: 'bg-yellow-100 text-yellow-700 border-yellow-200', label: 'Pending' },
+                                'Active': { color: 'bg-green-100 text-green-700 border-green-200', label: 'Active' },
+                                'Approved': { color: 'bg-blue-100 text-blue-700 border-blue-200', label: 'Approved' },
+                                'Rejected': { color: 'bg-red-100 text-red-700 border-red-200', label: 'Rejected' },
+                                'Executed': { color: 'bg-purple-100 text-purple-700 border-purple-200', label: 'Executed' },
+                              };
 
-                      {/* How to Earn More Voting Power */}
-                      <div className="bg-purple-50 text-card-foreground rounded-xl border border-purple-200 p-6">
-                        <h4 className="font-semibold mb-3">How to Earn More Voting Power</h4>
-                        <ul className="space-y-2 text-sm text-muted-foreground">
-                          <li className="flex items-start gap-2">
-                            <CheckCircle2 className="h-4 w-4 text-purple-600 mt-0.5 flex-shrink-0" />
-                            <span>Make donations to any campaign (1 vZKT per 10,000 IDRX donated)</span>
-                          </li>
-                          <li className="flex items-start gap-2">
-                            <CheckCircle2 className="h-4 w-4 text-purple-600 mt-0.5 flex-shrink-0" />
-                            <span>Participate in governance votes (5 vZKT bonus per vote)</span>
-                          </li>
-                          <li className="flex items-start gap-2">
-                            <CheckCircle2 className="h-4 w-4 text-purple-600 mt-0.5 flex-shrink-0" />
-                            <span>Maintain consistent monthly donations (10% bonus vZKT)</span>
-                          </li>
-                        </ul>
+                              const config = statusConfig[proposal.status] || statusConfig['Pending'];
+                              const hasUserVoted = hasVoted[proposal.id.toString()];
+                              const isPending = pendingVoteProposalId === proposal.id.toString();
+
+                              return (
+                                <div key={proposal.id.toString()} className="border border-border rounded-lg p-4">
+                                  <div className="flex items-start justify-between mb-3">
+                                    <div>
+                                      <div className="flex items-center gap-2 mb-1">
+                                        <span className={`inline-flex items-center rounded-md border px-2 py-1 text-xs font-medium ${config.color}`}>
+                                          {config.label}
+                                        </span>
+                                        <span className="text-xs text-muted-foreground">#{proposal.id.toString()}</span>
+                                      </div>
+                                      <h4 className="font-semibold">{proposal.title}</h4>
+                                    </div>
+                                  </div>
+                                  <p className="text-sm text-muted-foreground mb-4">{proposal.description}</p>
+                                  
+                                  {/* Voting Stats */}
+                                  <div className="space-y-2 mb-4">
+                                    <div className="flex justify-between text-sm">
+                                      <span className="text-muted-foreground">For ({forPercentage}%)</span>
+                                      <span className="font-medium">{formatIDRX(proposal.votesFor)} vZKT</span>
+                                    </div>
+                                    <div className="h-2 bg-accent rounded-full overflow-hidden">
+                                      <div className="h-full bg-green-500" style={{ width: `${forPercentage}%` }}></div>
+                                    </div>
+                                    <div className="flex justify-between text-sm">
+                                      <span className="text-muted-foreground">Against ({againstPercentage}%)</span>
+                                      <span className="font-medium">{formatIDRX(proposal.votesAgainst)} vZKT</span>
+                                    </div>
+                                    <div className="h-2 bg-accent rounded-full overflow-hidden">
+                                      <div className="h-full bg-red-500" style={{ width: `${againstPercentage}%` }}></div>
+                                    </div>
+                                  </div>
+
+                                  {/* Voting Buttons */}
+                                  {hasUserVoted ? (
+                                    <div className="text-sm text-green-600 flex items-center gap-1">
+                                      <CheckCircle2 className="h-4 w-4" />
+                                      You voted on this proposal
+                                    </div>
+                                  ) : proposal.status === 'Active' && (votingPower || BigInt(0)) > BigInt(0) ? (
+                                    <div className="flex gap-2">
+                                      <button
+                                        onClick={() => handleVote(proposal.id.toString(), "for")}
+                                        disabled={isPending || isVoting}
+                                        className="flex-1 inline-flex items-center justify-center rounded-lg bg-green-500 text-white px-4 py-2 text-sm font-medium hover:bg-green-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                      >
+                                        {isPending ? (
+                                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                        ) : (
+                                          <CheckCircle2 className="h-4 w-4 mr-2" />
+                                        )}
+                                        Vote For
+                                      </button>
+                                      <button
+                                        onClick={() => handleVote(proposal.id.toString(), "against")}
+                                        disabled={isPending || isVoting}
+                                        className="flex-1 inline-flex items-center justify-center rounded-lg border border-border bg-white text-foreground px-4 py-2 text-sm font-medium hover:bg-accent transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                      >
+                                        {isPending ? (
+                                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                        ) : (
+                                          <XCircle className="h-4 w-4 mr-2" />
+                                        )}
+                                        Vote Against
+                                      </button>
+                                    </div>
+                                  ) : (
+                                    <div className="text-sm text-muted-foreground">
+                                      {(votingPower || BigInt(0)) === BigInt(0) 
+                                        ? "Make a donation to earn voting power" 
+                                        : "Voting closed"}
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
                       </div>
                     </div>
                   )}

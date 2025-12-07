@@ -340,6 +340,9 @@ export default function GovernancePage() {
                       <div className="flex items-start justify-between gap-4 mb-4">
                         <div className="flex-1">
                           <div className="flex items-center gap-2 mb-2">
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-gray-100 text-gray-700 border border-gray-300">
+                              #{proposal.id}
+                            </span>
                             <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-green-100 text-green-700 border border-green-300">
                               Active
                             </span>
@@ -348,7 +351,8 @@ export default function GovernancePage() {
                             </span>
                           </div>
                           <h3 className="text-lg font-bold mb-2">{proposal.title}</h3>
-                          <p className="text-sm text-gray-700">{proposal.description}</p>
+                          <p className="text-sm text-gray-700 mb-2">{proposal.description}</p>
+                          <p className="text-xs text-gray-500">Proposed by: {proposal.createdBy}</p>
                         </div>
                       </div>
                       
@@ -423,6 +427,9 @@ export default function GovernancePage() {
                 .map((proposal) => (
                   <div key={proposal.id} className="border border-black rounded-lg p-6 bg-yellow-50">
                     <div className="flex items-center gap-2 mb-2">
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-gray-100 text-gray-700 border border-gray-300">
+                        #{proposal.id}
+                      </span>
                       <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-yellow-100 text-yellow-700 border border-yellow-300">
                         Pending Review
                       </span>
@@ -431,7 +438,8 @@ export default function GovernancePage() {
                       </span>
                     </div>
                     <h3 className="text-lg font-bold mb-2">{proposal.title}</h3>
-                    <p className="text-sm text-gray-700 mb-4">{proposal.description}</p>
+                    <p className="text-sm text-gray-700 mb-2">{proposal.description}</p>
+                    <p className="text-xs text-gray-500 mb-4">Proposed by: {proposal.createdBy}</p>
                     
                     <div className="p-4 bg-yellow-100 border border-yellow-300 rounded-lg flex items-start gap-3">
                       <Shield className="h-5 w-5 text-yellow-700 mt-0.5 flex-shrink-0" />
@@ -455,6 +463,9 @@ export default function GovernancePage() {
                 .map((proposal) => (
                   <div key={proposal.id} className="border border-black rounded-lg p-6 bg-white opacity-75">
                     <div className="flex items-center gap-2 mb-2">
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-gray-100 text-gray-700 border border-gray-300">
+                        #{proposal.id}
+                      </span>
                       <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-green-100 text-green-700 border border-green-300">
                         Approved
                       </span>
@@ -469,7 +480,8 @@ export default function GovernancePage() {
                       )}
                     </div>
                     <h3 className="text-lg font-bold mb-2">{proposal.title}</h3>
-                    <p className="text-sm text-gray-700 mb-4">{proposal.description}</p>
+                    <p className="text-sm text-gray-700 mb-2">{proposal.description}</p>
+                    <p className="text-xs text-gray-500 mb-4">Proposed by: {proposal.createdBy}</p>
                     
                     <div className="flex items-center gap-2 text-sm text-gray-600">
                       <CheckCircle2 className="h-4 w-4 text-green-600" />

@@ -10,6 +10,7 @@ export interface DonationReceipt {
   amount: bigint;
   timestamp: bigint;
   receiptUri: string;
+  txHash?: string;
 }
 
 export function useDonationReceipts() {

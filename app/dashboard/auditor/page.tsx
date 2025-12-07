@@ -1,42 +1,72 @@
 "use client";
 
 import React, { useState } from 'react';
-import { Shield, LayoutDashboard, Building2, FileCheck, TriangleAlert, Search, Download, Activity, AlertCircle, TrendingUp, Users } from 'lucide-react';
+import { Shield, LayoutDashboard, Building2, FileCheck, TriangleAlert, Search, Download, Activity, AlertCircle, TrendingUp, Users, Loader2, ExternalLink } from 'lucide-react';
+import { useCampaigns } from '@/hooks/useCampaigns';
+import { useTransactionHistory } from '@/hooks/useTransactionHistory';
+import { formatIDRX, formatAddress, formatTimestamp } from '@/lib/abi';
 
 type SidebarTab = 'overview' | 'organizations' | 'audit' | 'alerts';
 
 const BaznasDashboard = () => {
   const [sidebarTab, setSidebarTab] = useState<SidebarTab>('overview');
+  const { campaigns, isLoading } = useCampaigns([0, 1, 2, 3, 4, 5, 6, 7, 8, 9]);
+  const { transactions, isLoading: isLoadingTransactions } = useTransactionHistory();
 
-  const organizations = [
-    { name: 'Laznas BSM', allocation: '$1.2M', status: 'Compliant', risk: 'Low', riskPercent: 20 },
-    { name: 'Dompet Dhuafa', allocation: '$3.5M', status: 'Compliant', risk: 'Low', riskPercent: 20 },
-    { name: 'Rumah Zakat', allocation: '$2.1M', status: 'Compliant', risk: 'Low', riskPercent: 20 },
-    { name: 'Small NGO A', allocation: '$50k', status: 'Review Needed', risk: 'Medium', riskPercent: 60 },
-    { name: 'Human Initiative', allocation: '$1.8M', status: 'Compliant', risk: 'Low', riskPercent: 20 },
-  ];
+  // Calculate real statistics from blockchain data
+  const totalFunds = campaigns.reduce((sum, camp) => sum + camp.currentAmount, BigInt(0));
+  const totalOrganizations = new Set(campaigns.map(c => c.organizationAddress.toLowerCase())).size;
+  const activeCampaigns = campaigns.filter(c => c.isActive).length;
+  const complianceRate = campaigns.length > 0 ? ((activeCampaigns / campaigns.length) * 100).toFixed(1) : '0';
+  
+  // Group campaigns by organization
+  const organizationMap = new Map<string, typeof campaigns>();
+  campaigns.forEach(campaign => {
+    const org = campaign.organizationAddress.toLowerCase();
+    if (!organizationMap.has(org)) {
+      organizationMap.set(org, []);
+    }
+    organizationMap.get(org)!.push(campaign);
+  });
 
-  const auditLogs = [
-    { action: 'Funds Deployed: $12,500', org: 'Rumah Zakat', tx: '0x82...91a', time: '2 mins ago' },
-    { action: 'Compliance Check Passed', org: 'Dompet Dhuafa', tx: '0x7f...3c2', time: '15 mins ago' },
-    { action: 'New Organization Registered', org: 'Laznas BSM', tx: '0x4a...8d9', time: '1 hour ago' },
-    { action: 'Funds Deployed: $25,000', org: 'Human Initiative', tx: '0x91...2ef', time: '2 hours ago' },
-    { action: 'Risk Alert Resolved', org: 'Small NGO A', tx: '0xc3...7b4', time: '3 hours ago' },
-  ];
+  const organizations = Array.from(organizationMap.entries()).map(([address, orgCampaigns]) => {
+    const totalRaised = orgCampaigns.reduce((sum, c) => sum + c.currentAmount, BigInt(0));
+    const activeCampaigns = orgCampaigns.filter(c => c.isActive).length;
+    const status = activeCampaigns > 0 ? 'Compliant' : 'Review Needed';
+    const risk = activeCampaigns >= orgCampaigns.length / 2 ? 'Low' : 'Medium';
+    const riskPercent = activeCampaigns >= orgCampaigns.length / 2 ? 20 : 60;
+    
+    return {
+      name: `Org ${formatAddress(address)}`,
+      address,
+      allocation: formatIDRX(totalRaised),
+      status,
+      risk,
+      riskPercent,
+    };
+  });
 
-  const getStatusColor = (status) => {
+  // Map transactions to audit logs
+  const auditLogs = transactions.slice(0, 10).map(tx => ({
+    action: `${tx.type}: ${formatIDRX(tx.amount || BigInt(0))} IDRX`,
+    org: formatAddress(tx.from),
+    tx: tx.hash,
+    time: formatTimestamp(tx.timestamp),
+  }));
+
+  const getStatusColor = (status: string) => {
     return status === 'Compliant' 
       ? 'bg-emerald-100 text-emerald-700' 
       : 'bg-amber-100 text-amber-700';
   };
 
-  const getRiskColor = (risk) => {
+  const getRiskColor = (risk: string) => {
     return risk === 'Low' 
       ? 'bg-emerald-500' 
       : 'bg-amber-500';
   };
 
-  const getRiskBgColor = (risk) => {
+  const getRiskBgColor = (risk: string) => {
     return risk === 'Low' 
       ? 'bg-emerald-200' 
       : 'bg-amber-200';
@@ -143,33 +173,57 @@ const BaznasDashboard = () => {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           <div className="bg-white rounded-xl border border-l-4 border-l-emerald-500 p-6 shadow-sm">
             <div className="text-sm font-medium text-emerald-600 mb-2">
-              Total National Zakat
+              Total Platform Funds
             </div>
-            <div className="text-2xl font-bold text-emerald-900">$45,250,000</div>
-            <div className="flex items-center gap-1 text-xs text-emerald-600 mt-2 font-medium">
-              <Activity className="h-3 w-3" />
-              100% Traced on Blockchain
-            </div>
+            {isLoading ? (
+              <div className="flex items-center py-2">
+                <Loader2 className="h-5 w-5 animate-spin text-emerald-600" />
+              </div>
+            ) : (
+              <>
+                <div className="text-2xl font-bold text-emerald-900">{formatIDRX(totalFunds)} IDRX</div>
+                <div className="flex items-center gap-1 text-xs text-emerald-600 mt-2 font-medium">
+                  <Activity className="h-3 w-3" />
+                  100% Traced on Blockchain
+                </div>
+              </>
+            )}
           </div>
 
           <div className="bg-white rounded-xl border border-l-4 border-l-blue-500 p-6 shadow-sm">
             <div className="text-sm font-medium text-blue-600 mb-2">
               Active Organizations
             </div>
-            <div className="text-2xl font-bold text-blue">145</div>
-            <div className="text-xs text-blue-600 mt-2">
-              142 Compliant, 3 Under Review
-            </div>
+            {isLoading ? (
+              <div className="flex items-center py-2">
+                <Loader2 className="h-5 w-5 animate-spin text-blue-600" />
+              </div>
+            ) : (
+              <>
+                <div className="text-2xl font-bold text-blue">{totalOrganizations}</div>
+                <div className="text-xs text-blue-600 mt-2">
+                  {activeCampaigns} Active Campaigns
+                </div>
+              </>
+            )}
           </div>
 
           <div className="bg-white rounded-xl border border-l-4 border-l-amber-500 p-6 shadow-sm">
             <div className="text-sm font-medium text-amber-600 mb-2">
               Compliance Rate
             </div>
-            <div className="text-2xl font-bold text-amber-900">98.2%</div>
-            <div className="text-xs text-amber-600 mt-2">
-              Based on real-time audits
-            </div>
+            {isLoading ? (
+              <div className="flex items-center py-2">
+                <Loader2 className="h-5 w-5 animate-spin text-amber-600" />
+              </div>
+            ) : (
+              <>
+                <div className="text-2xl font-bold text-amber-900">{complianceRate}%</div>
+                <div className="text-xs text-amber-600 mt-2">
+                  Based on real-time audits
+                </div>
+              </>
+            )}
           </div>
         </div>
 
@@ -185,62 +239,80 @@ const BaznasDashboard = () => {
                 </p>
               </div>
               <div className="p-6">
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="border-b border-black">
-                        <th className="text-left py-3 px-2 font-medium text-black">
-                          Organization
-                        </th>
-                        <th className="text-left py-3 px-2 font-medium text-black">
-                          Fund Allocation
-                        </th>
-                        <th className="text-left py-3 px-2 font-medium text-black">
-                          Audit Status
-                        </th>
-                        <th className="text-left py-3 px-2 font-medium text-black">
-                          Risk Score
-                        </th>
-                        <th className="text-left py-3 px-2 font-medium text-black"></th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {organizations.map((org, idx) => (
-                        <tr key={idx} className="border-b border-black hover:bg-slate-50">
-                          <td className="py-3 px-2 font-medium text-black">
-                            {org.name}
-                          </td>
-                          <td className="py-3 px-2 text-black">{org.allocation}</td>
-                          <td className="py-3 px-2">
-                            <span
-                              className={`inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium ${getStatusColor(
-                                org.status
-                              )}`}
-                            >
-                              {org.status}
-                            </span>
-                          </td>
-                          <td className="py-3 px-2">
-                            <div className="flex items-center gap-2">
-                              <div className={`h-2 w-16 rounded-full ${getRiskBgColor(org.risk)}`}>
-                                <div
-                                  className={`h-full rounded-full ${getRiskColor(org.risk)}`}
-                                  style={{ width: `${org.riskPercent}%` }}
-                                ></div>
-                              </div>
-                              <span className="text-xs text-black">{org.risk}</span>
-                            </div>
-                          </td>
-                          <td className="py-3 px-2">
-                            <button className="text-xs font-medium text-black hover:text-black px-3 py-1 rounded-md hover:bg-slate-100 transition-colors">
-                              Details
-                            </button>
-                          </td>
+                {isLoading ? (
+                  <div className="flex items-center justify-center py-10">
+                    <Loader2 className="h-8 w-8 animate-spin text-black" />
+                  </div>
+                ) : organizations.length === 0 ? (
+                  <div className="text-center py-10 text-black">
+                    No organizations found
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b border-black">
+                          <th className="text-left py-3 px-2 font-medium text-black">
+                            Organization
+                          </th>
+                          <th className="text-left py-3 px-2 font-medium text-black">
+                            Fund Allocation
+                          </th>
+                          <th className="text-left py-3 px-2 font-medium text-black">
+                            Audit Status
+                          </th>
+                          <th className="text-left py-3 px-2 font-medium text-black">
+                            Risk Score
+                          </th>
+                          <th className="text-left py-3 px-2 font-medium text-black">
+                            Address
+                          </th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                      </thead>
+                      <tbody>
+                        {organizations.map((org, idx) => (
+                          <tr key={idx} className="border-b border-black hover:bg-slate-50">
+                            <td className="py-3 px-2 font-medium text-black">
+                              {org.name}
+                            </td>
+                            <td className="py-3 px-2 text-black">{org.allocation} IDRX</td>
+                            <td className="py-3 px-2">
+                              <span
+                                className={`inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium ${getStatusColor(
+                                  org.status
+                                )}`}
+                              >
+                                {org.status}
+                              </span>
+                            </td>
+                            <td className="py-3 px-2">
+                              <div className="flex items-center gap-2">
+                                <div className={`h-2 w-16 rounded-full ${getRiskBgColor(org.risk)}`}>
+                                  <div
+                                    className={`h-2 rounded-full ${getRiskColor(org.risk)}`}
+                                    style={{ width: `${org.riskPercent}%` }}
+                                  ></div>
+                                </div>
+                                <span className="text-xs text-black">{org.risk}</span>
+                              </div>
+                            </td>
+                            <td className="py-3 px-2">
+                              <a 
+                                href={`https://sepolia.basescan.org/address/${org.address}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1 text-xs text-blue-600 hover:underline"
+                              >
+                                {formatAddress(org.address)}
+                                <ExternalLink className="h-3 w-3" />
+                              </a>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -255,25 +327,41 @@ const BaznasDashboard = () => {
                 </p>
               </div>
               <div className="p-6">
-                <div className="relative border-l border-black ml-3 space-y-6">
-                  {auditLogs.map((log, idx) => (
-                    <div key={idx} className="ml-6 relative">
-                      <div className="absolute -left-[31px] top-1 h-4 w-4 rounded-full border-2 border-white bg-blue-500"></div>
-                      <div className="flex flex-col gap-1">
-                        <div className="text-sm font-semibold text-black">
-                          {log.action}
+                {isLoadingTransactions ? (
+                  <div className="flex items-center justify-center py-10">
+                    <Loader2 className="h-6 w-6 animate-spin text-black" />
+                  </div>
+                ) : auditLogs.length === 0 ? (
+                  <div className="text-center py-10 text-sm text-black">
+                    No audit logs found
+                  </div>
+                ) : (
+                  <div className="relative border-l border-black ml-3 space-y-6">
+                    {auditLogs.map((log, idx) => (
+                      <div key={idx} className="ml-6 relative">
+                        <div className="absolute -left-[31px] top-1 h-4 w-4 rounded-full border-2 border-white bg-blue-500"></div>
+                        <div className="flex flex-col gap-1">
+                          <div className="text-sm font-semibold text-black">
+                            {log.action}
+                          </div>
+                          <div className="text-xs text-black">
+                            Org: <span className="font-medium text-black">{log.org}</span>
+                          </div>
+                          <a 
+                            href={`https://sepolia.basescan.org/tx/${log.tx}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-xs text-blue-600 font-mono bg-slate-100 w-fit px-1 rounded hover:underline inline-flex items-center gap-1"
+                          >
+                            Tx: {formatAddress(log.tx)}
+                            <ExternalLink className="h-2 w-2" />
+                          </a>
+                          <div className="text-xs text-black mt-1">{log.time}</div>
                         </div>
-                        <div className="text-xs text-black">
-                          Org: <span className="font-medium text-black">{log.org}</span>
-                        </div>
-                        <div className="text-xs text-black font-mono bg-slate-100 w-fit px-1 rounded">
-                          Tx: {log.tx}
-                        </div>
-                        <div className="text-xs text-black mt-1">{log.time}</div>
                       </div>
-                    </div>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           </div>
