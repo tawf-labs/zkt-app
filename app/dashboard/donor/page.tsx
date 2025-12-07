@@ -1,29 +1,50 @@
 "use client";
 
-import React, { useState } from 'react';
-import { Award, FileText, Vote, Wallet, ShieldCheck, Download, ExternalLink, TrendingUp, CheckCircle2, XCircle, Clock, Settings, Loader2 } from 'lucide-react';
+import React, { useState, useMemo } from 'react';
+import { Award, FileText, Vote, Wallet, ShieldCheck, Download, ExternalLink, TrendingUp, CheckCircle2, XCircle, Clock, Settings, Loader2, Plus, Send } from 'lucide-react';
 import { useDonationReceipts } from '@/hooks/useDonationReceipts';
 import { useProposals } from '@/hooks/useProposals';
 import { useVotingPower } from '@/hooks/useVotingPower';
-import { useAccount, useWriteContract } from 'wagmi';
+import { useUserProposals } from '@/hooks/useUserProposals';
+import { useIDRXBalance } from '@/hooks/useIDRXBalance';
+import { useTransactionHistory } from '@/hooks/useTransactionHistory';
+import { useAccount, useWriteContract, useDisconnect } from 'wagmi';
 import { formatIDRX, formatAddress, formatTimestamp, CONTRACT_ADDRESSES, ZKTCoreABI } from '@/lib/abi';
 import { handleTransactionError, handleWalletError } from '@/lib/errors';
 import { useToast } from '@/hooks/use-toast';
+import { aggregateDonationsByYear, generateCSVReport, downloadCSV } from '@/lib/taxReports';
 
 type SidebarTab = 'overview' | 'tax-reports' | 'governance-dao' | 'wallet-settings';
 
 const DonorDashboard: React.FC = () => {
   const { toast } = useToast();
   const { address, isConnected } = useAccount();
+  const { disconnect } = useDisconnect();
   const { receipts, isLoading } = useDonationReceipts();
   const { proposals, isLoading: isLoadingProposals, refetch: refetchProposals } = useProposals([0, 1, 2, 3]);
   const { votingPower, formattedVotingPower, isLoading: isLoadingVotingPower } = useVotingPower();
+  const { proposals: userProposals, isLoading: isLoadingUserProposals } = useUserProposals();
+  const { balance: idrxBalance, formattedBalance, isLoading: isLoadingBalance } = useIDRXBalance();
+  const { transactions, isLoading: isLoadingTransactions } = useTransactionHistory();
   const { writeContractAsync, isPending: isVoting } = useWriteContract();
   
   const [sidebarTab, setSidebarTab] = useState<SidebarTab>('overview');
   const [activeTab, setActiveTab] = useState<'receipts' | 'history' | 'governance'>('receipts');
   const [hasVoted, setHasVoted] = useState<Record<string, boolean>>({});
   const [pendingVoteProposalId, setPendingVoteProposalId] = useState<string | null>(null);
+  const [showProposalForm, setShowProposalForm] = useState(false);
+  const [proposalTitle, setProposalTitle] = useState('');
+  const [proposalDescription, setProposalDescription] = useState('');
+  const [isCreatingProposal, setIsCreatingProposal] = useState(false);
+  
+  // Calculate tax reports from receipts
+  const taxReports = useMemo(() => aggregateDonationsByYear(receipts), [receipts]);
+  
+  // Filter user transactions
+  const userTransactions = useMemo(() => {
+    if (!address) return [];
+    return transactions.filter(tx => tx.from.toLowerCase() === address.toLowerCase()).slice(0, 10);
+  }, [transactions, address]);
 
   const handleVote = async (proposalId: string, voteType: "for" | "against") => {
     if (!isConnected) {
@@ -55,6 +76,116 @@ const DonorDashboard: React.FC = () => {
     } finally {
       setPendingVoteProposalId(null);
     }
+  };
+
+  const handleCreateProposal = async () => {
+    if (!isConnected) {
+      handleWalletError(new Error("not-connected"), { toast });
+      return;
+    }
+
+    // Frontend validation
+    if (!proposalTitle.trim()) {
+      toast({
+        title: "Validation Error",
+        description: "Please enter a proposal title",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (proposalTitle.length < 10) {
+      toast({
+        title: "Validation Error",
+        description: "Title must be at least 10 characters",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!proposalDescription.trim()) {
+      toast({
+        title: "Validation Error",
+        description: "Please enter a proposal description",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (proposalDescription.length < 50) {
+      toast({
+        title: "Validation Error",
+        description: "Description must be at least 50 characters",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Check voting power requirement (minimum 100 vZKT)
+    const minVotingPower = BigInt(100 * 10**18);
+    if ((votingPower || BigInt(0)) < minVotingPower) {
+      toast({
+        title: "Insufficient Voting Power",
+        description: "You need at least 100 vZKT to create a proposal. Make more donations to earn voting power.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsCreatingProposal(true);
+    
+    try {
+      // 7 days voting period (approximately 50,400 blocks on Base Sepolia with 12s block time)
+      const votingPeriod = BigInt(50400);
+      
+      const txHash = await writeContractAsync({
+        address: CONTRACT_ADDRESSES.ZKTCore,
+        abi: ZKTCoreABI,
+        functionName: "createProposal",
+        args: [proposalTitle, proposalDescription, votingPeriod],
+      });
+
+      toast({
+        title: "Proposal Created! 🎉",
+        description: "Your proposal has been submitted to the DAO for voting.",
+      });
+
+      setProposalTitle('');
+      setProposalDescription('');
+      setShowProposalForm(false);
+    } catch (error) {
+      handleTransactionError(error, { toast, action: "create proposal" });
+    } finally {
+      setIsCreatingProposal(false);
+    }
+  };
+
+  const handleDownloadTaxReport = (year: number) => {
+    const report = taxReports.find(r => r.year === year);
+    if (!report || !address) {
+      toast({
+        title: "Error",
+        description: "Unable to generate report",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const csvContent = generateCSVReport(report, address);
+    downloadCSV(csvContent, `ZKT_Tax_Report_${year}_${formatAddress(address)}.csv`);
+    
+    toast({
+      title: "Report Downloaded",
+      description: `Tax report for ${year} has been downloaded successfully.`,
+    });
+  };
+
+  const handleDisconnect = () => {
+    disconnect();
+    toast({
+      title: "Wallet Disconnected",
+      description: "Your wallet has been disconnected successfully.",
+    });
   };
 
   return (
@@ -518,59 +649,95 @@ const DonorDashboard: React.FC = () => {
                     <p className="text-muted-foreground">Download tax-deductible donation receipts for filing</p>
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="bg-white rounded-xl border border-black shadow-sm p-6">
-                      <div className="text-sm text-muted-foreground mb-1">Total Deductible (2025)</div>
-                      <div className="text-2xl font-bold">Rp 19.750.000</div>
-                      <p className="text-xs text-muted-foreground mt-1">Across 45 donations</p>
+                  {isLoading ? (
+                    <div className="flex items-center justify-center py-20">
+                      <Loader2 className="h-10 w-10 animate-spin text-primary" />
                     </div>
-                    <div className="bg-white rounded-xl border border-black shadow-sm p-6">
-                      <div className="text-sm text-muted-foreground mb-1">Tax Benefit Estimate</div>
-                      <div className="text-2xl font-bold text-green-600">Rp 4.937.500</div>
-                      <p className="text-xs text-muted-foreground mt-1">At 25% tax rate</p>
+                  ) : !isConnected ? (
+                    <div className="bg-white rounded-xl border border-black shadow-sm p-12 text-center">
+                      <Wallet className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+                      <h3 className="font-semibold text-lg mb-2">Connect Your Wallet</h3>
+                      <p className="text-muted-foreground">Please connect your wallet to view tax reports</p>
                     </div>
-                  </div>
-
-                  <div className="bg-white rounded-xl border border-black shadow-sm">
-                    <div className="p-6 border-b border-border">
-                      <h3 className="font-semibold text-lg">Annual Reports</h3>
-                      <p className="text-sm text-muted-foreground mt-1">Download comprehensive tax reports by year</p>
+                  ) : taxReports.length === 0 ? (
+                    <div className="bg-white rounded-xl border border-black shadow-sm p-12 text-center">
+                      <FileText className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+                      <h3 className="font-semibold text-lg mb-2">No Donations Yet</h3>
+                      <p className="text-muted-foreground">Make your first donation to start generating tax reports</p>
                     </div>
-                    <div className="p-6 space-y-4">
-                      {['2025', '2024', '2023'].map((year) => (
-                        <div key={year} className="flex items-center justify-between border border-border rounded-lg p-4 hover:bg-accent/50 transition-colors">
-                          <div>
-                            <div className="font-semibold">{year} Tax Year</div>
-                            <div className="text-sm text-muted-foreground mt-1">
-                              {year === '2025' ? 'In Progress - YTD' : 'Complete'}
-                            </div>
+                  ) : (
+                    <>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="bg-white rounded-xl border border-black shadow-sm p-6">
+                          <div className="text-sm text-muted-foreground mb-1">Total Deductible ({new Date().getFullYear()})</div>
+                          <div className="text-2xl font-bold">
+                            {taxReports[0] ? formatIDRX(taxReports[0].totalDonations) : '0'} IDRX
                           </div>
-                          <button className="inline-flex items-center gap-2 px-4 py-2 rounded-md border border-black hover:bg-gray-50 text-sm font-medium">
-                            <Download className="h-4 w-4" />
-                            Download PDF
-                          </button>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Across {taxReports[0]?.donationCount || 0} donations
+                          </p>
                         </div>
-                      ))}
-                    </div>
-                  </div>
+                        <div className="bg-white rounded-xl border border-black shadow-sm p-6">
+                          <div className="text-sm text-muted-foreground mb-1">All-Time Donations</div>
+                          <div className="text-2xl font-bold text-green-600">
+                            {formatIDRX(taxReports.reduce((sum, r) => sum + r.totalDonations, BigInt(0)))} IDRX
+                          </div>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            {taxReports.reduce((sum, r) => sum + r.donationCount, 0)} total donations
+                          </p>
+                        </div>
+                      </div>
 
-                  <div className="bg-blue-50 rounded-xl border border-blue-200 p-6">
-                    <h4 className="font-semibold mb-3">Tax Deduction Information</h4>
-                    <ul className="space-y-2 text-sm text-muted-foreground">
-                      <li className="flex items-start gap-2">
-                        <CheckCircle2 className="h-4 w-4 text-blue-600 mt-0.5 flex-shrink-0" />
-                        <span>All donations to registered charities are tax-deductible in Indonesia</span>
-                      </li>
-                      <li className="flex items-start gap-2">
-                        <CheckCircle2 className="h-4 w-4 text-blue-600 mt-0.5 flex-shrink-0" />
-                        <span>Keep these receipts with your annual tax filing documentation</span>
-                      </li>
-                      <li className="flex items-start gap-2">
-                        <CheckCircle2 className="h-4 w-4 text-blue-600 mt-0.5 flex-shrink-0" />
-                        <span>Consult with a tax professional for personalized advice</span>
-                      </li>
-                    </ul>
-                  </div>
+                      <div className="bg-white rounded-xl border border-black shadow-sm">
+                        <div className="p-6 border-b border-border">
+                          <h3 className="font-semibold text-lg">Annual Reports</h3>
+                          <p className="text-sm text-muted-foreground mt-1">Download comprehensive tax reports by year</p>
+                        </div>
+                        <div className="p-6 space-y-4">
+                          {taxReports.map((report) => (
+                            <div key={report.year} className="flex items-center justify-between border border-border rounded-lg p-4 hover:bg-accent/50 transition-colors">
+                              <div>
+                                <div className="font-semibold">{report.year} Tax Year</div>
+                                <div className="text-sm text-muted-foreground mt-1">
+                                  {formatIDRX(report.totalDonations)} IDRX • {report.donationCount} donations
+                                  {report.year === new Date().getFullYear() && ' • In Progress'}
+                                </div>
+                              </div>
+                              <button 
+                                onClick={() => handleDownloadTaxReport(report.year)}
+                                className="inline-flex items-center gap-2 px-4 py-2 rounded-md border border-black hover:bg-gray-50 text-sm font-medium"
+                              >
+                                <Download className="h-4 w-4" />
+                                Download CSV
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="bg-blue-50 rounded-xl border border-blue-200 p-6">
+                        <h4 className="font-semibold mb-3">Tax Deduction Information</h4>
+                        <ul className="space-y-2 text-sm text-muted-foreground">
+                          <li className="flex items-start gap-2">
+                            <CheckCircle2 className="h-4 w-4 text-blue-600 mt-0.5 flex-shrink-0" />
+                            <span>All donations to registered charities are tax-deductible in Indonesia</span>
+                          </li>
+                          <li className="flex items-start gap-2">
+                            <CheckCircle2 className="h-4 w-4 text-blue-600 mt-0.5 flex-shrink-0" />
+                            <span>Keep these receipts with your annual tax filing documentation</span>
+                          </li>
+                          <li className="flex items-start gap-2">
+                            <CheckCircle2 className="h-4 w-4 text-blue-600 mt-0.5 flex-shrink-0" />
+                            <span>All transactions are verified on the blockchain for authenticity</span>
+                          </li>
+                          <li className="flex items-start gap-2">
+                            <CheckCircle2 className="h-4 w-4 text-blue-600 mt-0.5 flex-shrink-0" />
+                            <span>Consult with a tax professional for personalized advice</span>
+                          </li>
+                        </ul>
+                      </div>
+                    </>
+                  )}
                 </>
               )}
 
@@ -582,77 +749,221 @@ const DonorDashboard: React.FC = () => {
                     <p className="text-muted-foreground">Participate in platform decisions with your voting power</p>
                   </div>
 
-                  <div className="bg-gradient-to-br from-purple-50 to-white rounded-xl border border-purple-200 shadow-sm p-6">
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <h3 className="font-semibold text-lg mb-2">Your Voting Power</h3>
-                        <div className="text-3xl font-bold text-purple-600 mb-2">850 vZKT</div>
-                        <p className="text-sm text-muted-foreground mb-4">Soul-bound tokens earned through donations</p>
-                      </div>
-                      <span className="inline-flex items-center rounded-md border px-3 py-1 text-sm font-medium bg-purple-100 text-purple-700 border-purple-200">Top 15%</span>
+                  {!isConnected ? (
+                    <div className="bg-white rounded-xl border border-black shadow-sm p-12 text-center">
+                      <Vote className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+                      <h3 className="font-semibold text-lg mb-2">Connect Your Wallet</h3>
+                      <p className="text-muted-foreground">Please connect your wallet to participate in governance</p>
                     </div>
-                  </div>
+                  ) : (
+                    <>
+                      <div className="bg-gradient-to-br from-purple-50 to-white rounded-xl border border-purple-200 shadow-sm p-6">
+                        <div className="flex items-start justify-between">
+                          <div>
+                            <h3 className="font-semibold text-lg mb-2">Your Voting Power</h3>
+                            {isLoadingVotingPower ? (
+                              <Loader2 className="h-6 w-6 animate-spin text-purple-600" />
+                            ) : (
+                              <>
+                                <div className="text-3xl font-bold text-purple-600 mb-2">{formattedVotingPower} vZKT</div>
+                                <p className="text-sm text-muted-foreground mb-4">Soul-bound tokens earned through donations</p>
+                              </>
+                            )}
+                          </div>
+                          <button
+                            onClick={() => setShowProposalForm(!showProposalForm)}
+                            disabled={(votingPower || BigInt(0)) < BigInt(100 * 10**18)}
+                            className="inline-flex items-center gap-2 px-4 py-2 rounded-md bg-purple-600 text-white text-sm font-medium hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                            title={(votingPower || BigInt(0)) < BigInt(100 * 10**18) ? "Need 100 vZKT to create proposals" : "Create new proposal"}
+                          >
+                            <Plus className="h-4 w-4" />
+                            New Proposal
+                          </button>
+                        </div>
+                      </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div className="bg-white rounded-xl border border-black shadow-sm p-6">
-                      <div className="text-sm text-muted-foreground mb-1">Proposals Voted</div>
-                      <div className="text-2xl font-bold">12</div>
-                    </div>
-                    <div className="bg-white rounded-xl border border-black shadow-sm p-6">
-                      <div className="text-sm text-muted-foreground mb-1">Participation Rate</div>
-                      <div className="text-2xl font-bold">85%</div>
-                    </div>
-                    <div className="bg-white rounded-xl border border-black shadow-sm p-6">
-                      <div className="text-sm text-muted-foreground mb-1">Active Proposals</div>
-                      <div className="text-2xl font-bold">3</div>
-                    </div>
-                  </div>
+                      {showProposalForm && (
+                        <div className="bg-white rounded-xl border border-black shadow-sm p-6">
+                          <h3 className="font-semibold text-lg mb-4">Create New Proposal</h3>
+                          <div className="space-y-4">
+                            <div>
+                              <label className="block text-sm font-medium mb-2">Title (min. 10 characters)</label>
+                              <input
+                                type="text"
+                                value={proposalTitle}
+                                onChange={(e) => setProposalTitle(e.target.value)}
+                                placeholder="Enter proposal title..."
+                                className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                                maxLength={200}
+                              />
+                              <p className="text-xs text-muted-foreground mt-1">{proposalTitle.length}/200 characters</p>
+                            </div>
+                            <div>
+                              <label className="block text-sm font-medium mb-2">Description (min. 50 characters)</label>
+                              <textarea
+                                value={proposalDescription}
+                                onChange={(e) => setProposalDescription(e.target.value)}
+                                placeholder="Provide detailed description of your proposal..."
+                                rows={6}
+                                className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary resize-none"
+                                maxLength={1000}
+                              />
+                              <p className="text-xs text-muted-foreground mt-1">{proposalDescription.length}/1000 characters</p>
+                            </div>
+                            <div className="flex gap-2">
+                              <button
+                                onClick={handleCreateProposal}
+                                disabled={isCreatingProposal}
+                                className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2 rounded-md bg-primary text-white font-medium hover:bg-primary/90 disabled:opacity-50"
+                              >
+                                {isCreatingProposal ? (
+                                  <>
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                    Creating...
+                                  </>
+                                ) : (
+                                  <>
+                                    <Send className="h-4 w-4" />
+                                    Submit Proposal
+                                  </>
+                                )}
+                              </button>
+                              <button
+                                onClick={() => {
+                                  setShowProposalForm(false);
+                                  setProposalTitle('');
+                                  setProposalDescription('');
+                                }}
+                                className="px-4 py-2 rounded-md border border-border hover:bg-accent"
+                              >
+                                Cancel
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      )}
 
-                  <div className="bg-white rounded-xl border border-black shadow-sm">
-                    <div className="p-6 border-b border-border">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <h3 className="font-semibold text-lg">Active Proposals</h3>
-                          <p className="text-sm text-muted-foreground mt-1">Vote on important platform decisions</p>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div className="bg-white rounded-xl border border-black shadow-sm p-6">
+                          <div className="text-sm text-muted-foreground mb-1">Your Proposals</div>
+                          <div className="text-2xl font-bold">{isLoadingUserProposals ? <Loader2 className="h-6 w-6 animate-spin" /> : userProposals.length}</div>
                         </div>
-                        <a href="/governance" className="text-sm text-primary hover:underline">View All</a>
-                      </div>
-                    </div>
-                    <div className="p-6 space-y-4">
-                      <div className="border border-border rounded-lg p-4">
-                        <div className="flex items-center gap-2 mb-2">
-                          <span className="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-green-100 text-green-700 border-green-200">
-                            Active
-                          </span>
-                          <span className="text-xs text-muted-foreground">Ends in 3 days</span>
+                        <div className="bg-white rounded-xl border border-black shadow-sm p-6">
+                          <div className="text-sm text-muted-foreground mb-1">Votes Cast</div>
+                          <div className="text-2xl font-bold">{Object.keys(hasVoted).length}</div>
                         </div>
-                        <h4 className="font-semibold mb-2">Increase Education Fund Allocation to 35%</h4>
-                        <div className="flex justify-between text-sm text-muted-foreground mb-2">
-                          <span>For: 2,450 vZKT (68%)</span>
-                          <span>Against: 1,150 vZKT (32%)</span>
-                        </div>
-                        <div className="w-full bg-gray-200 rounded-full h-2">
-                          <div className="bg-green-500 h-2 rounded-full" style={{ width: '68%' }}></div>
+                        <div className="bg-white rounded-xl border border-black shadow-sm p-6">
+                          <div className="text-sm text-muted-foreground mb-1">Active Proposals</div>
+                          <div className="text-2xl font-bold">{isLoadingProposals ? <Loader2 className="h-6 w-6 animate-spin" /> : proposals.filter(p => p.status === 'Active').length}</div>
                         </div>
                       </div>
-                      <div className="border border-border rounded-lg p-4">
-                        <div className="flex items-center gap-2 mb-2">
-                          <span className="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-green-100 text-green-700 border-green-200">
-                            Active
-                          </span>
-                          <span className="text-xs text-muted-foreground">Ends in 5 days</span>
+
+                      <div className="bg-white rounded-xl border border-black shadow-sm">
+                        <div className="p-6 border-b border-border">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <h3 className="font-semibold text-lg">Your Submitted Proposals</h3>
+                              <p className="text-sm text-muted-foreground mt-1">Track proposals you've created</p>
+                            </div>
+                          </div>
                         </div>
-                        <h4 className="font-semibold mb-2">Implement Quarterly Impact Reports</h4>
-                        <div className="flex justify-between text-sm text-muted-foreground mb-2">
-                          <span>For: 3,120 vZKT (82%)</span>
-                          <span>Against: 685 vZKT (18%)</span>
-                        </div>
-                        <div className="w-full bg-gray-200 rounded-full h-2">
-                          <div className="bg-green-500 h-2 rounded-full" style={{ width: '82%' }}></div>
+                        <div className="p-6">
+                          {isLoadingUserProposals ? (
+                            <div className="flex items-center justify-center py-10">
+                              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                            </div>
+                          ) : userProposals.length === 0 ? (
+                            <div className="text-center py-10 text-muted-foreground">
+                              <FileText className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                              <p>You haven't created any proposals yet</p>
+                              <p className="text-sm mt-1">Click "New Proposal" to submit your first proposal</p>
+                            </div>
+                          ) : (
+                            <div className="space-y-4">
+                              {userProposals.map((proposal) => {
+                                const totalVotes = proposal.votesFor + proposal.votesAgainst;
+                                const forPercentage = totalVotes > BigInt(0) 
+                                  ? Number((proposal.votesFor * BigInt(100)) / totalVotes) 
+                                  : 0;
+                                
+                                const statusConfig = {
+                                  'Pending': { color: 'bg-yellow-100 text-yellow-700 border-yellow-200', label: 'Pending' },
+                                  'Active': { color: 'bg-green-100 text-green-700 border-green-200', label: 'Active' },
+                                  'Approved': { color: 'bg-blue-100 text-blue-700 border-blue-200', label: 'Approved' },
+                                  'Rejected': { color: 'bg-red-100 text-red-700 border-red-200', label: 'Rejected' },
+                                  'Executed': { color: 'bg-purple-100 text-purple-700 border-purple-200', label: 'Executed' },
+                                };
+                                const config = statusConfig[proposal.status] || statusConfig['Pending'];
+
+                                return (
+                                  <div key={proposal.id.toString()} className="border border-border rounded-lg p-4">
+                                    <div className="flex items-center gap-2 mb-2">
+                                      <span className={`inline-flex items-center px-2 py-1 rounded-md text-xs font-medium border ${config.color}`}>
+                                        {config.label}
+                                      </span>
+                                      <span className="text-xs text-muted-foreground">#{proposal.id.toString()}</span>
+                                    </div>
+                                    <h4 className="font-semibold mb-2">{proposal.title}</h4>
+                                    <p className="text-sm text-muted-foreground mb-3">{proposal.description}</p>
+                                    <div className="flex justify-between text-sm text-muted-foreground mb-2">
+                                      <span>For: {formatIDRX(proposal.votesFor)} vZKT ({forPercentage}%)</span>
+                                      <span>Against: {formatIDRX(proposal.votesAgainst)} vZKT ({100 - forPercentage}%)</span>
+                                    </div>
+                                    <div className="w-full bg-gray-200 rounded-full h-2">
+                                      <div className="bg-green-500 h-2 rounded-full" style={{ width: `${forPercentage}%` }}></div>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
                         </div>
                       </div>
-                    </div>
-                  </div>
+
+                      <div className="bg-white rounded-xl border border-black shadow-sm">
+                        <div className="p-6 border-b border-border">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <h3 className="font-semibold text-lg">All Active Proposals</h3>
+                              <p className="text-sm text-muted-foreground mt-1">Vote on important platform decisions</p>
+                            </div>
+                            <a href="/governance" className="text-sm text-primary hover:underline">View All</a>
+                          </div>
+                        </div>
+                        <div className="p-6 space-y-4">
+                          {isLoadingProposals ? (
+                            <div className="flex items-center justify-center py-10">
+                              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                            </div>
+                          ) : proposals.filter(p => p.status === 'Active').slice(0, 3).map((proposal) => {
+                            const totalVotes = proposal.votesFor + proposal.votesAgainst;
+                            const forPercentage = totalVotes > BigInt(0) 
+                              ? Number((proposal.votesFor * BigInt(100)) / totalVotes) 
+                              : 0;
+
+                            return (
+                              <div key={proposal.id.toString()} className="border border-border rounded-lg p-4">
+                                <div className="flex items-center gap-2 mb-2">
+                                  <span className="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-green-100 text-green-700 border-green-200">
+                                    Active
+                                  </span>
+                                  <span className="text-xs text-muted-foreground">#{proposal.id.toString()}</span>
+                                </div>
+                                <h4 className="font-semibold mb-2">{proposal.title}</h4>
+                                <div className="flex justify-between text-sm text-muted-foreground mb-2">
+                                  <span>For: {formatIDRX(proposal.votesFor)} vZKT ({forPercentage}%)</span>
+                                  <span>Against: {formatIDRX(proposal.votesAgainst)} vZKT ({100 - forPercentage}%)</span>
+                                </div>
+                                <div className="w-full bg-gray-200 rounded-full h-2">
+                                  <div className="bg-green-500 h-2 rounded-full" style={{ width: `${forPercentage}%` }}></div>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    </>
+                  )}
                 </>
               )}
 
@@ -661,61 +972,158 @@ const DonorDashboard: React.FC = () => {
                 <>
                   <div>
                     <h1 className="text-3xl font-bold tracking-tight mb-2">Wallet Settings</h1>
-                    <p className="text-muted-foreground">Manage your wallet connection and preferences</p>
+                    <p className="text-muted-foreground">Manage your wallet connection and view transaction history</p>
                   </div>
 
-                  <div className="bg-white rounded-xl border border-black shadow-sm">
-                    <div className="p-6 border-b border-border">
-                      <h3 className="font-semibold text-lg">Connected Wallet</h3>
-                      <p className="text-sm text-muted-foreground mt-1">Your currently connected wallet address</p>
+                  {!isConnected ? (
+                    <div className="bg-white rounded-xl border border-black shadow-sm p-12 text-center">
+                      <Wallet className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+                      <h3 className="font-semibold text-lg mb-2">No Wallet Connected</h3>
+                      <p className="text-muted-foreground">Please connect your wallet to view settings</p>
                     </div>
-                    <div className="p-6">
-                      <div className="flex items-center justify-between mb-4 p-4 bg-accent/30 rounded-lg">
-                        <div>
-                          <div className="text-sm text-muted-foreground mb-1">Address</div>
-                          <div className="font-mono font-semibold">0x71C7656EC7ab88b098defB751B7401B5f6d8976F</div>
+                  ) : (
+                    <>
+                      <div className="bg-white rounded-xl border border-black shadow-sm">
+                        <div className="p-6 border-b border-border">
+                          <h3 className="font-semibold text-lg">Connected Wallet</h3>
+                          <p className="text-sm text-muted-foreground mt-1">Your currently connected wallet address</p>
                         </div>
-                        <button className="px-4 py-2 rounded-md border border-black hover:bg-gray-50 text-sm font-medium">
-                          Disconnect
-                        </button>
-                      </div>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="p-4 border border-border rounded-lg">
-                          <div className="text-sm text-muted-foreground mb-1">Network</div>
-                          <div className="font-semibold">Base Sepolia</div>
-                        </div>
-                        <div className="p-4 border border-border rounded-lg">
-                          <div className="text-sm text-muted-foreground mb-1">Balance</div>
-                          <div className="font-semibold">15,800,000 IDRX</div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="bg-white rounded-xl border border-black shadow-sm">
-                    <div className="p-6 border-b border-border">
-                      <h3 className="font-semibold text-lg">Notification Preferences</h3>
-                      <p className="text-sm text-muted-foreground mt-1">Choose how you want to be notified</p>
-                    </div>
-                    <div className="p-6 space-y-4">
-                      {[
-                        { label: 'Donation Confirmations', desc: 'Get notified when your donations are processed' },
-                        { label: 'New Proposals', desc: 'Alerts for new DAO governance proposals' },
-                        { label: 'Campaign Updates', desc: 'Updates from campaigns you have supported' },
-                        { label: 'Tax Reports', desc: 'Annual tax report availability notifications' }
-                      ].map((item, idx) => (
-                        <div key={idx} className="flex items-center justify-between p-4 border border-border rounded-lg">
-                          <div>
-                            <div className="font-semibold">{item.label}</div>
-                            <div className="text-sm text-muted-foreground mt-1">{item.desc}</div>
+                        <div className="p-6">
+                          <div className="flex items-center justify-between mb-4 p-4 bg-accent/30 rounded-lg">
+                            <div className="flex-1 min-w-0">
+                              <div className="text-sm text-muted-foreground mb-1">Address</div>
+                              <div className="font-mono font-semibold truncate">{address}</div>
+                            </div>
+                            <button 
+                              onClick={handleDisconnect}
+                              className="ml-4 px-4 py-2 rounded-md border border-red-500 text-red-600 hover:bg-red-50 text-sm font-medium flex-shrink-0"
+                            >
+                              Disconnect
+                            </button>
                           </div>
-                          <button className="px-4 py-2 rounded-md bg-primary text-white text-sm font-medium hover:bg-primary/90">
-                            Enabled
-                          </button>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="p-4 border border-border rounded-lg">
+                              <div className="text-sm text-muted-foreground mb-1">Network</div>
+                              <div className="font-semibold">Base Sepolia</div>
+                              <p className="text-xs text-muted-foreground mt-1">Testnet</p>
+                            </div>
+                            <div className="p-4 border border-border rounded-lg">
+                              <div className="text-sm text-muted-foreground mb-1">IDRX Balance</div>
+                              {isLoadingBalance ? (
+                                <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                              ) : (
+                                <>
+                                  <div className="font-semibold">{formattedBalance} IDRX</div>
+                                  <p className="text-xs text-muted-foreground mt-1">Available</p>
+                                </>
+                              )}
+                            </div>
+                          </div>
                         </div>
-                      ))}
-                    </div>
-                  </div>
+                      </div>
+
+                      <div className="bg-white rounded-xl border border-black shadow-sm">
+                        <div className="p-6 border-b border-border">
+                          <h3 className="font-semibold text-lg">Recent Transactions</h3>
+                          <p className="text-sm text-muted-foreground mt-1">Your latest blockchain activities</p>
+                        </div>
+                        <div className="p-6">
+                          {isLoadingTransactions ? (
+                            <div className="flex items-center justify-center py-10">
+                              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                            </div>
+                          ) : userTransactions.length === 0 ? (
+                            <div className="text-center py-10 text-muted-foreground">
+                              <FileText className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                              <p>No transactions found</p>
+                            </div>
+                          ) : (
+                            <div className="space-y-3">
+                              {userTransactions.map((tx, idx) => (
+                                <div key={idx} className="flex items-center justify-between p-4 border border-border rounded-lg hover:bg-accent/50 transition-colors">
+                                  <div className="flex-1">
+                                    <div className="flex items-center gap-2 mb-1">
+                                      <span className="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-blue-100 text-blue-700 border-blue-200 capitalize">
+                                        {tx.type}
+                                      </span>
+                                      <span className="text-sm text-muted-foreground">{formatTimestamp(tx.timestamp)}</span>
+                                    </div>
+                                    <div className="text-sm font-medium">{tx.description}</div>
+                                    {tx.amount && (
+                                      <div className="text-sm text-muted-foreground mt-1">
+                                        Amount: {formatIDRX(tx.amount)} IDRX
+                                      </div>
+                                    )}
+                                  </div>
+                                  <a
+                                    href={`https://sepolia.basescan.org/tx/${tx.hash}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="ml-4 inline-flex items-center gap-1 text-sm text-primary hover:underline flex-shrink-0"
+                                  >
+                                    {formatAddress(tx.hash)}
+                                    <ExternalLink className="h-3 w-3" />
+                                  </a>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="bg-white rounded-xl border border-black shadow-sm">
+                        <div className="p-6 border-b border-border">
+                          <h3 className="font-semibold text-lg">Quick Stats</h3>
+                          <p className="text-sm text-muted-foreground mt-1">Overview of your activity</p>
+                        </div>
+                        <div className="p-6">
+                          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                            <div className="text-center p-4 border border-border rounded-lg">
+                              <div className="text-2xl font-bold text-primary">{receipts.length}</div>
+                              <div className="text-xs text-muted-foreground mt-1">NFT Receipts</div>
+                            </div>
+                            <div className="text-center p-4 border border-border rounded-lg">
+                              <div className="text-2xl font-bold text-purple-600">{formattedVotingPower}</div>
+                              <div className="text-xs text-muted-foreground mt-1">Voting Power</div>
+                            </div>
+                            <div className="text-center p-4 border border-border rounded-lg">
+                              <div className="text-2xl font-bold text-green-600">{userProposals.length}</div>
+                              <div className="text-xs text-muted-foreground mt-1">Proposals Created</div>
+                            </div>
+                            <div className="text-center p-4 border border-border rounded-lg">
+                              <div className="text-2xl font-bold text-blue-600">{userTransactions.length}</div>
+                              <div className="text-xs text-muted-foreground mt-1">Transactions</div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="bg-blue-50 rounded-xl border border-blue-200 p-6">
+                        <h4 className="font-semibold mb-3 flex items-center gap-2">
+                          <ShieldCheck className="h-5 w-5 text-blue-600" />
+                          Security Information
+                        </h4>
+                        <ul className="space-y-2 text-sm text-muted-foreground">
+                          <li className="flex items-start gap-2">
+                            <CheckCircle2 className="h-4 w-4 text-blue-600 mt-0.5 flex-shrink-0" />
+                            <span>All transactions are secured by blockchain technology</span>
+                          </li>
+                          <li className="flex items-start gap-2">
+                            <CheckCircle2 className="h-4 w-4 text-blue-600 mt-0.5 flex-shrink-0" />
+                            <span>Your private keys never leave your wallet</span>
+                          </li>
+                          <li className="flex items-start gap-2">
+                            <CheckCircle2 className="h-4 w-4 text-blue-600 mt-0.5 flex-shrink-0" />
+                            <span>Always verify transaction details before signing</span>
+                          </li>
+                          <li className="flex items-start gap-2">
+                            <CheckCircle2 className="h-4 w-4 text-blue-600 mt-0.5 flex-shrink-0" />
+                            <span>Keep your seed phrase safe and never share it</span>
+                          </li>
+                        </ul>
+                      </div>
+                    </>
+                  )}
                 </>
               )}
             </div>
