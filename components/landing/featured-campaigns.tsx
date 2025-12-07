@@ -2,11 +2,26 @@
 
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
-import { campaigns, calculateProgress, formatCurrency } from "@/data/campaigns";
+import { useCampaigns } from '@/hooks/useCampaigns';
+import { formatIDRX } from '@/lib/abi';
+import { Loader2 } from 'lucide-react';
 import { CampaignCard } from "@/components/shared/campaign-card";
 
 export function FeaturedCampaigns() {
-  // Ambil hanya 3 campaign pertama untuk featured
+  const { campaigns, isLoading } = useCampaigns([0, 1, 2]);
+
+  if (isLoading) {
+    return (
+      <section className="py-16 lg:py-24 bg-background">
+        <div className="container px-4 mx-auto">
+          <div className="flex items-center justify-center py-20">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          </div>
+        </div>
+      </section>
+    );
+  }
+
   const featuredCampaigns = campaigns.slice(0, 3);
 
   return (
@@ -33,10 +48,8 @@ export function FeaturedCampaigns() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
           {featuredCampaigns.map((campaign) => (
             <CampaignCard
-              key={campaign.id}
+              key={campaign.id.toString()}
               campaign={campaign}
-              calculateProgress={calculateProgress}
-              formatCurrency={formatCurrency}
             />
           ))}
         </div>

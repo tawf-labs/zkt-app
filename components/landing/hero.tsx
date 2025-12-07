@@ -1,13 +1,19 @@
 'use client';
 
 import React from 'react';
-import { Shield, TrendingUp } from 'lucide-react';
+import { Shield, TrendingUp, Loader2 } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { useLanguage } from '@/components/providers/language-provider';
+import { useCampaigns } from '@/hooks/useCampaigns';
+import { formatIDRX } from '@/lib/abi';
 
 export function Hero() {
-  const { t } = useLanguage();
+  const { campaigns, isLoading } = useCampaigns([0, 1, 2, 3, 4, 5]);
+  
+  // Calculate real stats from blockchain
+  const totalDonated = campaigns.reduce((sum, c) => sum + c.currentAmount, BigInt(0));
+  const totalDonors = campaigns.reduce((sum, c) => sum + Number(c.donorCount), 0);
+  const activeCampaigns = campaigns.filter(c => c.isActive).length;
   
   return (
     <section className="relative overflow-hidden bg-gradient-to-br from-white via-secondary/30 to-accent py-20 lg:py-32">
@@ -22,45 +28,51 @@ export function Hero() {
 
             {/* Heading */}
             <h1 className="text-4xl lg:text-6xl font-extrabold tracking-tight text-foreground">
-              {t("hero.title")}
+              Transparent Zakat & Charity on Blockchain
             </h1>
 
             {/* Description */}
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto lg:mx-0 text-balance leading-relaxed">
-              {t("hero.subtitle")}
+              Support verified campaigns with full transparency. Every donation is recorded on-chain and tracked in real-time.
             </p>
 
             {/* CTA Buttons */}
             <div className="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-4">
               <Link href="/campaigns" className="inline-flex items-center justify-center h-12 px-8 rounded-lg bg-primary text-primary-foreground font-semibold hover:bg-primary/90 transition-all shadow-md shadow-primary/20">
-                {t("hero.startDonating")}
+                Start Donating
               </Link>
               <Link href="/zakat" className="inline-flex items-center justify-center h-12 px-8 rounded-lg border-2 border-primary text-primary font-semibold hover:bg-primary/5 transition-all">
-                {t("hero.exploreCampaigns")}
+                Calculate Zakat
               </Link>
             </div>
 
             {/* Stats */}
+            {isLoading ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-6 w-6 animate-spin text-primary" />
+              </div>
+            ) : (
               <div className="grid grid-cols-3 gap-4 pt-8 border-t border-border">
               <div className="space-y-1">
-                <div className="text-3xl font-bold text-primary">$10+</div>
+                <div className="text-3xl font-bold text-primary">{formatIDRX(totalDonated)}</div>
                 <div className="text-xs text-muted-foreground font-medium uppercase tracking-wide">
-                  DONATED
+                  DONATED (IDRX)
                 </div>
               </div>
               <div className="space-y-1">
-                <div className="text-3xl font-bold text-primary">100%</div>
+                <div className="text-3xl font-bold text-primary">{activeCampaigns}</div>
                 <div className="text-xs text-muted-foreground font-medium uppercase tracking-wide">
-                  TRACEABLE
+                  CAMPAIGNS
                 </div>
               </div>
               <div className="space-y-1">
-                <div className="text-3xl font-bold text-primary">50+</div>
+                <div className="text-3xl font-bold text-primary">{totalDonors}</div>
                 <div className="text-xs text-muted-foreground font-medium uppercase tracking-wide">
                   DONORS
                 </div>
               </div>
             </div>
+            )}
            </div>
 
           {/* Right Mockup Section */}

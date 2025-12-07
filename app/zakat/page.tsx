@@ -3,16 +3,16 @@
 import { useState } from "react";
 import { Calculator, Wallet, Heart, Users, Home, Loader2, Info, ChevronDown, Check } from "lucide-react";
 import { useWallet } from "@/components/providers/web3-provider";
-import { useLanguage } from "@/components/providers/language-provider";
-import { campaigns, formatCurrency } from "@/data/campaigns";
+import { useCampaigns } from "@/hooks/useCampaigns";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
+import { formatIDRX } from "@/lib/abi";
 
 export default function ZakatPage() {
   const { isConnected, idrxBalance, address, donate } = useWallet();
   const { toast } = useToast();
-  const { t } = useLanguage();
+  const { campaigns, isLoading: isLoadingCampaigns } = useCampaigns([0, 1, 2, 3, 4, 5]);
   const [selectedTab, setSelectedTab] = useState("maal");
   const [zakatType, setZakatType] = useState("income");
   const [incomeType, setIncomeType] = useState("monthly");
@@ -75,8 +75,8 @@ export default function ZakatPage() {
       setShowConfirmDialog(false);
       
       toast({
-        title: t("toast.success"),
-        description: `${t("toast.zakatPaid")} ${selectedCampaign.title}. ${t("toast.txHash")}: ${txHash.slice(0, 10)}...${txHash.slice(-8)}`,
+        title: "Payment Successful!",
+        description: `Zakat paid to ${selectedCampaign.title}. Transaction Hash: ${txHash.slice(0, 10)}...${txHash.slice(-8)}`,
       });
       
       // Reset form
@@ -86,8 +86,8 @@ export default function ZakatPage() {
       setIsProcessing(false);
       toast({
         variant: "destructive",
-        title: t("toast.error"),
-        description: error?.message || t("toast.paymentFailed"),
+        title: "Payment Failed",
+        description: error?.message || "Payment transaction failed. Please try again.",
       });
     }
   };
@@ -97,8 +97,8 @@ export default function ZakatPage() {
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="text-center mb-12">
-          <h1 className="text-4xl font-bold tracking-tight mb-3">{t("zakat.title")}</h1>
-          <p className="text-muted-foreground text-lg">{t("zakat.subtitle")}</p>
+          <h1 className="text-4xl font-bold tracking-tight mb-3">Zakat Calculator</h1>
+          <p className="text-muted-foreground text-lg">Calculate and pay your Zakat with transparency on the blockchain</p>
         </div>
 
         <div className="grid lg:grid-cols-3 gap-8">
@@ -110,7 +110,7 @@ export default function ZakatPage() {
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-2">
                     <Wallet className="h-5 w-5" />
-                    <h3 className="text-lg font-semibold">{t("zakat.walletBalance")}</h3>
+                    <h3 className="text-lg font-semibold">Wallet Balance</h3>
                   </div>
                   <code className="text-sm font-mono bg-white/20 px-3 py-1 rounded">
                     {address ? `${address.slice(0, 6)}...${address.slice(-4)}` : ''}
@@ -484,9 +484,9 @@ export default function ZakatPage() {
         <Dialog open={showCampaignDialog} onOpenChange={setShowCampaignDialog}>
           <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto bg-white">
             <DialogHeader>
-              <DialogTitle>{t("campaignSelect.title")}</DialogTitle>
+              <DialogTitle>Select Campaign</DialogTitle>
               <DialogDescription>
-                {t("campaignSelect.description")} Rp {calculatedZakat.toLocaleString('id-ID', { maximumFractionDigits: 0 })}
+                Choose a campaign to receive your Zakat payment of Rp {calculatedZakat.toLocaleString('id-ID', { maximumFractionDigits: 0 })}
               </DialogDescription>
             </DialogHeader>
             
@@ -498,21 +498,21 @@ export default function ZakatPage() {
                   className="flex items-start gap-4 p-4 border border-border rounded-lg hover:bg-accent hover:border-primary/30 transition-colors text-left"
                 >
                   <img
-                    src={campaign.image}
+                    src={campaign.imageUrl}
                     alt={campaign.title}
                     className="w-24 h-24 object-cover rounded-lg flex-shrink-0"
                   />
                   <div className="flex-1 min-w-0">
                     <h4 className="font-semibold text-sm mb-1 line-clamp-2">{campaign.title}</h4>
-                    <p className="text-xs text-muted-foreground mb-2">{campaign.organization}</p>
+                    <p className="text-xs text-muted-foreground mb-2">{campaign.organizationName}</p>
                     <div className="flex items-center gap-4 text-xs">
-                      <span className="text-primary font-medium">{formatCurrency(campaign.raised)} raised</span>
-                      <span className="text-muted-foreground">of {formatCurrency(campaign.goal)}</span>
+                      <span className="text-primary font-medium">{formatIDRX(campaign.currentAmount)} raised</span>
+                      <span className="text-muted-foreground">of {formatIDRX(campaign.targetAmount)}</span>
                     </div>
                     <div className="mt-2 h-1.5 bg-secondary rounded-full overflow-hidden">
                       <div
                         className="h-full bg-gradient-to-r from-primary to-primary/80 transition-all"
-                        style={{ width: `${Math.min((campaign.raised / campaign.goal) * 100, 100)}%` }}
+                        style={{ width: `${Math.min((Number(campaign.currentAmount) / Number(campaign.targetAmount)) * 100, 100)}%` }}
                       />
                     </div>
                   </div>
@@ -529,28 +529,28 @@ export default function ZakatPage() {
         <Dialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
           <DialogContent className="bg-white">
             <DialogHeader>
-              <DialogTitle>{t("confirm.title")}</DialogTitle>
+              <DialogTitle>Confirm Payment</DialogTitle>
               <DialogDescription>
-                {t("confirm.description")}
+                Please review your payment details before confirming
               </DialogDescription>
             </DialogHeader>
             
             {selectedCampaign && (
               <div className="space-y-4 py-4">
                 <div className="p-4 bg-secondary rounded-lg border border-border">
-                  <div className="text-sm font-medium mb-2">{t("confirm.campaign")}</div>
+                  <div className="text-sm font-medium mb-2">Campaign</div>
                   <div className="text-sm text-muted-foreground">{selectedCampaign.title}</div>
-                  <div className="text-xs text-muted-foreground mt-1">{selectedCampaign.organization}</div>
+                  <div className="text-xs text-muted-foreground mt-1">{selectedCampaign.organizationName}</div>
                 </div>
                 
                 <div className="grid grid-cols-2 gap-4">
                   <div className="p-4 bg-secondary rounded-lg border border-border">
-                    <div className="text-xs text-muted-foreground mb-1">{t("confirm.amount")}</div>
+                    <div className="text-xs text-muted-foreground mb-1">Zakat Amount</div>
                     <div className="text-xl font-bold text-primary">Rp {calculatedZakat.toLocaleString('id-ID', { maximumFractionDigits: 0 })}</div>
                   </div>
                   
                   <div className="p-4 bg-secondary rounded-lg border border-border">
-                    <div className="text-xs text-muted-foreground mb-1">{t("confirm.currentBalance")}</div>
+                    <div className="text-xs text-muted-foreground mb-1">Current Balance</div>
                     <div className="text-xl font-bold">{idrxBalance ? Number(idrxBalance / BigInt(1e18)).toLocaleString('id-ID', { maximumFractionDigits: 0 }) : '0'} IDRX</div>
                   </div>
                 </div>
@@ -559,9 +559,9 @@ export default function ZakatPage() {
                   <div className="flex items-start gap-2">
                     <Check className="h-5 w-5 text-primary flex-shrink-0 mt-0.5" />
                     <div>
-                      <div className="text-sm font-medium text-primary">{t("confirm.blockchain")}</div>
+                      <div className="text-sm font-medium text-primary">Blockchain Transaction</div>
                       <div className="text-xs text-muted-foreground mt-1">
-                        {t("confirm.blockchainNote")}
+                        This payment will be recorded on Base Sepolia blockchain for transparency
                       </div>
                     </div>
                   </div>
@@ -575,7 +575,7 @@ export default function ZakatPage() {
                 onClick={() => setShowConfirmDialog(false)}
                 disabled={isProcessing}
               >
-                {t("confirm.goBack")}
+                Go Back
               </Button>
               <Button
                 onClick={handleConfirmPayment}
@@ -585,12 +585,12 @@ export default function ZakatPage() {
                 {isProcessing ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    {t("confirm.processing")}
+                    Processing...
                   </>
                 ) : (
                   <>
                     <Wallet className="mr-2 h-4 w-4" />
-                    {t("confirm.confirmPayment")}
+                    Confirm Payment
                   </>
                 )}
               </Button>

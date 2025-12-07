@@ -29,6 +29,10 @@ export default function GovernancePage() {
   const { toast } = useToast()
   const { address, isConnected } = useAccount()
   const [hasVoted, setHasVoted] = useState<Record<string, boolean>>({})
+  const [isCreatingProposal, setIsCreatingProposal] = useState(false)
+  const [proposalTitle, setProposalTitle] = useState("")
+  const [proposalDescription, setProposalDescription] = useState("")
+  const [showCreateDialog, setShowCreateDialog] = useState(false)
   
   // Get real voting power from blockchain
   const { votingPower, formattedVotingPower, isLoading: isLoadingVotingPower } = useVotingPower()
@@ -39,6 +43,47 @@ export default function GovernancePage() {
   // Contract write for voting
   const { writeContractAsync, isPending: isVoting } = useWriteContract()
   const [pendingVoteProposalId, setPendingVoteProposalId] = useState<string | null>(null)
+
+  const handleCreateProposal = async () => {
+    if (!isConnected) {
+      handleWalletError(new Error("not-connected"), { toast })
+      return
+    }
+
+    if (!proposalTitle.trim() || !proposalDescription.trim()) {
+      toast({
+        title: "Missing Information",
+        description: "Please provide both title and description for your proposal.",
+        variant: "destructive",
+      })
+      return
+    }
+
+    setIsCreatingProposal(true)
+    
+    try {
+      const txHash = await writeContractAsync({
+        address: CONTRACT_ADDRESSES.ZKTCore,
+        abi: ZKTCoreABI,
+        functionName: "createProposal",
+        args: [proposalTitle, proposalDescription, BigInt(7 * 24 * 60 * 60)], // 7 day voting period
+      })
+
+      toast({
+        title: "Proposal Created! 🎉",
+        description: "Your proposal has been submitted to the DAO.",
+      })
+
+      setProposalTitle("")
+      setProposalDescription("")
+      setShowCreateDialog(false)
+      await refetchProposals()
+    } catch (error) {
+      handleTransactionError(error, { toast, action: "create proposal" })
+    } finally {
+      setIsCreatingProposal(false)
+    }
+  }
 
   const handleVote = async (proposalId: string, voteType: "for" | "against") => {
     if (!isConnected) {
@@ -112,7 +157,7 @@ export default function GovernancePage() {
             <p className="text-black">Participate in ZKT.app's dual-layer DAO governance system</p>
           </div>
           <div className="flex items-center gap-3">
-            <Dialog>
+            <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
               <DialogTrigger asChild>
                 <button className="flex items-center gap-2 px-4 py-2 rounded-md bg-white text-black shadow-md border border-black">
                   <Plus className="h-4 w-4" />
@@ -129,17 +174,43 @@ export default function GovernancePage() {
                 <div className="space-y-4 py-4">
                   <div className="space-y-2">
                     <Label htmlFor="title">Proposal Title</Label>
-                    <Input id="title" placeholder="Brief, descriptive title" />
+                    <Input 
+                      id="title" 
+                      placeholder="Brief, descriptive title"
+                      value={proposalTitle}
+                      onChange={(e) => setProposalTitle(e.target.value)}
+                      disabled={isCreatingProposal}
+                    />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="description">Description</Label>
-                    <Textarea id="description" placeholder="Detailed explanation of your proposal..." rows={6} />
+                    <Textarea 
+                      id="description" 
+                      placeholder="Detailed explanation of your proposal..." 
+                      rows={6}
+                      value={proposalDescription}
+                      onChange={(e) => setProposalDescription(e.target.value)}
+                      disabled={isCreatingProposal}
+                    />
                   </div>
                   <div className="space-y-2">
                     <Label>Your Voting Power</Label>
                     <div className="text-2xl font-bold text-black">{userVotingPower}</div>
                   </div>
-                  <Button className="w-full">Submit Proposal</Button>
+                  <Button 
+                    className="w-full" 
+                    onClick={handleCreateProposal}
+                    disabled={isCreatingProposal || !proposalTitle.trim() || !proposalDescription.trim()}
+                  >
+                    {isCreatingProposal ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Creating Proposal...
+                      </>
+                    ) : (
+                      'Submit Proposal'
+                    )}
+                  </Button>
                 </div>
               </DialogContent>
             </Dialog>

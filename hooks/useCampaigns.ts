@@ -67,6 +67,11 @@ export function useCampaigns(poolIds: number[] = [0, 1, 2, 3, 4, 5]) {
 
       const camp = campaignData.result as any;
 
+      // Additional check to ensure camp exists and has expected properties
+      if (!camp || typeof camp !== 'object') {
+        return null;
+      }
+
       return {
         id: BigInt(poolIds[index]),
         title: camp.name || `Campaign ${poolIds[index]}`,

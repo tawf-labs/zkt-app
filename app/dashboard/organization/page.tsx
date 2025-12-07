@@ -1,24 +1,62 @@
 "use client";
 
 import React, { useState } from 'react';
-import { LayoutDashboard, TrendingUp, Users, FileText, Settings, Download, Plus, ArrowUpRight, ArrowDownRight, CheckCircle2, DollarSign, Calendar } from 'lucide-react';
+import { LayoutDashboard, TrendingUp, Users, FileText, Settings, Download, Plus, ArrowUpRight, ArrowDownRight, CheckCircle2, DollarSign, Calendar, Loader2 } from 'lucide-react';
+import { useCampaigns } from '@/hooks/useCampaigns';
+import { useOrganizationCompliance } from '@/hooks/useOrganizationCompliance';
+import { useAccount } from 'wagmi';
+import { formatIDRX, formatAddress } from '@/lib/abi';
 
 type SidebarTab = 'overview' | 'campaigns' | 'donors' | 'reports' | 'settings';
 
-export default function BaznasDashboard() {
+export default function OrganizationDashboard() {
+  const { address, isConnected } = useAccount();
   const [sidebarTab, setSidebarTab] = useState<SidebarTab>('overview');
+  
+  // Get all campaigns and filter by organization address
+  const { campaigns: allCampaigns, isLoading: isLoadingCampaigns } = useCampaigns([0, 1, 2, 3, 4, 5]);
+  const organizationCampaigns = allCampaigns.filter(
+    (c) => c.organizationAddress.toLowerCase() === address?.toLowerCase()
+  );
+  
+  // Get organization compliance data
+  const { compliance, isLoading: isLoadingCompliance } = useOrganizationCompliance(address);
+  
+  // Calculate stats from blockchain data
+  const totalRaised = organizationCampaigns.reduce(
+    (sum, c) => sum + c.currentAmount,
+    BigInt(0)
+  );
+  const totalDonors = organizationCampaigns.reduce(
+    (sum, c) => sum + Number(c.donorCount),
+    0
+  );
+  
+  const isLoading = isLoadingCampaigns || isLoadingCompliance;
+
+  // Sample data for donations and deployment requests
   const donations = [
-    { donor: 'Anonymous Donor', address: '0x72...9a2', campaign: 'Emergency Relief for...', amount: '$150.00', status: 'Verified' },
-    { donor: 'Anonymous Donor', address: '0x72...9a2', campaign: 'Emergency Relief for...', amount: '$150.00', status: 'Verified' },
-    { donor: 'Anonymous Donor', address: '0x72...9a2', campaign: 'Emergency Relief for...', amount: '$150.00', status: 'Verified' },
-    { donor: 'Anonymous Donor', address: '0x72...9a2', campaign: 'Emergency Relief for...', amount: '$150.00', status: 'Verified' },
-    { donor: 'Anonymous Donor', address: '0x72...9a2', campaign: 'Emergency Relief for...', amount: '$150.00', status: 'Verified' },
+    { donor: 'Ahmad Sukma', address: '0x72...9a2', campaign: 'Emergency Relief Fund', amount: 'IDR 500,000', status: 'Confirmed' },
+    { donor: 'Siti Nurhaliza', address: '0x8b...4f3', campaign: 'Education for All', amount: 'IDR 1,000,000', status: 'Confirmed' },
+    { donor: 'Anonymous', address: '0x3d...7c1', campaign: 'Clean Water Initiative', amount: 'IDR 750,000', status: 'Confirmed' },
   ];
 
   const deploymentRequests = [
-    { title: 'Medical Supplies Procurement', amount: '$12,500', status: 'Pending Approval' },
-    { title: 'Medical Supplies Procurement', amount: '$12,500', status: 'Pending Approval' },
+    { title: 'Relief Fund Deployment', amount: 'IDR 5,000,000', status: 'Pending' },
+    { title: 'Education Program Support', amount: 'IDR 3,500,000', status: 'Pending' },
   ];
+
+  // Show empty state if wallet not connected
+  if (!isConnected) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold mb-4">Connect Wallet</h2>
+          <p className="text-muted-foreground mb-6">Please connect your wallet to access the organization dashboard</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex min-h-screen bg-gray-50">
@@ -119,20 +157,42 @@ export default function BaznasDashboard() {
           </div>
         </div>
 
+        {isLoading ? (
+          <div className="flex items-center justify-center py-20">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          </div>
+        ) : (
+          <>
         {/* Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
           <div className="bg-white rounded-xl border border-black p-6 shadow-sm">
             <div className="text-sm font-medium text-black mb-2">Total Funds Raised</div>
-            <div className="text-2xl font-bold">$2,450,000</div>
+            <div className="text-2xl font-bold">{formatIDRX(totalRaised)} IDRX</div>
             <div className="flex items-center gap-1 text-xs text-green-600 mt-1">
-              <ArrowUpRight className="h-3 w-3" />
-              +15% this month
+              <CheckCircle2 className="h-3 w-3" />
+              {compliance.isVerified ? 'Verified' : 'Pending'}
             </div>
           </div>
           
           <div className="bg-white rounded-xl border border-black p-6 shadow-sm">
             <div className="text-sm font-medium text-black mb-2">Active Donors</div>
-            <div className="text-2xl font-bold">12,543</div>
+            <div className="text-2xl font-bold">{totalDonors}</div>
+            <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
+              Unique contributors
+            </div>
+          </div>
+          
+          <div className="bg-white rounded-xl border border-black p-6 shadow-sm">
+            <div className="text-sm font-medium text-black mb-2">Active Campaigns</div>
+            <div className="text-2xl font-bold">{organizationCampaigns.filter(c => c.isActive).length}</div>
+            <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
+              Live fundraisers
+            </div>
+          </div>
+          
+          <div className="bg-white rounded-xl border border-black p-6 shadow-sm">
+            <div className="text-sm font-medium text-black mb-2">Compliance Score</div>
+            <div className="text-2xl font-bold">{Number(compliance.complianceScore)}%</div>
             <div className="flex items-center gap-1 text-xs text-green-600 mt-1">
               <ArrowUpRight className="h-3 w-3" />
               +8% new donors
@@ -256,6 +316,8 @@ export default function BaznasDashboard() {
           </div>
         </div>
         </>
+        )}
+          </>
         )}
 
         {/* Campaigns Tab */}

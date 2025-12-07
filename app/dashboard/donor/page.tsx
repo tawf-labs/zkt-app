@@ -1,62 +1,18 @@
 "use client";
 
 import React, { useState } from 'react';
-import { Award, FileText, Vote, Wallet, ShieldCheck, Download, ExternalLink, TrendingUp, CheckCircle2, XCircle, Clock, Settings } from 'lucide-react';
-
-interface NFTReceipt {
-  id: string;
-  receiptNumber: string;
-  amount: string;
-  category: string;
-  date: string;
-  campaign: string;
-  address: string;
-}
+import { Award, FileText, Vote, Wallet, ShieldCheck, Download, ExternalLink, TrendingUp, CheckCircle2, XCircle, Clock, Settings, Loader2 } from 'lucide-react';
+import { useDonationReceipts } from '@/hooks/useDonationReceipts';
+import { useAccount } from 'wagmi';
+import { formatIDRX, formatAddress, formatTimestamp } from '@/lib/abi';
 
 type SidebarTab = 'overview' | 'tax-reports' | 'governance-dao' | 'wallet-settings';
 
 const DonorDashboard: React.FC = () => {
+  const { address, isConnected } = useAccount();
+  const { receipts, isLoading } = useDonationReceipts();
   const [sidebarTab, setSidebarTab] = useState<SidebarTab>('overview');
   const [activeTab, setActiveTab] = useState<'receipts' | 'history' | 'governance'>('receipts');
-
-  const receipts: NFTReceipt[] = [
-    {
-      id: '1',
-      receiptNumber: '1001',
-      amount: '$50.00 USD',
-      category: 'Zakat',
-      date: 'Oct 24, 2025',
-      campaign: 'Emergency Relief Fund',
-      address: '0x8a...92b'
-    },
-    {
-      id: '2',
-      receiptNumber: '1002',
-      amount: '$50.00 USD',
-      category: 'Zakat',
-      date: 'Oct 24, 2025',
-      campaign: 'Emergency Relief Fund',
-      address: '0x8a...92b'
-    },
-    {
-      id: '3',
-      receiptNumber: '1003',
-      amount: '$50.00 USD',
-      category: 'Zakat',
-      date: 'Oct 24, 2025',
-      campaign: 'Emergency Relief Fund',
-      address: '0x8a...92b'
-    },
-    {
-      id: '4',
-      receiptNumber: '1004',
-      amount: '$50.00 USD',
-      category: 'Zakat',
-      date: 'Oct 24, 2025',
-      campaign: 'Emergency Relief Fund',
-      address: '0x8a...92b'
-    }
-  ];
 
   return (
     <div className="min-h-screen bg-white">
@@ -70,15 +26,17 @@ const DonorDashboard: React.FC = () => {
                 <div className="p-6 flex flex-col items-center text-center">
                   <div className="relative flex h-20 w-20 shrink-0 overflow-hidden rounded-full mb-4 border-2 border-black/20">
                     <div className="aspect-square h-full w-full bg-white flex items-center justify-center text-2xl font-bold text-primary border-black">
-                      JD
+                      {address ? address.slice(0, 2).toUpperCase() : 'NA'}
                     </div>
                   </div>
-                  <h2 className="font-bold text-xl">John Doe</h2>
-                  <p className="text-sm text-muted-foreground mb-4">@johndoe</p>
-                  <div className="flex items-center gap-2 bg-white/50 px-3 py-1.5 rounded-full text-xs font-mono text-muted-foreground mb-6">
-                    <Wallet className="h-3 w-3" />
-                    0x71C...92F
-                  </div>
+                  <h2 className="font-bold text-xl">{isConnected ? 'Donor' : 'Not Connected'}</h2>
+                  <p className="text-sm text-muted-foreground mb-4">{isConnected ? formatAddress(address!) : 'Please connect wallet'}</p>
+                  {isConnected && (
+                    <div className="flex items-center gap-2 bg-white/50 px-3 py-1.5 rounded-full text-xs font-mono text-muted-foreground mb-6">
+                      <Wallet className="h-3 w-3" />
+                      {formatAddress(address!)}
+                    </div>
+                  )}
                   <button className="w-full inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-all border border-black shadow-xs hover:bg-accent hover:text-accent-foreground h-9 px-4 py-2 bg-transparent">
                     Edit Profile
                   </button>
@@ -135,18 +93,26 @@ const DonorDashboard: React.FC = () => {
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="text-card-foreground rounded-xl border shadow-sm bg-white/5 border-black p-6">
                   <div className="text-sm font-medium text-muted-foreground mb-2">Total Donated</div>
-                  <div className="text-2xl font-bold text-primary">$1,250.00</div>
-                  <p className="text-xs text-muted-foreground mt-1">+12% from last month</p>
+                  <div className="text-2xl font-bold text-primary">
+                    {isConnected ? (
+                      `${formatIDRX(receipts.reduce((sum, r) => sum + r.amount, BigInt(0)))} IDRX`
+                    ) : (
+                      'Connect Wallet'
+                    )}
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">Lifetime donations</p>
+                </div>
+                <div className="bg-white text-card-foreground rounded-xl border border-black shadow-sm p-6">
+                  <div className="text-sm font-medium text-muted-foreground mb-2">NFT Receipts</div>
+                  <div className="text-2xl font-bold">{isConnected ? receipts.length : '0'}</div>
+                  <p className="text-xs text-muted-foreground mt-1">Donation certificates</p>
                 </div>
                 <div className="bg-white text-card-foreground rounded-xl border border-black shadow-sm p-6">
                   <div className="text-sm font-medium text-muted-foreground mb-2">Campaigns Supported</div>
-                  <div className="text-2xl font-bold">14</div>
-                  <p className="text-xs text-muted-foreground mt-1">Across 3 categories</p>
-                </div>
-                <div className="bg-white text-card-foreground rounded-xl border border-black shadow-sm p-6">
-                  <div className="text-sm font-medium text-muted-foreground mb-2">Governance Power</div>
-                  <div className="text-2xl font-bold text-purple-600">850 vZKT</div>
-                  <p className="text-xs text-muted-foreground mt-1">Top 15% of donors</p>
+                  <div className="text-2xl font-bold">
+                    {isConnected ? new Set(receipts.map(r => r.poolId.toString())).size : '0'}
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">Unique campaigns</p>
                 </div>
               </div>
 
@@ -189,47 +155,67 @@ const DonorDashboard: React.FC = () => {
                 {/* Tab Content */}
                 <div className="pt-6">
                   {activeTab === 'receipts' && (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                      {receipts.map((receipt) => (
-                        <div
-                          key={receipt.id}
-                          className="bg-white text-card-foreground rounded-xl border shadow-sm overflow-hidden border-black/60 hover:shadow-md transition-shadow group cursor-pointer"
-                        >
-                          {/* Receipt Visual */}
-                          <div className="relative aspect-square bg-gradient-to-br from-secondary to-background p-6 flex flex-col items-center justify-center border-b border-black/60">
-                            <div className="absolute inset-0 opacity-10 bg-white [background-size:16px_16px]"></div>
-                            <div className="h-16 w-16 rounded-full bg-white/10 flex items-center justify-center text-primary mb-4 shadow-sm group-hover:scale-110 transition-transform">
-                              <ShieldCheck className="h-8 w-8" />
-                            </div>
-                            <div className="text-center relative z-10">
-                              <div className="font-mono text-xs text-muted-foreground mb-1">
-                                RECEIPT #{receipt.receiptNumber}
-                              </div>
-                              <div className="font-bold text-lg">{receipt.amount}</div>
-                              <div className="text-xs text-muted-foreground mt-1">
-                                {receipt.category} • {receipt.date}
-                              </div>
-                            </div>
-                            <span className="inline-flex items-center justify-center rounded-md border px-2 py-0.5 text-xs font-medium absolute top-3 right-3 bg-white/80 backdrop-blur text-foreground border-border/50 shadow-sm">
-                              Verified
-                            </span>
-                          </div>
-
-                          {/* Receipt Info */}
-                          <div className="p-4">
-                            <h3 className="font-semibold truncate">{receipt.campaign}</h3>
-                            <div className="flex justify-between items-center mt-4">
-                              <span className="text-xs font-mono text-muted-foreground">
-                                {receipt.address}
-                              </span>
-                              <button className="inline-flex items-center justify-center whitespace-nowrap text-sm font-medium transition-all hover:bg-accent hover:text-accent-foreground rounded-md h-8 w-8 p-0">
-                                <Download className="h-4 w-4" />
-                              </button>
-                            </div>
-                          </div>
+                    <>
+                      {isLoading ? (
+                        <div className="flex items-center justify-center py-20">
+                          <Loader2 className="h-8 w-8 animate-spin text-primary" />
                         </div>
-                      ))}
-                    </div>
+                      ) : !isConnected ? (
+                        <div className="text-center py-20">
+                          <Wallet className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                          <p className="text-lg font-semibold text-foreground">Connect Your Wallet</p>
+                          <p className="text-muted-foreground mt-2">Please connect your wallet to view your donation receipts</p>
+                        </div>
+                      ) : receipts.length === 0 ? (
+                        <div className="text-center py-20">
+                          <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                          <p className="text-lg font-semibold text-foreground">No Receipts Yet</p>
+                          <p className="text-muted-foreground mt-2">Make your first donation to receive an NFT receipt</p>
+                        </div>
+                      ) : (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                          {receipts.map((receipt) => (
+                            <div
+                              key={receipt.tokenId.toString()}
+                              className="bg-white text-card-foreground rounded-xl border shadow-sm overflow-hidden border-black/60 hover:shadow-md transition-shadow group cursor-pointer"
+                            >
+                              {/* Receipt Visual */}
+                              <div className="relative aspect-square bg-gradient-to-br from-secondary to-background p-6 flex flex-col items-center justify-center border-b border-black/60">
+                                <div className="absolute inset-0 opacity-10 bg-white [background-size:16px_16px]"></div>
+                                <div className="h-16 w-16 rounded-full bg-white/10 flex items-center justify-center text-primary mb-4 shadow-sm group-hover:scale-110 transition-transform">
+                                  <ShieldCheck className="h-8 w-8" />
+                                </div>
+                                <div className="text-center relative z-10">
+                                  <div className="font-mono text-xs text-muted-foreground mb-1">
+                                    NFT #{receipt.tokenId.toString()}
+                                  </div>
+                                  <div className="font-bold text-lg">{formatIDRX(receipt.amount)} IDRX</div>
+                                  <div className="text-xs text-muted-foreground mt-1">
+                                    Campaign #{receipt.poolId.toString()} • {formatTimestamp(Number(receipt.timestamp))}
+                                  </div>
+                                </div>
+                                <span className="inline-flex items-center justify-center rounded-md border px-2 py-0.5 text-xs font-medium absolute top-3 right-3 bg-white/80 backdrop-blur text-foreground border-border/50 shadow-sm">
+                                  Verified
+                                </span>
+                              </div>
+
+                              {/* Receipt Info */}
+                              <div className="p-4">
+                                <h3 className="font-semibold truncate">Donation Receipt NFT</h3>
+                                <div className="flex justify-between items-center mt-4">
+                                  <span className="text-xs font-mono text-muted-foreground">
+                                    {formatAddress(receipt.donor)}
+                                  </span>
+                                  <button className="inline-flex items-center justify-center whitespace-nowrap text-sm font-medium transition-all hover:bg-accent hover:text-accent-foreground rounded-md h-8 w-8 p-0">
+                                    <Download className="h-4 w-4" />
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </>
                   )}
                   {activeTab === 'history' && (
                     <div className="space-y-6">

@@ -4,26 +4,25 @@ import { useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { Users, Clock, CircleCheck } from "lucide-react";
-import { Campaign } from "@/data/campaigns";
+import { Campaign } from "@/hooks/useCampaigns";
 import { DonationDialog } from "@/components/donations/donation-dialog";
+import { formatIDRX } from "@/lib/abi";
 
 interface CampaignCardProps {
   campaign: Campaign;
-  calculateProgress: (raised: number, goal: number) => number;
-  formatCurrency: (amount: number) => string;
 }
 
-export function CampaignCard({ 
-  campaign, 
-  calculateProgress, 
-  formatCurrency 
-}: CampaignCardProps) {
+export function CampaignCard({ campaign }: CampaignCardProps) {
   const router = useRouter();
   const [showDonationDialog, setShowDonationDialog] = useState(false);
-  const progress = calculateProgress(campaign.raised, campaign.goal);
+  
+  const progress = (Number(campaign.currentAmount) / Number(campaign.targetAmount)) * 100;
+  const daysLeft = campaign.endDate > 0n 
+    ? Math.max(0, Number((campaign.endDate - BigInt(Math.floor(Date.now() / 1000))) / 86400n))
+    : 0;
 
   const handleCardClick = () => {
-    router.push(`/campaigns/${campaign.id}`);
+    router.push(`/campaigns/${campaign.id.toString()}`);
   };
 
   const handleDonateClick = (e: React.MouseEvent) => {
@@ -38,11 +37,10 @@ export function CampaignCard({
     >
       {/* Image Section */}
       <div className="relative h-48 overflow-hidden">
-        <Image
-          src={campaign.image}
+        <img
+          src={campaign.imageUrl}
           alt={campaign.title}
-          fill
-          className="object-cover transition-transform duration-500 group-hover:scale-105"
+          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
         />
 
         <div className="absolute top-3 left-3 flex flex-col gap-2">
@@ -66,7 +64,7 @@ export function CampaignCard({
         <div className="text-xs text-muted-foreground font-medium flex items-center gap-1">
           by{" "}
           <span className="text-primary font-semibold hover:underline cursor-pointer">
-            {campaign.organization}
+            {campaign.organizationName}
           </span>
         </div>
 
@@ -80,10 +78,10 @@ export function CampaignCard({
         <div className="space-y-3">
           <div className="flex justify-between text-sm">
             <span className="font-bold text-foreground">
-              {formatCurrency(campaign.raised)}
+              {formatIDRX(campaign.currentAmount)} IDRX
             </span>
             <span className="text-muted-foreground">
-              of {formatCurrency(campaign.goal)}
+              of {formatIDRX(campaign.targetAmount)} IDRX
             </span>
           </div>
 
@@ -97,13 +95,13 @@ export function CampaignCard({
           <div className="flex justify-between items-center text-xs text-muted-foreground pt-1">
             <div className="flex items-center gap-1">
               <Users className="h-3.5 w-3.5" />
-              <span>{campaign.donors.toLocaleString()} donors</span>
+              <span>{campaign.donorCount.toString()} donors</span>
             </div>
 
             <div className="flex items-center gap-1 bg-secondary px-2 py-1 rounded-md">
               <Clock className="h-3.5 w-3.5" />
               <span className="font-medium text-foreground">
-                {campaign.daysLeft} days left
+                {daysLeft} days left
               </span>
             </div>
           </div>
@@ -124,10 +122,10 @@ export function CampaignCard({
       <DonationDialog
         open={showDonationDialog}
         onOpenChange={setShowDonationDialog}
-        campaignId={campaign.id}
+        campaignId={Number(campaign.id)}
         campaignTitle={campaign.title}
-        campaignGoal={campaign.goal}
-        campaignRaised={campaign.raised}
+        campaignGoal={Number(campaign.targetAmount)}
+        campaignRaised={Number(campaign.currentAmount)}
       />
     </div>
   );

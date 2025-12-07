@@ -1,17 +1,22 @@
 "use client";
 
-import { Search, Filter, SlidersHorizontal } from 'lucide-react';
-import { campaigns, categories, locations, organizations, calculateProgress, formatCurrency } from '@/data/campaigns';
+import { Search, Filter, SlidersHorizontal, Loader2 } from 'lucide-react';
+import { useCampaigns } from '@/hooks/useCampaigns';
+import { formatIDRX } from '@/lib/abi';
 import { CampaignCard } from '@/components/shared/campaign-card';
 import { useSearch } from "@/components/shared/SearchContext"; 
 
-export default function ExploreCampaigns() {
+const categories = ["Zakat", "Infaq", "Sadaqah", "Waqf", "Emergency"];
+const locations = ["Indonesia", "Palestine", "Syria", "Yemen", "Global"];
+const organizations = ["Baznas", "Dompet Dhuafa", "Rumah Zakat", "Human Initiative", "Lazismu"];
 
+export default function ExploreCampaigns() {
   const { searchQuery, setSearchQuery } = useSearch();
+  const { campaigns, isLoading } = useCampaigns([0, 1, 2, 3, 4, 5]);
 
   const filteredCampaigns = campaigns.filter((c) =>
     c.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    c.organization.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    c.organizationName.toLowerCase().includes(searchQuery.toLowerCase()) ||
     c.category.toLowerCase().includes(searchQuery.toLowerCase())
   );
 

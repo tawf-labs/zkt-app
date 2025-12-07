@@ -6,13 +6,11 @@ import { useState } from "react";
 import { useSearch } from "@/components/shared/SearchContext";
 import { SearchDropdown } from "@/components/shared/SearchDropdown";
 import { ConnectWalletButton } from "@/components/wallet/connect-wallet-button";
-import { useLanguage } from "@/components/providers/language-provider";
 
 export function Header() {
   const [isDropdownOpen, setDropdownOpen] = useState(false);
   const { searchQuery, setSearchQuery, isSearchOpen, setIsSearchOpen } =
     useSearch();
-  const { language, setLanguage, t } = useLanguage();
 
   const handleEnter = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter") {
@@ -35,10 +33,10 @@ export function Header() {
           </Link>
 
           <nav className="hidden md:flex items-center gap-8 text-sm font-medium">
-            <Link href="/zakat" className="text-foreground hover:text-primary transition-colors">{t("header.zakat")}</Link>
-            <Link href="/campaigns" className="text-foreground hover:text-primary transition-colors">{t("header.campaigns")}</Link>
-            <Link href="/faucet" className="text-foreground hover:text-primary transition-colors">{t("header.faucet")}</Link>
-            <Link href="/explorer" className="text-foreground hover:text-primary transition-colors">{t("header.explorer")}</Link>
+            <Link href="/zakat" className="text-foreground hover:text-primary transition-colors">Zakat Calculator</Link>
+            <Link href="/campaigns" className="text-foreground hover:text-primary transition-colors">Campaigns</Link>
+            <Link href="/faucet" className="text-foreground hover:text-primary transition-colors">Faucet</Link>
+            <Link href="/explorer" className="text-foreground hover:text-primary transition-colors">Explorer</Link>
 
             {/* Dashboard dropdown */}
             <div className="relative">
@@ -46,7 +44,7 @@ export function Header() {
                 onClick={() => setDropdownOpen(!isDropdownOpen)}
                 className="flex items-center gap-1"
               >
-                {t("header.dashboard")}
+                Dashboard
                 <ChevronDown className="w-4 h-4" />
               </button>
 
@@ -55,17 +53,17 @@ export function Header() {
                   <ul className="flex flex-col p-2">
                     <li>
                       <Link href="/dashboard/donor" className="block px-4 py-2.5 rounded-md text-sm hover:bg-accent hover:text-primary transition-colors">
-                        {t("dashboard.donor")}
+                        Donor Dashboard
                       </Link>
                     </li>
                     <li>
                       <Link href="/dashboard/organization" className="block px-4 py-2.5 rounded-md text-sm hover:bg-accent hover:text-primary transition-colors">
-                        {t("dashboard.organization")}
+                        Organization Dashboard
                       </Link>
                     </li>
                     <li>
                       <Link href="/dashboard/auditor" className="block px-4 py-2.5 rounded-md text-sm hover:bg-accent hover:text-primary transition-colors">
-                        {t("dashboard.auditor")}
+                        Auditor Dashboard
                       </Link>
                     </li>
                   </ul>
@@ -73,7 +71,7 @@ export function Header() {
               )}
             </div>
 
-            <Link href="/governance" className="text-foreground hover:text-primary transition-colors">{t("header.governance")}</Link>
+            <Link href="/governance" className="text-foreground hover:text-primary transition-colors">Governance</Link>
           </nav>
         </div>
 
@@ -86,7 +84,7 @@ export function Header() {
 
             <input
               type="search"
-              placeholder={t("header.search")}
+              placeholder="Search campaigns..."
               value={searchQuery}
               onChange={(e) => {
                 setSearchQuery(e.target.value);
@@ -98,30 +96,6 @@ export function Header() {
 
             {/* DROPDOWN */}
             {isSearchOpen && searchQuery && <SearchDropdown />}
-          </div>
-
-          {/* Language Toggle */}
-          <div className="hidden sm:flex items-center gap-1 border border-border rounded-lg p-1 bg-accent/30">
-            <button
-              onClick={() => setLanguage("id")}
-              className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
-                language === "id"
-                  ? "bg-primary text-white shadow-sm"
-                  : "text-foreground/60 hover:text-foreground hover:bg-white/50"
-              }`}
-            >
-              ID
-            </button>
-            <button
-              onClick={() => setLanguage("en")}
-              className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
-                language === "en"
-                  ? "bg-primary text-white shadow-sm"
-                  : "text-foreground/60 hover:text-foreground hover:bg-white/50"
-              }`}
-            >
-              EN
-            </button>
           </div>
 
           <button className="hidden sm:flex items-center gap-2 border border-border h-10 px-5 rounded-lg hover:bg-accent hover:border-primary/30 transition-all text-sm font-medium">

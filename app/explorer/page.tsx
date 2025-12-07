@@ -1,114 +1,15 @@
 "use client";
 
 import React, { useState } from 'react';
-import { Search, ExternalLink, Filter, TrendingUp, Users, Coins, Vote, Calendar } from 'lucide-react';
+import { Search, ExternalLink, Filter, TrendingUp, Users, Coins, Vote, Calendar, Loader2 } from 'lucide-react';
 import { CONTRACT_ADDRESSES, formatAddress, formatTimestamp, formatIDRX } from '@/lib/abi';
-
-type TransactionType = 'all' | 'donation' | 'campaign' | 'proposal' | 'vote';
-
-interface Transaction {
-  hash: string;
-  type: TransactionType;
-  from: string;
-  to?: string;
-  amount?: string;
-  timestamp: number;
-  blockNumber: number;
-  description: string;
-  status: 'success' | 'pending' | 'failed';
-}
+import { useTransactionHistory, TransactionType } from '@/hooks/useTransactionHistory';
 
 const ExplorerPage: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState<TransactionType>('all');
-
-  // Mock transaction data - In production, this would come from blockchain queries
-  const transactions: Transaction[] = [
-    {
-      hash: '0x7f3d8a21c9e4f5b6d8a9c7e2f1a3b5d8c9e4f5b6d8a9c7e2f1a3b5d8c9e4f5b6',
-      type: 'donation',
-      from: '0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb5',
-      to: CONTRACT_ADDRESSES.ZKTCore,
-      amount: '158000000000000000000000',
-      timestamp: 1732492800,
-      blockNumber: 15234567,
-      description: 'Donation to Emergency Relief Fund',
-      status: 'success'
-    },
-    {
-      hash: '0x9e2ab34f8c7d6e5a4b3c2d1e9f8a7b6c5d4e3f2a1b9c8d7e6f5a4b3c2d1e9f8a',
-      type: 'donation',
-      from: '0x8B3c9D2E1F4A5B6C7D8E9F0A1B2C3D4E5F6A7B8C',
-      to: CONTRACT_ADDRESSES.ZKTCore,
-      amount: '316000000000000000000000',
-      timestamp: 1732320000,
-      blockNumber: 15234123,
-      description: 'Donation to Children Education Fund',
-      status: 'success'
-    },
-    {
-      hash: '0x4c8ed92a5f7b6e3c1d9a8f7e6d5c4b3a2f1e9d8c7b6a5f4e3d2c1b9a8f7e6d5',
-      type: 'vote',
-      from: '0x5F9A2E3C4D1B8A7F6E5D4C3B2A1F9E8D7C6B5A4F',
-      to: CONTRACT_ADDRESSES.ZKTCore,
-      timestamp: 1732233600,
-      blockNumber: 15233890,
-      description: 'Voted FOR on Proposal #17: Increase Education Fund Allocation',
-      status: 'success'
-    },
-    {
-      hash: '0x1b5fe87d3c9a2f6e4d8b7c5a3f2e1d9c8b7a6f5e4d3c2b1a9f8e7d6c5b4a3f2',
-      type: 'donation',
-      from: '0x3D5A7C9F1E2B4D6A8C0E2F4B6D8A0C2E4F6A8C0E',
-      to: CONTRACT_ADDRESSES.ZKTCore,
-      amount: '79000000000000000000000',
-      timestamp: 1731974400,
-      blockNumber: 15232456,
-      description: 'Donation to Emergency Relief Fund',
-      status: 'success'
-    },
-    {
-      hash: '0x6a9cf13b8e2d7a5f4c3b9e8d7c6a5f4e3d2c1b9a8f7e6d5c4b3a2f1e9d8c7b6',
-      type: 'campaign',
-      from: '0x9E1F3D5A7C2B4E6F8A0C2D4E6F8A0C2D4E6F8A0C',
-      to: CONTRACT_ADDRESSES.ZKTCore,
-      timestamp: 1731628800,
-      blockNumber: 15231234,
-      description: 'Created campaign: Medical Equipment Fund',
-      status: 'success'
-    },
-    {
-      hash: '0x2f8e9d7c6b5a4f3e2d1c9b8a7f6e5d4c3b2a1f9e8d7c6b5a4f3e2d1c9b8a7f6',
-      type: 'proposal',
-      from: '0x1A2B3C4D5E6F7A8B9C0D1E2F3A4B5C6D7E8F9A0B',
-      to: CONTRACT_ADDRESSES.ZKTCore,
-      timestamp: 1731542400,
-      blockNumber: 15230987,
-      description: 'Created proposal: Implement Quarterly Impact Reports',
-      status: 'success'
-    },
-    {
-      hash: '0x8d7c6b5a4f3e2d1c9b8a7f6e5d4c3b2a1f9e8d7c6b5a4f3e2d1c9b8a7f6e5d4',
-      type: 'vote',
-      from: '0x7C8D9E0F1A2B3C4D5E6F7A8B9C0D1E2F3A4B5C6D',
-      to: CONTRACT_ADDRESSES.ZKTCore,
-      timestamp: 1731456000,
-      blockNumber: 15230654,
-      description: 'Voted FOR on Proposal #16: Implement Quarterly Impact Reports',
-      status: 'success'
-    },
-    {
-      hash: '0x5c4b3a2f1e9d8c7b6a5f4e3d2c1b9a8f7e6d5c4b3a2f1e9d8c7b6a5f4e3d2c1',
-      type: 'donation',
-      from: '0x4E5F6A7B8C9D0E1F2A3B4C5D6E7F8A9B0C1D2E3F',
-      to: CONTRACT_ADDRESSES.ZKTCore,
-      amount: '237000000000000000000000',
-      timestamp: 1731369600,
-      blockNumber: 15230123,
-      description: 'Donation to Clean Water Initiative',
-      status: 'success'
-    }
-  ];
+  
+  const { transactions, isLoading, error } = useTransactionHistory();
 
   const filteredTransactions = transactions.filter(tx => {
     const matchesType = filterType === 'all' || tx.type === filterType;
@@ -119,10 +20,16 @@ const ExplorerPage: React.FC = () => {
     return matchesType && matchesSearch;
   });
 
-  // Calculate stats
+  // Calculate stats from blockchain data
   const totalDonations = transactions
     .filter(tx => tx.type === 'donation' && tx.amount)
-    .reduce((sum, tx) => sum + Number(tx.amount), 0);
+    .reduce((sum, tx) => sum + tx.amount!, BigInt(0));
+  
+  const uniqueDonors = new Set(
+    transactions
+      .filter(tx => tx.type === 'donation')
+      .map(tx => tx.from)
+  ).size;
   
   const totalTransactions = transactions.length;
   const activeCampaigns = transactions.filter(tx => tx.type === 'campaign').length;
@@ -167,8 +74,19 @@ const ExplorerPage: React.FC = () => {
             </p>
           </div>
 
-          {/* Stats Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+          {isLoading ? (
+            <div className="flex items-center justify-center py-20">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            </div>
+          ) : error ? (
+            <div className="text-center py-20">
+              <p className="text-lg font-semibold text-foreground">Error loading transactions</p>
+              <p className="text-muted-foreground mt-2">{error.message}</p>
+            </div>
+          ) : (
+            <>
+              {/* Stats Cards */}
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
             <div className="bg-white text-card-foreground rounded-xl border border-black shadow-sm p-6">
               <div className="flex items-center gap-3 mb-2">
                 <div className="h-10 w-10 rounded-full bg-green-100 flex items-center justify-center">
@@ -176,7 +94,7 @@ const ExplorerPage: React.FC = () => {
                 </div>
                 <div>
                   <div className="text-sm text-muted-foreground">Total Donated</div>
-                  <div className="text-xl font-bold">{formatIDRX(BigInt(totalDonations))} IDRX</div>
+                  <div className="text-xl font-bold">{formatIDRX(totalDonations)} IDRX</div>
                 </div>
               </div>
             </div>
@@ -184,11 +102,11 @@ const ExplorerPage: React.FC = () => {
             <div className="bg-white text-card-foreground rounded-xl border border-black shadow-sm p-6">
               <div className="flex items-center gap-3 mb-2">
                 <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center">
-                  <TrendingUp className="h-5 w-5 text-blue-600" />
+                  <Users className="h-5 w-5 text-blue-600" />
                 </div>
                 <div>
-                  <div className="text-sm text-muted-foreground">Active Campaigns</div>
-                  <div className="text-xl font-bold">{activeCampaigns}</div>
+                  <div className="text-sm text-muted-foreground">Unique Donors</div>
+                  <div className="text-xl font-bold">{uniqueDonors}</div>
                 </div>
               </div>
             </div>
@@ -328,7 +246,7 @@ const ExplorerPage: React.FC = () => {
                           {tx.amount && (
                             <div className="text-right">
                               <div className="text-sm font-semibold text-green-600">
-                                {formatIDRX(BigInt(tx.amount))} IDRX
+                                {formatIDRX(tx.amount)} IDRX
                               </div>
                             </div>
                           )}
@@ -387,6 +305,8 @@ const ExplorerPage: React.FC = () => {
               </div>
             </div>
           </div>
+          </>
+        )}
         </div>
       </main>
     </div>

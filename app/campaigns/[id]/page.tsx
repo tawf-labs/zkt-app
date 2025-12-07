@@ -1,78 +1,45 @@
 "use client";
 
 import { useState } from 'react';
-import { ArrowLeft, Users, Clock, CircleCheck, Share2, Heart, MapPin, Calendar, Target, TrendingUp, Shield, FileText } from 'lucide-react';
+import { useParams } from 'next/navigation';
+import { ArrowLeft, Users, Clock, CircleCheck, Share2, Heart, MapPin, Calendar, Shield, FileText, Loader2 } from 'lucide-react';
+import { useCampaign } from '@/hooks/useCampaigns';
+import { formatIDRX } from '@/lib/abi';
 
-const campaignDetail = {
-  id: 1,
-  title: "Emergency Relief for Earthquake Victims in Cianjur",
-  organization: {
-    name: "Baznas Indonesia",
-    verified: true,
-    logo: "/org-logo.jpg"
-  },
-  category: "Emergency",
-  location: "Cianjur, West Java, Indonesia",
-  raised: 125000,
-  goal: 150000,
-  donors: 2500,
-  daysLeft: 12,
-  createdDate: "Oct 15, 2024",
-  image: "https://www.ypp.co.id/site/uploads/slides/6391630281061-header-cianjur-2.jpeg",
-  images: [
-    "https://www.ypp.co.id/site/uploads/slides/6391630281061-header-cianjur-2.jpeg",
-    "https://img.jakpost.net/c/2023/03/09/2023_03_09_136404_1678347888._medium.jpg",
-    "https://cdn.antaranews.com/cache/1200x800/2022/12/10/es-center.jpg"
-  ],
-  description: `The devastating earthquake that struck Cianjur has left thousands of families without homes, food, and basic necessities. The disaster has affected over 10,000 residents, with many losing everything they owned.
-
-Our emergency relief campaign aims to provide immediate assistance to the affected families through:
-
-• Emergency food packages for 1,000 families
-• Temporary shelter and bedding materials
-• Clean water and sanitation facilities
-• Medical aid and healthcare services
-• Psychological support for trauma victims
-
-Every donation, no matter how small, will make a direct impact on the lives of those affected. Your generosity will help rebuild hope and restore dignity to families in their darkest hour.
-
-We are working closely with local authorities and volunteers to ensure that aid reaches those who need it most. All funds are managed transparently, and we provide regular updates on the distribution of aid.`,
-  updates: [
-    {
-      date: "Nov 20, 2024",
-      title: "Distribution of 500 Food Packages Completed",
-      content: "Alhamdulillah, we have successfully distributed 500 emergency food packages to affected families in the most severely impacted areas."
-    },
-    {
-      date: "Nov 15, 2024",
-      title: "Medical Team Deployed",
-      content: "Our medical team has arrived on-site and has begun providing healthcare services to earthquake victims."
-    }
-  ],
-  milestones: [
-    { amount: 50000, label: "Emergency food for 300 families", achieved: true },
-    { amount: 100000, label: "Temporary shelters for 500 families", achieved: true },
-    { amount: 150000, label: "Medical aid and rehabilitation", achieved: false }
-  ]
-};
-
-const donationAmounts = [10000, 25000, 50000, 100000, 250000, 500000];
+const donationAmounts = [BigInt(10000), BigInt(25000), BigInt(50000), BigInt(100000), BigInt(250000), BigInt(500000)];
 
 export default function CampaignDetail() {
-  const [selectedAmount, setSelectedAmount] = useState<number | null>(null);
+  const params = useParams();
+  const campaignId = Number(params.id);
+  const { campaign, isLoading, error } = useCampaign(campaignId);
+  
+  const [selectedAmount, setSelectedAmount] = useState<bigint | null>(null);
   const [customAmount, setCustomAmount] = useState('');
   const [activeTab, setActiveTab] = useState('story');
-  const [selectedImage, setSelectedImage] = useState(0);
 
-  const calculateProgress = (raised: number, goal: number) => {
-    return (raised / goal) * 100;
-  };
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
-  const formatCurrency = (amount: number) => {
-    return `${amount.toLocaleString('id-ID', { maximumFractionDigits: 0 })} IDRX`;
-  };
+  if (error || !campaign) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-xl font-semibold text-foreground">Campaign not found</p>
+          <p className="text-muted-foreground mt-2">The campaign you're looking for doesn't exist or has been removed.</p>
+        </div>
+      </div>
+    );
+  }
 
-  const progress = calculateProgress(campaignDetail.raised, campaignDetail.goal);
+  const progress = (Number(campaign.currentAmount) / Number(campaign.targetAmount)) * 100;
+  const daysLeft = campaign.endDate > BigInt(0) 
+    ? Math.max(0, Number((campaign.endDate - BigInt(Math.floor(Date.now() / 1000))) / BigInt(86400)))
+    : 0;
 
   return (
     <main className="flex-1 py-8 lg:py-12 bg-background">
@@ -90,44 +57,27 @@ export default function CampaignDetail() {
             <div className="space-y-3">
               <div className="relative h-[400px] rounded-xl overflow-hidden border border-border">
                 <img
-                  src={campaignDetail.images[selectedImage]}
-                  alt={campaignDetail.title}
+                  src={campaign.imageUrl}
+                  alt={campaign.title}
                   className="w-full h-full object-cover"
                 />
                 
                 {/* Category Badge */}
                 <div className="absolute top-4 left-4">
                   <span className="inline-flex items-center justify-center rounded-md px-3 py-1 text-sm font-semibold bg-background/90 backdrop-blur-sm border border-border">
-                    {campaignDetail.category}
+                    {campaign.category}
                   </span>
                 </div>
 
                 {/* Verified Badge */}
-                <div className="absolute top-4 right-4">
-                  <span className="inline-flex items-center gap-1 px-3 py-1 text-sm font-medium bg-background/90 backdrop-blur-sm rounded-md border border-border">
-                    <CircleCheck className="h-4 w-4 text-green-600" />
-                    Verified Campaign
-                  </span>
-                </div>
-              </div>
-
-              {/* Image Thumbnails */}
-              <div className="flex gap-3">
-                {campaignDetail.images.map((img, idx) => (
-                  <button
-                    key={idx}
-                    onClick={() => setSelectedImage(idx)}
-                    className={`relative h-20 w-24 rounded-lg overflow-hidden border-2 transition-all ${
-                      selectedImage === idx ? 'border-primary' : 'border-border hover:border-primary/50'
-                    }`}
-                  >
-                    <img
-                      src={img}
-                      alt={`Gallery ${idx + 1}`}
-                      className="w-full h-full object-cover"
-                    />
-                  </button>
-                ))}
+                {campaign.isVerified && (
+                  <div className="absolute top-4 right-4">
+                    <span className="inline-flex items-center gap-1 px-3 py-1 text-sm font-medium bg-background/90 backdrop-blur-sm rounded-md border border-border">
+                      <CircleCheck className="h-4 w-4 text-green-600" />
+                      Verified Campaign
+                    </span>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -138,23 +88,23 @@ export default function CampaignDetail() {
                   <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
                     <span>by</span>
                     <span className="text-primary font-semibold hover:underline cursor-pointer">
-                      {campaignDetail.organization.name}
+                      {campaign.organizationName}
                     </span>
-                    {campaignDetail.organization.verified && (
+                    {campaign.isVerified && (
                       <CircleCheck className="h-4 w-4 text-green-600" />
                     )}
                   </div>
                   <h1 className="text-3xl font-bold tracking-tight mb-3">
-                    {campaignDetail.title}
+                    {campaign.title}
                   </h1>
                   <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
                     <div className="flex items-center gap-1">
                       <MapPin className="h-4 w-4" />
-                      <span>{campaignDetail.location}</span>
+                      <span>{campaign.location}</span>
                     </div>
                     <div className="flex items-center gap-1">
                       <Calendar className="h-4 w-4" />
-                      <span>Started {campaignDetail.createdDate}</span>
+                      <span>Campaign #{campaign.id.toString()}</span>
                     </div>
                   </div>
                 </div>
@@ -175,10 +125,10 @@ export default function CampaignDetail() {
                 <div className="flex justify-between items-baseline">
                   <div>
                     <div className="text-3xl font-bold text-foreground">
-                      {formatCurrency(campaignDetail.raised)}
+                      {formatIDRX(campaign.currentAmount)}
                     </div>
                     <div className="text-sm text-muted-foreground">
-                      raised of {formatCurrency(campaignDetail.goal)} goal
+                      raised of {formatIDRX(campaign.targetAmount)} goal
                     </div>
                   </div>
                   <div className="text-right">
@@ -200,46 +150,16 @@ export default function CampaignDetail() {
                 <div className="flex justify-between items-center pt-2">
                   <div className="flex items-center gap-2 text-sm">
                     <Users className="h-4 w-4 text-muted-foreground" />
-                    <span className="font-semibold">{campaignDetail.donors.toLocaleString()}</span>
+                    <span className="font-semibold">{campaign.donorCount.toString()}</span>
                     <span className="text-muted-foreground">donors</span>
                   </div>
                   <div className="flex items-center gap-2 text-sm bg-secondary px-3 py-1.5 rounded-md">
                     <Clock className="h-4 w-4" />
-                    <span className="font-semibold">{campaignDetail.daysLeft} days left</span>
+                    <span className="font-semibold">{daysLeft} days left</span>
                   </div>
                 </div>
               </div>
 
-              {/* Milestones */}
-              <div className="bg-card border border-border rounded-xl p-6">
-                <div className="flex items-center gap-2 mb-4">
-                  <Target className="h-5 w-5" />
-                  <h3 className="font-bold text-lg">Campaign Milestones</h3>
-                </div>
-                <div className="space-y-3">
-                  {campaignDetail.milestones.map((milestone, idx) => (
-                    <div key={idx} className="flex items-start gap-3">
-                      <div className={`h-5 w-5 rounded-full border-2 flex items-center justify-center mt-0.5 ${
-                        milestone.achieved ? 'border-green-600 bg-green-600' : 'border-border'
-                      }`}>
-                        {milestone.achieved && (
-                          <CircleCheck className="h-3 w-3 text-white" />
-                        )}
-                      </div>
-                      <div className="flex-1">
-                        <div className="flex justify-between items-start gap-2">
-                          <span className={`text-sm font-medium ${milestone.achieved ? 'text-foreground' : 'text-muted-foreground'}`}>
-                            {milestone.label}
-                          </span>
-                          <span className={`text-sm font-semibold ${milestone.achieved ? 'text-green-600' : 'text-muted-foreground'}`}>
-                            {formatCurrency(milestone.amount)}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
             </div>
 
             {/* Tabs */}
@@ -254,16 +174,6 @@ export default function CampaignDetail() {
                   }`}
                 >
                   Campaign Story
-                </button>
-                <button
-                  onClick={() => setActiveTab('updates')}
-                  className={`pb-3 px-1 text-sm font-medium border-b-2 transition-colors ${
-                    activeTab === 'updates'
-                      ? 'border-primary text-primary'
-                      : 'border-transparent text-muted-foreground hover:text-foreground'
-                  }`}
-                >
-                  Updates ({campaignDetail.updates.length})
                 </button>
                 <button
                   onClick={() => setActiveTab('donors')}
@@ -293,7 +203,7 @@ export default function CampaignDetail() {
               <div className="space-y-6">
                 <div className="prose prose-sm max-w-none">
                   <div className="whitespace-pre-line text-foreground leading-relaxed">
-                    {campaignDetail.description}
+                    {campaign.description}
                   </div>
                 </div>
                 
@@ -309,25 +219,6 @@ export default function CampaignDetail() {
                     </div>
                   </div>
                 </div>
-              </div>
-            )}
-
-            {activeTab === 'updates' && (
-              <div className="space-y-6">
-                {campaignDetail.updates.map((update, idx) => (
-                  <div key={idx} className="bg-card border border-border rounded-xl p-6">
-                    <div className="flex items-start gap-3 mb-3">
-                      <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
-                        <TrendingUp className="h-5 w-5 text-primary" />
-                      </div>
-                      <div className="flex-1">
-                        <h4 className="font-bold text-lg">{update.title}</h4>
-                        <p className="text-sm text-muted-foreground">{update.date}</p>
-                      </div>
-                    </div>
-                    <p className="text-foreground leading-relaxed">{update.content}</p>
-                  </div>
-                ))}
               </div>
             )}
 
@@ -433,7 +324,7 @@ export default function CampaignDetail() {
                           : 'border-border hover:border-primary hover:bg-accent'
                       }`}
                     >
-                      {(amount / 1000).toFixed(0)}K IDRX
+                      {(Number(amount) / 1000).toFixed(0)}K IDRX
                     </button>
                   ))}
                 </div>
@@ -487,14 +378,16 @@ export default function CampaignDetail() {
                 <h3 className="font-bold text-lg mb-4">About Organization</h3>
                 <div className="flex items-start gap-3 mb-4">
                   <div className="h-12 w-12 rounded-full bg-secondary flex items-center justify-center font-bold text-primary">
-                    {campaignDetail.organization.name.charAt(0)}
+                    {campaign.organizationName.charAt(0)}
                   </div>
                   <div className="flex-1">
                     <div className="flex items-center gap-1 mb-1">
-                      <span className="font-semibold">{campaignDetail.organization.name}</span>
-                      <CircleCheck className="h-4 w-4 text-green-600" />
+                      <span className="font-semibold">{campaign.organizationName}</span>
+                      {campaign.isVerified && (
+                        <CircleCheck className="h-4 w-4 text-green-600" />
+                      )}
                     </div>
-                    <p className="text-sm text-muted-foreground">Verified Organization</p>
+                    <p className="text-sm text-muted-foreground">{campaign.isVerified ? 'Verified' : 'Unverified'} Organization</p>
                   </div>
                 </div>
                 <button className="w-full border border-border rounded-md h-9 px-4 text-sm font-semibold hover:bg-accent transition-all">

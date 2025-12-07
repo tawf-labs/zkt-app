@@ -18,16 +18,15 @@ const translations = {
   id: {
     // Header
     "header.search": "Cari kampanye, organisasi...",
-    "header.campaigns": "Kampanye",
+    "header.campaigns": "Campaigns",
     "header.zakat": "Zakat",
     "header.faucet": "Faucet",
-    "header.governance": "Tata Kelola",
-    "header.dashboard": "Dasbor",
-    "header.explorer": "Penjelajah",
-    "header.connectWallet": "Hubungkan Dompet",
-    "header.disconnect": "Putuskan",
-    "header.balance": "Saldo",
-
+    "header.governance": "Governance",
+    "header.dashboard": "Dashboard",
+    "header.explorer": "Explorer",
+    "header.connectWallet": "Connect Wallet",
+    "header.disconnect": "Disconnect",
+    "header.balance": "Balance",
     // Hero Section
     "hero.title": "Platform Donasi Transparan Berbasis Blockchain",
     "hero.subtitle":
