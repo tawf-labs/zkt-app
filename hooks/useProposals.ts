@@ -16,6 +16,16 @@ export interface Proposal {
   executed: boolean;
   cancelled: boolean;
   proposalType: string;
+  // New pool-based fields
+  fundingGoal?: bigint;
+  kycStatus?: number;
+  isEmergency?: boolean;
+  kycNotes?: string;
+  createdAt?: bigint;
+  status?: number;
+  campaignType?: number;
+  poolId?: bigint;
+  zakatChecklistItems?: string[];
 }
 
 function useProposalData(proposalId: number) {
@@ -59,20 +69,32 @@ export function useProposals(proposalIds: number[] = [0, 1, 2, 3]) {
 
       const prop = proposalData.result as any;
 
-      return {
+      const mappedProposal: Proposal = {
         id: BigInt(proposalIds[index]),
         title: prop.title || `Proposal ${proposalIds[index]}`,
         description: prop.description || "",
-        proposer: prop.proposer || "",
+        proposer: prop.organizer || prop.proposer || "",
         votesFor: prop.votesFor || BigInt(0),
         votesAgainst: prop.votesAgainst || BigInt(0),
-        votesAbstain: BigInt(0),
-        startTime: BigInt(0),
-        endTime: prop.endTime || BigInt(0),
+        votesAbstain: prop.votesAbstain || BigInt(0),
+        startTime: prop.communityVoteStart || BigInt(0),
+        endTime: prop.communityVoteEnd || prop.endTime || BigInt(0),
         executed: prop.executed || false,
         cancelled: false,
-        proposalType: "general",
+        proposalType: prop.isEmergency ? "emergency" : prop.campaignType === 1 ? "zakat" : "general",
+        // New pool-based fields
+        fundingGoal: prop.fundingGoal || BigInt(0),
+        kycStatus: prop.kycStatus || 0,
+        isEmergency: prop.isEmergency || false,
+        kycNotes: prop.kycNotes || "",
+        createdAt: prop.createdAt || BigInt(0),
+        status: prop.status || 0,
+        campaignType: prop.campaignType || 0,
+        poolId: prop.poolId || BigInt(0),
+        zakatChecklistItems: prop.zakatChecklistItems || [],
       };
+
+      return mappedProposal;
     })
     .filter((p): p is Proposal => p !== null);
 

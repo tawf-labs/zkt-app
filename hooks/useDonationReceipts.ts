@@ -128,8 +128,12 @@ export function useDonationReceipts() {
     }
   }
 
+  // Calculate total donated
+  const totalDonated = receipts.reduce((sum, receipt) => sum + receipt.amount, BigInt(0));
+
   return {
     receipts,
+    totalDonated,
     isLoading: isLoadingBalance || isLoadingTokenIds || isLoadingReceipts,
     error: balanceError || tokenIdsError || receiptsError,
     refetch,

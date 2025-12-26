@@ -34,48 +34,43 @@ export function Header() {
             <img src="/logo.png" className="h-8 object-contain" />
           </Link>
 
-          <nav className="hidden md:flex items-center gap-8 text-sm font-medium">
-            <Link href="/zakat" className="text-foreground hover:text-primary transition-colors">{t("header.zakat")}</Link>
-            <Link href="/campaigns" className="text-foreground hover:text-primary transition-colors">{t("header.campaigns")}</Link>
-            {/* <Link href="/faucet" className="text-foreground hover:text-primary transition-colors">{t("header.faucet")}</Link> */}
-            <Link href="/explorer" className="text-foreground hover:text-primary transition-colors">{t("header.explorer")}</Link>
-            {/* <Link href="/campaigns/new" className="text-foreground hover:text-primary transition-colors">{t("header.start_campaign")}</Link> */}
-            <Link href="/contact" className="text-foreground hover:text-primary transition-colors">{t("header.contact")}</Link>
+          <nav className="hidden md:flex items-center gap-6 text-sm font-medium">
+            <Link href="/campaigns" className="text-foreground hover:text-primary transition-colors">Campaigns</Link>
+            <Link href="/governance" className="text-foreground hover:text-primary transition-colors">Governance</Link>
+            <Link href="/explorer" className="text-foreground hover:text-primary transition-colors">Explorer</Link>
 
             {/* Dashboard dropdown */}
             <div className="relative">
               <button
                 onClick={() => setDropdownOpen(!isDropdownOpen)}
-                className="flex items-center gap-1"
+                className="flex items-center gap-1 text-foreground hover:text-primary transition-colors"
               >
-                {t("header.dashboard")}
+                Dashboard
                 <ChevronDown className="w-4 h-4" />
               </button>
 
               {isDropdownOpen && (
-                <div className="absolute right-0 mt-2 w-56 bg-white border border-border rounded-lg shadow-lg z-50">
+                <div className="absolute right-0 mt-2 w-48 bg-white border border-border rounded-lg shadow-lg z-50">
                   <ul className="flex flex-col p-2">
                     <li>
                       <Link href="/dashboard/donor" className="block px-4 py-2.5 rounded-md text-sm hover:bg-accent hover:text-primary transition-colors">
-                        {t("dashboard.donor")}
+                        Donor
                       </Link>
                     </li>
                     <li>
                       <Link href="/dashboard/organization" className="block px-4 py-2.5 rounded-md text-sm hover:bg-accent hover:text-primary transition-colors">
-                        {t("dashboard.organization")}
+                        Organization
                       </Link>
                     </li>
                     <li>
                       <Link href="/dashboard/auditor" className="block px-4 py-2.5 rounded-md text-sm hover:bg-accent hover:text-primary transition-colors">
-                        {t("dashboard.auditor")}
+                        Sharia Council
                       </Link>
                     </li>
                   </ul>
                 </div>
               )}
             </div>
-
-            <Link href="/governance" className="text-foreground hover:text-primary transition-colors">{t("header.governance")}</Link>
           </nav>
         </div>
 
@@ -102,32 +97,8 @@ export function Header() {
             {isSearchOpen && searchQuery && <SearchDropdown />}
           </div>
 
-          {/* Language Toggle */}
-          <div className="hidden sm:flex items-center gap-1 border border-border rounded-lg p-1 bg-accent/30">
-            <button
-              onClick={() => setLanguage("id")}
-              className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
-                language === "id"
-                  ? "bg-primary text-white shadow-sm"
-                  : "text-foreground/60 hover:text-foreground hover:bg-white/50"
-              }`}
-            >
-              ID
-            </button>
-            <button
-              onClick={() => setLanguage("en")}
-              className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
-                language === "en"
-                  ? "bg-primary text-white shadow-sm"
-                  : "text-foreground/60 hover:text-foreground hover:bg-white/50"
-              }`}
-            >
-              EN
-            </button>
-          </div>
-
-          <Link href="/campaigns/new" className="hidden sm:flex items-center gap-2 border border-border h-10 px-5 rounded-lg hover:bg-accent hover:border-primary/30 transition-all text-sm font-medium">
-            Start a Campaign
+          <Link href="/campaigns/new" className="hidden sm:flex items-center gap-2 border border-border h-10 px-4 rounded-lg hover:bg-accent hover:border-primary/30 transition-all text-sm font-medium">
+            + Create Proposal
           </Link>
 
           <ConnectWalletButton />

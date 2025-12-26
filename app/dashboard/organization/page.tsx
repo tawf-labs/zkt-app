@@ -1,480 +1,189 @@
 "use client";
 
-import React, { useState } from 'react';
-import { LayoutDashboard, TrendingUp, Users, FileText, Settings, Download, Plus, ArrowUpRight, ArrowDownRight, CheckCircle2, DollarSign, Calendar } from 'lucide-react';
+import { useState } from 'react';
+import { useAccount, useReadContract } from 'wagmi';
+import { useCampaigns } from '@/hooks/useCampaigns';
+import { usePoolDonors } from '@/hooks/usePoolDonors';
+import { CONTRACT_ADDRESSES, ZKTCoreABI, formatIDRX, formatAddress } from '@/lib/abi';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { LayoutDashboard, TrendingUp, Users, Plus, Wallet } from 'lucide-react';
 
-type SidebarTab = 'overview' | 'campaigns' | 'donors' | 'reports' | 'settings';
+export default function OrganizationDashboard() {
+  const { address, isConnected } = useAccount();
+  const [tab, setTab] = useState('overview');
+  
+  // Fetch all campaigns/pools
+  const { campaigns, isLoading } = useCampaigns([0, 1, 2, 3, 4, 5, 6, 7, 8, 9]);
+  
+  // Filter campaigns by current user address
+  const myCampaigns = campaigns.filter(c => c.organizationAddress.toLowerCase() === address?.toLowerCase());
 
-export default function BaznasDashboard() {
-  const [sidebarTab, setSidebarTab] = useState<SidebarTab>('overview');
-  const donations = [
-    { donor: 'Anonymous Donor', address: '0x72...9a2', campaign: 'Emergency Relief for...', amount: '$150.00', status: 'Verified' },
-    { donor: 'Anonymous Donor', address: '0x72...9a2', campaign: 'Emergency Relief for...', amount: '$150.00', status: 'Verified' },
-    { donor: 'Anonymous Donor', address: '0x72...9a2', campaign: 'Emergency Relief for...', amount: '$150.00', status: 'Verified' },
-    { donor: 'Anonymous Donor', address: '0x72...9a2', campaign: 'Emergency Relief for...', amount: '$150.00', status: 'Verified' },
-    { donor: 'Anonymous Donor', address: '0x72...9a2', campaign: 'Emergency Relief for...', amount: '$150.00', status: 'Verified' },
-  ];
-
-  const deploymentRequests = [
-    { title: 'Medical Supplies Procurement', amount: '$12,500', status: 'Pending Approval' },
-    { title: 'Medical Supplies Procurement', amount: '$12,500', status: 'Pending Approval' },
-  ];
+  if (!isConnected) {
+    return (
+      <div className="min-h-screen bg-white flex items-center justify-center">
+        <div className="text-center">
+          <Wallet className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
+          <h2 className="text-2xl font-bold mb-2">Connect Your Wallet</h2>
+          <p className="text-muted-foreground">Please connect your wallet to view organization dashboard</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="flex min-h-screen bg-gray-50">
-      {/* Sidebar */}
-      <aside className="w-64 bg-white border-r border-black hidden lg:block">
-        <div className="p-6">
-          <div className="flex items-center gap-3 mb-6">
-            <div className="h-10 w-10 rounded-lg bg-white flex items-center justify-center text-black font-bold">
-              BZ
-            </div>
-            <div>
-              <div className="font-bold">Baznas Ind...</div>
-              <div className="text-xs text-muted-foreground">Organization</div>
-            </div>
-          </div>
-          
-          <nav className="space-y-1">
-            <button 
-              onClick={() => setSidebarTab('overview')}
-              className={`w-full flex items-center gap-2 px-4 py-2 rounded-md ${
-                sidebarTab === 'overview' ? 'bg-white shadow-sm font-semibold text-gray-900' : 'text-gray-600 hover:bg-gray-100'
-              }`}
-            >
-              <LayoutDashboard className="h-4 w-4" />
-              Overview
-            </button>
-            <button 
-              onClick={() => setSidebarTab('campaigns')}
-              className={`w-full flex items-center gap-2 px-4 py-2 rounded-md ${
-                sidebarTab === 'campaigns' ? 'bg-white shadow-sm font-semibold text-gray-900' : 'text-gray-600 hover:bg-gray-100'
-              }`}
-            >
-              <TrendingUp className="h-4 w-4" />
-              Campaigns
-            </button>
-            <button 
-              onClick={() => setSidebarTab('donors')}
-              className={`w-full flex items-center gap-2 px-4 py-2 rounded-md ${
-                sidebarTab === 'donors' ? 'bg-white shadow-sm font-semibold text-gray-900' : 'text-gray-600 hover:bg-gray-100'
-              }`}
-            >
-              <Users className="h-4 w-4" />
-              Donors
-            </button>
-            <button 
-              onClick={() => setSidebarTab('reports')}
-              className={`w-full flex items-center gap-2 px-4 py-2 rounded-md ${
-                sidebarTab === 'reports' ? 'bg-white shadow-sm font-semibold text-gray-900' : 'text-gray-600 hover:bg-gray-100'
-              }`}
-            >
-              <FileText className="h-4 w-4" />
-              Reports
-            </button>
-            <button 
-              onClick={() => setSidebarTab('settings')}
-              className={`w-full flex items-center gap-2 px-4 py-2 rounded-md ${
-                sidebarTab === 'settings' ? 'bg-white shadow-sm font-semibold text-gray-900' : 'text-gray-600 hover:bg-gray-100'
-              }`}
-            >
-              <Settings className="h-4 w-4" />
-              Settings
-            </button>
-          </nav>
-        </div>
-        
-        <div className="mt-auto p-6 border-t border-black">
-          <div className="rounded-xl border border-black bg-white p-4">
-            <div className="text-xs font-semibold text-black mb-1">Audit Status</div>
-            <div className="flex items-center gap-2 text-sm font-bold">
-              <span className="h-2 w-2 rounded-full bg-green-500"></span>
-              Compliant
-            </div>
-            <div className="text-xs text-gray-500 mt-2">Last audit: 2 days ago</div>
-          </div>
-        </div>
-      </aside>
-
-      {/* Main Content */}
-      <main className="flex-1 p-6 lg:p-8 overflow-y-auto bg-white">
-        {/* Overview Tab */}
-        {sidebarTab === 'overview' && (
-          <>
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
+    <div className="min-h-screen bg-white p-8">
+      <div className="container mx-auto">
+        <div className="mb-8 flex justify-between items-center">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
-            <p className="text-black">Welcome back, admin. Here's what's happening today.</p>
+            <h1 className="text-3xl font-bold">Organization Dashboard</h1>
+            <p className="text-muted-foreground">Manage your campaigns and track donations</p>
           </div>
-          <div className="flex items-center gap-3">
-            <button className="flex items-center gap-2 px-4 py-2 rounded-md border border-black bg-white shadow-sm">
-              <Download className="h-4 w-4" />
-              Export Data
-            </button>
-            <button className="flex items-center gap-2 px-4 py-2 rounded-md bg-white text-black shadow-md">
-              <Plus className="h-4 w-4" />
-              New Campaign
-            </button>
-          </div>
+          <Button asChild>
+            <a href="/campaigns/new">
+              <Plus className="h-4 w-4 mr-2" />Create Proposal
+            </a>
+          </Button>
         </div>
 
         {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-          <div className="bg-white rounded-xl border border-black p-6 shadow-sm">
-            <div className="text-sm font-medium text-black mb-2">Total Funds Raised</div>
-            <div className="text-2xl font-bold">$2,450,000</div>
-            <div className="flex items-center gap-1 text-xs text-green-600 mt-1">
-              <ArrowUpRight className="h-3 w-3" />
-              +15% this month
+        <div className="grid md:grid-cols-3 gap-4 mb-8">
+          <Card className="p-6">
+            <div className="flex items-center gap-2 mb-2">
+              <LayoutDashboard className="h-4 w-4 text-muted-foreground" />
+              <p className="text-sm text-muted-foreground">Active Campaigns</p>
             </div>
-          </div>
-          
-          <div className="bg-white rounded-xl border border-black p-6 shadow-sm">
-            <div className="text-sm font-medium text-black mb-2">Active Donors</div>
-            <div className="text-2xl font-bold">12,543</div>
-            <div className="flex items-center gap-1 text-xs text-green-600 mt-1">
-              <ArrowUpRight className="h-3 w-3" />
-              +8% new donors
+            <p className="text-3xl font-bold">{myCampaigns.filter(c => c.isActive).length}</p>
+          </Card>
+          <Card className="p-6">
+            <div className="flex items-center gap-2 mb-2">
+              <TrendingUp className="h-4 w-4 text-muted-foreground" />
+              <p className="text-sm text-muted-foreground">Total Raised</p>
             </div>
-          </div>
-          
-          <div className="bg-white rounded-xl border border-black p-6 shadow-sm">
-            <div className="text-sm font-medium text-black mb-2">Funds Deployed</div>
-            <div className="text-2xl font-bold">$1,800,000</div>
-            <div className="text-xs text-black mt-1">73% utilization rate</div>
-          </div>
-          
-          <div className="bg-white rounded-xl border border-black p-6 shadow-sm">
-            <div className="text-sm font-medium text-black mb-2">Pending Reports</div>
-            <div className="text-2xl font-bold">3</div>
-            <div className="text-xs text-orange-600 mt-1">Action required</div>
-          </div>
+            <p className="text-3xl font-bold">{formatIDRX(myCampaigns.reduce((sum, c) => sum + c.currentAmount, BigInt(0)))} IDRX</p>
+          </Card>
+          <Card className="p-6">
+            <div className="flex items-center gap-2 mb-2">
+              <Users className="h-4 w-4 text-muted-foreground" />
+              <p className="text-sm text-muted-foreground">Total Donors</p>
+            </div>
+            <p className="text-3xl font-bold">{myCampaigns.reduce((sum, c) => sum + Number(c.donorCount), 0)}</p>
+          </Card>
         </div>
 
-        {/* Content Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Recent Donations Table */}
-          <div className="lg:col-span-2">
-            <div className="bg-white rounded-xl border border-black shadow-sm">
-              <div className="p-6 border-b border-black">
-                <h2 className="font-semibold">Recent Donations</h2>
-                <p className="text-sm text-black mt-1">Real-time view of incoming funds.</p>
-              </div>
-              <div className="p-6">
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="border-b border-black">
-                        <th className="text-left py-2 px-2 font-medium text-black">Donor</th>
-                        <th className="text-left py-2 px-2 font-medium text-black">Campaign</th>
-                        <th className="text-left py-2 px-2 font-medium text-black">Amount</th>
-                        <th className="text-left py-2 px-2 font-medium text-black">Status</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {donations.map((donation, idx) => (
-                        <tr key={idx} className="border-b border-black hover:bg-gray-50">
-                          <td className="py-3 px-2">
-                            <div className="font-medium">{donation.donor}</div>
-                            <div className="text-xs text-black">{donation.address}</div>
-                          </td>
-                          <td className="py-3 px-2 truncate max-w-[150px]">{donation.campaign}</td>
-                          <td className="py-3 px-2 font-bold text-green-600">+{donation.amount}</td>
-                          <td className="py-3 px-2">
-                            <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-green-100 text-green-700">
-                              {donation.status}
-                            </span>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </div>
+        {/* Campaigns List */}
+        <Card className="p-6">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-xl font-bold">Your Campaigns</h2>
+            {myCampaigns.length > 0 && (
+              <Badge variant="outline">{myCampaigns.length} Total</Badge>
+            )}
           </div>
-
-          {/* Sidebar Cards */}
-          <div className="space-y-6">
-            {/* One-Click Reporting */}
-            <div className="bg-gray-100/50 rounded-xl border border-black shadow-sm">
-              <div className="p-6 border-b border-black">
-                <h2 className="font-semibold">One-Click Reporting</h2>
-                <p className="text-sm text-black mt-1">Generate compliance reports for Baznas automatically.</p>
-              </div>
-              <div className="p-6 space-y-4">
-                <div className="space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span>Monthly Financials</span>
-                    <span className="px-2 py-0.5 rounded-md border border-black text-xs font-medium">Ready</span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span>Impact Assessment</span>
-                    <span className="px-2 py-0.5 rounded-md border border-black text-xs font-medium">Ready</span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span>Donor Transparency</span>
-                    <span className="px-2 py-0.5 rounded-md border border-black text-xs font-medium">Ready</span>
-                  </div>
-                </div>
-                <button className="w-full flex items-center justify-center gap-2 px-6 py-2.5 rounded-md bg-white text-black hover:bg-gray-100 shadow-sm font-medium">
-                  <Download className="h-4 w-4" />
-                  Generate PDF Report
-                </button>
-              </div>
+          
+          {myCampaigns.length === 0 ? (
+            <div className="text-center py-12">
+              <LayoutDashboard className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
+              <p className="text-muted-foreground mb-4">No campaigns yet. Create your first proposal!</p>
+              <Button asChild>
+                <a href="/campaigns/new">
+                  <Plus className="h-4 w-4 mr-2" />Create Proposal
+                </a>
+              </Button>
             </div>
-
-            {/* Deployment Requests */}
-            <div className="bg-white rounded-xl border border-black shadow-sm">
-              <div className="p-6 border-b border-black">
-                <h2 className="font-semibold">Deployment Requests</h2>
-                <p className="text-sm text-black mt-1">Funds waiting for deployment approval.</p>
-              </div>
-              <div className="p-6 space-y-4">
-                {deploymentRequests.map((request, idx) => (
-                  <div key={idx} className="flex items-start gap-3 pb-4 border-b border-black last:border-0 last:pb-0">
-                    <div className="h-8 w-8 rounded-full bg-orange-100 text-orange-600 flex items-center justify-center shrink-0">
-                      <ArrowDownRight className="h-4 w-4" />
-                    </div>
-                    <div className="flex-1">
-                      <div className="text-sm font-medium">{request.title}</div>
-                      <div className="text-xs text-black">{request.amount} • {request.status}</div>
-                      <div className="flex gap-2 mt-2">
-                        <button className="px-3 py-1 text-xs font-medium rounded-md border border-black hover:bg-gray-50">
-                          View
-                        </button>
-                        <button className="px-3 py-1 text-xs font-medium rounded-md bg-white text-black hover:bg-gray-100">
-                          Approve
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
+          ) : (
+            <div className="space-y-4">
+              {myCampaigns.map((campaign) => (
+                <CampaignCard key={campaign.id.toString()} campaign={campaign} />
+              ))}
             </div>
+          )}
+        </Card>
+      </div>
+    </div>
+  );
+}
+
+// Campaign Card Component
+function CampaignCard({ campaign }: { campaign: any }) {
+  const { donors } = usePoolDonors(campaign.id);
+  const progressPercentage = campaign.targetAmount > BigInt(0) 
+    ? Number((campaign.currentAmount * BigInt(100)) / campaign.targetAmount)
+    : 0;
+
+  return (
+    <div className="border rounded-lg p-4 hover:border-primary/50 transition-colors">
+      <div className="flex justify-between items-start mb-3">
+        <div className="flex-1">
+          <div className="flex items-center gap-2 mb-1">
+            <h3 className="font-bold text-lg">{campaign.title}</h3>
+            <Badge variant={campaign.isActive ? "default" : "secondary"}>
+              {campaign.isActive ? "Active" : "Inactive"}
+            </Badge>
+          </div>
+          <p className="text-sm text-muted-foreground">{campaign.category}</p>
+        </div>
+      </div>
+
+      {/* Stats Grid */}
+      <div className="grid grid-cols-3 gap-4 mb-4 text-sm">
+        <div>
+          <p className="text-muted-foreground mb-1">Raised</p>
+          <p className="font-bold">{formatIDRX(campaign.currentAmount)} IDRX</p>
+        </div>
+        <div>
+          <p className="text-muted-foreground mb-1">Goal</p>
+          <p className="font-bold">{formatIDRX(campaign.targetAmount)} IDRX</p>
+        </div>
+        <div>
+          <p className="text-muted-foreground mb-1">Donors</p>
+          <p className="font-bold">{campaign.donorCount.toString()}</p>
+        </div>
+      </div>
+
+      {/* Progress Bar */}
+      <div className="mb-3">
+        <div className="flex justify-between text-xs mb-1">
+          <span className="text-muted-foreground">Progress</span>
+          <span className="font-medium">{Math.min(100, progressPercentage).toFixed(1)}%</span>
+        </div>
+        <div className="w-full bg-gray-200 rounded-full h-2">
+          <div 
+            className="bg-primary h-2 rounded-full transition-all" 
+            style={{width: `${Math.min(100, progressPercentage)}%`}}
+          />
+        </div>
+      </div>
+
+      {/* Donor List Preview */}
+      {donors.length > 0 && (
+        <div className="pt-3 border-t">
+          <p className="text-xs text-muted-foreground mb-2">Recent Donors:</p>
+          <div className="flex gap-1">
+            {donors.slice(0, 5).map((donor, idx) => (
+              <div 
+                key={idx} 
+                className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-xs font-medium"
+                title={donor}
+              >
+                {donor.slice(2, 4).toUpperCase()}
+              </div>
+            ))}
+            {donors.length > 5 && (
+              <div className="h-8 w-8 rounded-full bg-gray-200 flex items-center justify-center text-xs font-medium">
+                +{donors.length - 5}
+              </div>
+            )}
           </div>
         </div>
-        </>
-        )}
+      )}
 
-        {/* Campaigns Tab */}
-        {sidebarTab === 'campaigns' && (
-          <>
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
-              <div>
-                <h1 className="text-3xl font-bold tracking-tight">Campaigns</h1>
-                <p className="text-black">Manage all your fundraising campaigns</p>
-              </div>
-              <button className="flex items-center gap-2 px-4 py-2 rounded-md bg-primary text-white shadow-md hover:bg-primary/90">
-                <Plus className="h-4 w-4" />
-                New Campaign
-              </button>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-              <div className="bg-white rounded-xl border border-black p-6 shadow-sm">
-                <div className="text-sm font-medium text-black mb-2">Active Campaigns</div>
-                <div className="text-2xl font-bold">8</div>
-              </div>
-              <div className="bg-white rounded-xl border border-black p-6 shadow-sm">
-                <div className="text-sm font-medium text-black mb-2">Completed Campaigns</div>
-                <div className="text-2xl font-bold">24</div>
-              </div>
-              <div className="bg-white rounded-xl border border-black p-6 shadow-sm">
-                <div className="text-sm font-medium text-black mb-2">Total Raised</div>
-                <div className="text-2xl font-bold">$2,450,000</div>
-              </div>
-            </div>
-
-            <div className="bg-white rounded-xl border border-black shadow-sm">
-              <div className="p-6 border-b border-black">
-                <h2 className="font-semibold">All Campaigns</h2>
-              </div>
-              <div className="p-6">
-                <div className="space-y-4">
-                  {[
-                    { name: 'Emergency Relief Fund', target: '$50,000', raised: '$38,500', percentage: 77, status: 'Active' },
-                    { name: 'Education for All', target: '$30,000', raised: '$24,000', percentage: 80, status: 'Active' },
-                    { name: 'Clean Water Initiative', target: '$40,000', raised: '$40,000', percentage: 100, status: 'Completed' },
-                  ].map((campaign, idx) => (
-                    <div key={idx} className="border border-border rounded-lg p-4">
-                      <div className="flex items-start justify-between mb-3">
-                        <div>
-                          <h3 className="font-semibold">{campaign.name}</h3>
-                          <p className="text-sm text-muted-foreground mt-1">
-                            {campaign.raised} raised of {campaign.target} target
-                          </p>
-                        </div>
-                        <span className={`px-2 py-1 rounded-md text-xs font-medium ${
-                          campaign.status === 'Active' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'
-                        }`}>
-                          {campaign.status}
-                        </span>
-                      </div>
-                      <div className="w-full bg-gray-200 rounded-full h-2 mb-2">
-                        <div className="bg-primary h-2 rounded-full" style={{ width: `${campaign.percentage}%` }}></div>
-                      </div>
-                      <div className="text-sm text-muted-foreground">{campaign.percentage}% complete</div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </>
-        )}
-
-        {/* Donors Tab */}
-        {sidebarTab === 'donors' && (
-          <>
-            <div className="mb-8">
-              <h1 className="text-3xl font-bold tracking-tight">Donors</h1>
-              <p className="text-black">Manage your donor community</p>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-              <div className="bg-white rounded-xl border border-black p-6 shadow-sm">
-                <div className="text-sm font-medium text-black mb-2">Total Donors</div>
-                <div className="text-2xl font-bold">12,543</div>
-                <div className="flex items-center gap-1 text-xs text-green-600 mt-1">
-                  <ArrowUpRight className="h-3 w-3" />
-                  +8% new donors
-                </div>
-              </div>
-              <div className="bg-white rounded-xl border border-black p-6 shadow-sm">
-                <div className="text-sm font-medium text-black mb-2">Recurring Donors</div>
-                <div className="text-2xl font-bold">3,421</div>
-              </div>
-              <div className="bg-white rounded-xl border border-black p-6 shadow-sm">
-                <div className="text-sm font-medium text-black mb-2">Average Donation</div>
-                <div className="text-2xl font-bold">$195</div>
-              </div>
-            </div>
-
-            <div className="bg-white rounded-xl border border-black shadow-sm">
-              <div className="p-6 border-b border-black">
-                <h2 className="font-semibold">Top Donors</h2>
-              </div>
-              <div className="p-6">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b border-black">
-                      <th className="text-left py-2 px-2 font-medium text-black">Donor</th>
-                      <th className="text-left py-2 px-2 font-medium text-black">Total Donated</th>
-                      <th className="text-left py-2 px-2 font-medium text-black">Campaigns</th>
-                      <th className="text-left py-2 px-2 font-medium text-black">Last Donation</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {[
-                      { name: 'Anonymous Donor', address: '0x72...9a2', total: '$5,000', campaigns: 12, lastDate: 'Nov 20, 2025' },
-                      { name: 'Anonymous Donor', address: '0x8b...4f3', total: '$3,500', campaigns: 8, lastDate: 'Nov 18, 2025' },
-                      { name: 'Anonymous Donor', address: '0x3d...7c1', total: '$2,800', campaigns: 15, lastDate: 'Nov 15, 2025' },
-                    ].map((donor, idx) => (
-                      <tr key={idx} className="border-b border-black hover:bg-gray-50">
-                        <td className="py-3 px-2">
-                          <div className="font-medium">{donor.name}</div>
-                          <div className="text-xs text-black">{donor.address}</div>
-                        </td>
-                        <td className="py-3 px-2 font-bold text-green-600">{donor.total}</td>
-                        <td className="py-3 px-2">{donor.campaigns}</td>
-                        <td className="py-3 px-2 text-black">{donor.lastDate}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </>
-        )}
-
-        {/* Reports Tab */}
-        {sidebarTab === 'reports' && (
-          <>
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
-              <div>
-                <h1 className="text-3xl font-bold tracking-tight">Reports</h1>
-                <p className="text-black">Generate and download compliance reports</p>
-              </div>
-              <button className="flex items-center gap-2 px-4 py-2 rounded-md border border-black bg-white shadow-sm hover:bg-gray-50">
-                <Download className="h-4 w-4" />
-                Generate Report
-              </button>
-            </div>
-
-            <div className="bg-white rounded-xl border border-black shadow-sm mb-6">
-              <div className="p-6 border-b border-black">
-                <h2 className="font-semibold">Available Reports</h2>
-              </div>
-              <div className="p-6 space-y-4">
-                {[
-                  { title: 'Monthly Financial Report', desc: 'Detailed breakdown of all donations and expenditures', period: 'November 2025' },
-                  { title: 'Impact Assessment Report', desc: 'Measurable outcomes and beneficiary statistics', period: 'Q4 2025' },
-                  { title: 'Donor Transparency Report', desc: 'Public report showing fund allocation', period: 'November 2025' },
-                  { title: 'Baznas Compliance Report', desc: 'Regulatory compliance documentation', period: 'November 2025' },
-                ].map((report, idx) => (
-                  <div key={idx} className="flex items-center justify-between p-4 border border-border rounded-lg hover:bg-accent/50">
-                    <div>
-                      <h3 className="font-semibold">{report.title}</h3>
-                      <p className="text-sm text-muted-foreground mt-1">{report.desc}</p>
-                      <p className="text-xs text-muted-foreground mt-1">Period: {report.period}</p>
-                    </div>
-                    <button className="px-4 py-2 rounded-md border border-black hover:bg-gray-50 text-sm font-medium">
-                      <Download className="h-4 w-4" />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </>
-        )}
-
-        {/* Settings Tab */}
-        {sidebarTab === 'settings' && (
-          <>
-            <div className="mb-8">
-              <h1 className="text-3xl font-bold tracking-tight">Organization Settings</h1>
-              <p className="text-black">Manage your organization profile and preferences</p>
-            </div>
-
-            <div className="bg-white rounded-xl border border-black shadow-sm mb-6">
-              <div className="p-6 border-b border-border">
-                <h3 className="font-semibold text-lg">Organization Information</h3>
-              </div>
-              <div className="p-6 space-y-4">
-                <div>
-                  <label className="text-sm font-medium text-muted-foreground">Organization Name</label>
-                  <input type="text" defaultValue="Baznas Indonesia" className="w-full mt-1 px-3 py-2 border border-border rounded-md" />
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-muted-foreground">Registration Number</label>
-                  <input type="text" defaultValue="REG-2025-001" className="w-full mt-1 px-3 py-2 border border-border rounded-md" />
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-muted-foreground">Contact Email</label>
-                  <input type="email" defaultValue="contact@baznas.org" className="w-full mt-1 px-3 py-2 border border-border rounded-md" />
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-white rounded-xl border border-black shadow-sm">
-              <div className="p-6 border-b border-border">
-                <h3 className="font-semibold text-lg">Compliance Status</h3>
-              </div>
-              <div className="p-6">
-                <div className="flex items-center gap-3 mb-4">
-                  <CheckCircle2 className="h-6 w-6 text-green-600" />
-                  <div>
-                    <div className="font-semibold">Verified Organization</div>
-                    <div className="text-sm text-muted-foreground">Your organization is fully verified and compliant</div>
-                  </div>
-                </div>
-                <div className="text-xs text-muted-foreground">Last audit: 2 days ago</div>
-              </div>
-            </div>
-          </>
-        )}
-      </main>
+      {/* Actions */}
+      <div className="mt-4 flex gap-2">
+        <Button variant="outline" size="sm" asChild className="flex-1">
+          <a href={`/campaigns/${campaign.id}`}>View Details</a>
+        </Button>
+      </div>
     </div>
   );
 }

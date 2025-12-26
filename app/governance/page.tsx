@@ -49,12 +49,13 @@ export default function GovernancePage() {
     setPendingVoteProposalId(proposalId)
     
     try {
-      const voteSupport = voteType === "for" // true = for, false = against
+      // support: 0 = Against, 1 = For, 2 = Abstain
+      const voteSupport = voteType === "for" ? 1 : 0
       
       const txHash = await writeContractAsync({
         address: CONTRACT_ADDRESSES.ZKTCore,
         abi: ZKTCoreABI,
-        functionName: "vote",
+        functionName: "castVote",
         args: [BigInt(proposalId), voteSupport],
       })
 

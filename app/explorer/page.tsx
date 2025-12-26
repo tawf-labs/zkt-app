@@ -347,42 +347,102 @@ const ExplorerPage: React.FC = () => {
 
           {/* Contract Information */}
           <div className="mt-6 bg-gray-50 text-card-foreground rounded-xl border border-gray-200 p-6">
-            <h3 className="font-semibold mb-3">Smart Contract Addresses</h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+            <h3 className="font-semibold mb-4">Smart Contract Addresses • Base Sepolia Network</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 text-sm">
               <div>
-                <div className="text-muted-foreground mb-1">ZKTCore</div>
+                <div className="text-muted-foreground mb-1 font-medium">ZKTCore (Main)</div>
                 <a 
                   href={`https://sepolia.basescan.org/address/${CONTRACT_ADDRESSES.ZKTCore}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="font-mono text-xs text-primary hover:underline inline-flex items-center gap-1"
+                  className="font-mono text-xs text-primary hover:underline inline-flex items-center gap-1 break-all"
                 >
                   {CONTRACT_ADDRESSES.ZKTCore}
-                  <ExternalLink className="h-3 w-3" />
+                  <ExternalLink className="h-3 w-3 flex-shrink-0" />
                 </a>
               </div>
               <div>
-                <div className="text-muted-foreground mb-1">MockIDRX Token</div>
+                <div className="text-muted-foreground mb-1 font-medium">MockIDRX Token</div>
                 <a 
                   href={`https://sepolia.basescan.org/address/${CONTRACT_ADDRESSES.MockIDRX}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="font-mono text-xs text-primary hover:underline inline-flex items-center gap-1"
+                  className="font-mono text-xs text-primary hover:underline inline-flex items-center gap-1 break-all"
                 >
                   {CONTRACT_ADDRESSES.MockIDRX}
-                  <ExternalLink className="h-3 w-3" />
+                  <ExternalLink className="h-3 w-3 flex-shrink-0" />
                 </a>
               </div>
               <div>
-                <div className="text-muted-foreground mb-1">Receipt NFT</div>
+                <div className="text-muted-foreground mb-1 font-medium">DonationReceipt NFT</div>
                 <a 
                   href={`https://sepolia.basescan.org/address/${CONTRACT_ADDRESSES.DonationReceiptNFT}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="font-mono text-xs text-primary hover:underline inline-flex items-center gap-1"
+                  className="font-mono text-xs text-primary hover:underline inline-flex items-center gap-1 break-all"
                 >
                   {CONTRACT_ADDRESSES.DonationReceiptNFT}
-                  <ExternalLink className="h-3 w-3" />
+                  <ExternalLink className="h-3 w-3 flex-shrink-0" />
+                </a>
+              </div>
+              <div>
+                <div className="text-muted-foreground mb-1 font-medium">Voting Token</div>
+                <a 
+                  href={`https://sepolia.basescan.org/address/${CONTRACT_ADDRESSES.VotingToken}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="font-mono text-xs text-primary hover:underline inline-flex items-center gap-1 break-all"
+                >
+                  {CONTRACT_ADDRESSES.VotingToken}
+                  <ExternalLink className="h-3 w-3 flex-shrink-0" />
+                </a>
+              </div>
+              <div>
+                <div className="text-muted-foreground mb-1 font-medium">ProposalManager</div>
+                <a 
+                  href={`https://sepolia.basescan.org/address/${CONTRACT_ADDRESSES.ProposalManager}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="font-mono text-xs text-primary hover:underline inline-flex items-center gap-1 break-all"
+                >
+                  {CONTRACT_ADDRESSES.ProposalManager}
+                  <ExternalLink className="h-3 w-3 flex-shrink-0" />
+                </a>
+              </div>
+              <div>
+                <div className="text-muted-foreground mb-1 font-medium">VotingManager</div>
+                <a 
+                  href={`https://sepolia.basescan.org/address/${CONTRACT_ADDRESSES.VotingManager}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="font-mono text-xs text-primary hover:underline inline-flex items-center gap-1 break-all"
+                >
+                  {CONTRACT_ADDRESSES.VotingManager}
+                  <ExternalLink className="h-3 w-3 flex-shrink-0" />
+                </a>
+              </div>
+              <div>
+                <div className="text-muted-foreground mb-1 font-medium">ShariaReviewManager</div>
+                <a 
+                  href={`https://sepolia.basescan.org/address/${CONTRACT_ADDRESSES.ShariaReviewManager}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="font-mono text-xs text-primary hover:underline inline-flex items-center gap-1 break-all"
+                >
+                  {CONTRACT_ADDRESSES.ShariaReviewManager}
+                  <ExternalLink className="h-3 w-3 flex-shrink-0" />
+                </a>
+              </div>
+              <div>
+                <div className="text-muted-foreground mb-1 font-medium">PoolManager</div>
+                <a 
+                  href={`https://sepolia.basescan.org/address/${CONTRACT_ADDRESSES.PoolManager}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="font-mono text-xs text-primary hover:underline inline-flex items-center gap-1 break-all"
+                >
+                  {CONTRACT_ADDRESSES.PoolManager}
+                  <ExternalLink className="h-3 w-3 flex-shrink-0" />
                 </a>
               </div>
             </div>

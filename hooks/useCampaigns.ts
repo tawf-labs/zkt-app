@@ -23,14 +23,14 @@ export interface Campaign {
   donorCount: bigint;
 }
 
-// Helper to fetch single campaign data
+// Helper to fetch single campaign pool data
 function useCampaignData(poolId: number) {
   const result = useReadContracts({
     contracts: [
       {
         address: CONTRACT_ADDRESSES.ZKTCore,
         abi: ZKTCoreABI,
-        functionName: "getCampaign",
+        functionName: "getPool",
         args: [BigInt(poolId)],
       },
     ],
@@ -65,24 +65,24 @@ export function useCampaigns(poolIds: number[] = [0, 1, 2, 3, 4, 5]) {
         return null;
       }
 
-      const camp = campaignData.result as any;
+      const pool = campaignData.result as any;
 
       return {
         id: BigInt(poolIds[index]),
-        title: camp.name || `Campaign ${poolIds[index]}`,
-        description: camp.description || "",
+        title: pool.campaignTitle || `Campaign ${poolIds[index]}`,
+        description: pool.campaignTitle || "",
         imageUrl: "https://images.unsplash.com/photo-1532629345422-7515f3d16bb6",
         organizationName: "Unknown Organization",
-        organizationAddress: camp.organization || "",
-        category: "General",
+        organizationAddress: pool.organizer || "",
+        category: pool.campaignType === 0 ? "General" : pool.campaignType === 1 ? "Zakat" : "Emergency",
         location: "Unknown",
-        targetAmount: camp.targetAmount || BigInt(0),
-        currentAmount: camp.raisedAmount || BigInt(0),
-        startDate: BigInt(0),
+        targetAmount: pool.fundingGoal || BigInt(0),
+        currentAmount: pool.raisedAmount || BigInt(0),
+        startDate: pool.createdAt || BigInt(0),
         endDate: BigInt(0),
-        isActive: camp.isActive || false,
+        isActive: pool.isActive || false,
         isVerified: false,
-        donorCount: BigInt(0),
+        donorCount: pool.donors ? BigInt(pool.donors.length) : BigInt(0),
       };
     })
     .filter((c): c is Campaign => c !== null);
