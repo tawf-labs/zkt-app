@@ -37,8 +37,10 @@ export function Header() {
           <nav className="hidden md:flex items-center gap-8 text-sm font-medium">
             <Link href="/zakat" className="text-foreground hover:text-primary transition-colors">{t("header.zakat")}</Link>
             <Link href="/campaigns" className="text-foreground hover:text-primary transition-colors">{t("header.campaigns")}</Link>
-            <Link href="/faucet" className="text-foreground hover:text-primary transition-colors">{t("header.faucet")}</Link>
+            {/* <Link href="/faucet" className="text-foreground hover:text-primary transition-colors">{t("header.faucet")}</Link> */}
             <Link href="/explorer" className="text-foreground hover:text-primary transition-colors">{t("header.explorer")}</Link>
+            {/* <Link href="/campaigns/new" className="text-foreground hover:text-primary transition-colors">{t("header.start_campaign")}</Link> */}
+            <Link href="/contact" className="text-foreground hover:text-primary transition-colors">{t("header.contact")}</Link>
 
             {/* Dashboard dropdown */}
             <div className="relative">
@@ -124,9 +126,9 @@ export function Header() {
             </button>
           </div>
 
-          <button className="hidden sm:flex items-center gap-2 border border-border h-10 px-5 rounded-lg hover:bg-accent hover:border-primary/30 transition-all text-sm font-medium">
+          <Link href="/campaigns/new" className="hidden sm:flex items-center gap-2 border border-border h-10 px-5 rounded-lg hover:bg-accent hover:border-primary/30 transition-all text-sm font-medium">
             Start a Campaign
-          </button>
+          </Link>
 
           <ConnectWalletButton />
 

@@ -27,6 +27,7 @@ export default function ZakatPage() {
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [selectedCampaign, setSelectedCampaign] = useState<typeof campaigns[0] | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [paymentType, setPaymentType] = useState<"maal" | "fitrah">("maal");
 
   const goldPrice = 2650.00;
   const nisabThreshold = 7296.88;
@@ -50,6 +51,12 @@ export default function ZakatPage() {
   const totalFitrah = peopleCount ? parseFloat(peopleCount) * fitrahPerPerson : 0;
 
   const handlePayZakatClick = () => {
+    setPaymentType("maal");
+    setShowCampaignDialog(true);
+  };
+
+  const handlePayFitrahClick = () => {
+    setPaymentType("fitrah");
     setShowCampaignDialog(true);
   };
 
@@ -64,11 +71,13 @@ export default function ZakatPage() {
     
     try {
       setIsProcessing(true);
+
+      const amount = paymentType === "maal" ? calculatedZakat : totalFitrah;
       
       const { txHash } = await donate({
         poolId: BigInt(selectedCampaign.id),
         campaignTitle: selectedCampaign.title,
-        amountIDRX: BigInt(Math.floor(calculatedZakat * 1e18)), // Convert to wei
+        amountIDRX: BigInt(Math.floor(amount * 1e18)), // Convert to wei
       });
       
       setIsProcessing(false);
@@ -80,7 +89,11 @@ export default function ZakatPage() {
       });
       
       // Reset form
-      setMonthlyIncome("");
+      if (paymentType === "maal") {
+        setMonthlyIncome("");
+      } else {
+        setPeopleCount("");
+      }
       setSelectedCampaign(null);
     } catch (error: any) {
       setIsProcessing(false);
@@ -378,11 +391,12 @@ export default function ZakatPage() {
 
                     {/* Pay Button */}
                     <button
-                      disabled={!peopleCount || totalFitrah === 0}
+                      onClick={handlePayFitrahClick}
+                      disabled={!isConnected || !peopleCount || totalFitrah === 0}
                       className="w-full py-3.5 px-4 bg-primary text-white rounded-lg font-semibold hover:bg-primary/90 hover:shadow-lg hover:shadow-primary/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                     >
                       <Wallet className="h-4 w-4" />
-                      Pay Zakat Fitrah
+                      {!isConnected ? "Connect Wallet to Pay" : "Pay Zakat Fitrah"}
                     </button>
                   </div>
                 )}
@@ -486,7 +500,7 @@ export default function ZakatPage() {
             <DialogHeader>
               <DialogTitle>{t("campaignSelect.title")}</DialogTitle>
               <DialogDescription>
-                {t("campaignSelect.description")} Rp {calculatedZakat.toLocaleString('id-ID', { maximumFractionDigits: 0 })}
+                {t("campaignSelect.description")} Rp {(paymentType === "maal" ? calculatedZakat : totalFitrah).toLocaleString('id-ID', { maximumFractionDigits: 0 })}
               </DialogDescription>
             </DialogHeader>
             
@@ -546,7 +560,7 @@ export default function ZakatPage() {
                 <div className="grid grid-cols-2 gap-4">
                   <div className="p-4 bg-secondary rounded-lg border border-border">
                     <div className="text-xs text-muted-foreground mb-1">{t("confirm.amount")}</div>
-                    <div className="text-xl font-bold text-primary">Rp {calculatedZakat.toLocaleString('id-ID', { maximumFractionDigits: 0 })}</div>
+                    <div className="text-xl font-bold text-primary">Rp {(paymentType === "maal" ? calculatedZakat : totalFitrah).toLocaleString('id-ID', { maximumFractionDigits: 0 })}</div>
                   </div>
                   
                   <div className="p-4 bg-secondary rounded-lg border border-border">
