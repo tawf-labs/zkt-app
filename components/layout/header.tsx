@@ -39,7 +39,6 @@ export function Header() {
             <Link href="/campaigns" className="text-foreground hover:text-primary transition-colors">{t("header.campaigns")}</Link>
             {/* <Link href="/faucet" className="text-foreground hover:text-primary transition-colors">{t("header.faucet")}</Link> */}
             <Link href="/explorer" className="text-foreground hover:text-primary transition-colors">{t("header.explorer")}</Link>
-            {/* <Link href="/campaigns/new" className="text-foreground hover:text-primary transition-colors">{t("header.start_campaign")}</Link> */}
             <Link href="/contact" className="text-foreground hover:text-primary transition-colors">{t("header.contact")}</Link>
 
             {/* Dashboard dropdown */}
