@@ -1,11 +1,12 @@
 'use client';
 
-import { useCallback } from 'react';
+import { useCallback, useState } from 'react';
 import { useAccount, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
 import { CONTRACT_ADDRESSES, ZKTCoreABI } from '@/lib/abi';
 import { generateCampaignId } from './useCampaigns';
 import { canProposeAdminAction, isMultisigSigner } from '@/lib/constants';
 import { toast } from '@/components/ui/use-toast';
+import { useSafeProposal } from './useSafeProposal';
 
 interface UseCreateCampaignOnChainParams {
   campaignId: string; // String identifier that will be hashed
@@ -21,6 +22,8 @@ interface UseCreateCampaignOnChainOptions {
 export function useCreateCampaignOnChain(options?: UseCreateCampaignOnChainOptions) {
   const { address, isConnected } = useAccount();
   const { writeContract, data: hash, isPending } = useWriteContract();
+  const { proposeCreateCampaign, isProposing, proposalHash } = useSafeProposal();
+  const [safeProposalHash, setSafeProposalHash] = useState<string | null>(null);
 
   // Wait for transaction confirmation
   const { isLoading: isConfirming, isSuccess: isConfirmed } = useWaitForTransactionReceipt({
@@ -75,14 +78,6 @@ export function useCreateCampaignOnChain(options?: UseCreateCampaignOnChainOptio
         // Check if connected with a signer (not the multisig itself)
         const isSigner = isMultisigSigner(address);
         
-        if (isSigner) {
-          toast({
-            title: 'Multisig Transaction',
-            description: 'This will create a proposal that requires approval from other signers',
-            duration: 5000,
-          });
-        }
-
         console.log('Creating campaign on-chain:', {
           contract: CONTRACT_ADDRESSES.ZKTCore,
           campaignIdString: params.campaignId,
@@ -92,6 +87,39 @@ export function useCreateCampaignOnChain(options?: UseCreateCampaignOnChainOptio
           isSigner,
         });
 
+        // If signer, create Safe proposal instead of direct transaction
+        if (isSigner) {
+          toast({
+            title: 'Creating Safe Proposal',
+            description: 'Proposing transaction to Safe multisig. Other signers need to approve.',
+            duration: 5000,
+          });
+
+          const safeTxHash = await proposeCreateCampaign(
+            CONTRACT_ADDRESSES.ZKTCore,
+            campaignIdHash,
+            BigInt(params.startTime),
+            BigInt(params.endTime)
+          );
+
+          setSafeProposalHash(safeTxHash);
+
+          toast({
+            title: 'Proposal Created!',
+            description: 'Transaction proposed to Safe. Check Safe dashboard for approval.',
+          });
+
+          return {
+            campaignId: params.campaignId,
+            campaignIdHash,
+            startTime: params.startTime,
+            endTime: params.endTime,
+            txHash: safeTxHash,
+            isSafeProposal: true,
+          };
+        }
+
+        // Direct execution for multisig admin
         writeContract({
           address: CONTRACT_ADDRESSES.ZKTCore,
           abi: ZKTCoreABI,
@@ -104,10 +132,8 @@ export function useCreateCampaignOnChain(options?: UseCreateCampaignOnChainOptio
         });
 
         toast({
-          title: isSigner ? 'Proposing Campaign' : 'Creating Campaign',
-          description: isSigner 
-            ? 'Creating multisig proposal. Other signers need to approve.'
-            : 'Please confirm the transaction in your wallet...',
+          title: 'Creating Campaign',
+          description: 'Please confirm the transaction in your wallet...',
         });
 
         return {
@@ -116,6 +142,7 @@ export function useCreateCampaignOnChain(options?: UseCreateCampaignOnChainOptio
           startTime: params.startTime,
           endTime: params.endTime,
           txHash: hash || 'pending',
+          isSafeProposal: false,
         };
       } catch (error) {
         const err = error instanceof Error ? error : new Error('Unknown error');
@@ -131,7 +158,7 @@ export function useCreateCampaignOnChain(options?: UseCreateCampaignOnChainOptio
         return null;
       }
     },
-    [isConnected, address, writeContract, hash, options]
+    [isConnected, address, writeContract, hash, proposeCreateCampaign, options]
   );
 
   // Handle success
@@ -145,9 +172,10 @@ export function useCreateCampaignOnChain(options?: UseCreateCampaignOnChainOptio
 
   return {
     createCampaignOnChain,
-    isLoading: isPending || isConfirming,
+    isLoading: isPending || isConfirming || isProposing,
     isConfirmed,
     txHash: hash,
+    safeProposalHash,
   };
 }
 
