@@ -7,6 +7,7 @@ import { saveCampaignData, type CampaignData } from '@/lib/supabase-client';
 import { toast } from '@/components/ui/use-toast';
 import { createCampaignId } from '@/lib/donate';
 import { useCreateCampaignOnChain } from './useCreateCampaignOnChain';
+import { canProposeAdminAction } from '@/lib/constants';
 
 interface CreateCampaignParams {
   title: string;
@@ -28,6 +29,9 @@ export const useCreateCampaign = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
 
+  // Check if current user can propose admin actions (multisig admin or signer)
+  const canCreateCampaign = canProposeAdminAction(address);
+
   const createCampaign = useCallback(
     async (params: CreateCampaignParams) => {
       if (!address || !isConnected) {
@@ -37,6 +41,15 @@ export const useCreateCampaign = () => {
           variant: 'destructive',
         });
         return;
+      }
+
+      // Check if user is authorized to create campaigns on-chain
+      if (!canCreateCampaign) {
+        toast({
+          title: 'Unauthorized',
+          description: 'Only the multisig admin or signers can create campaigns on-chain. Your campaign will be saved to the database for admin approval.',
+          variant: 'destructive',
+        });
       }
 
       setIsLoading(true);
@@ -74,34 +87,42 @@ export const useCreateCampaign = () => {
         const supabaseResult = await saveCampaignData(campaignData);
         console.log('✅ Campaign data saved to Supabase:', supabaseResult);
 
-        // Step 4: Create campaign on blockchain (80%)
-        setUploadProgress(80);
-        console.log('⛓️  Creating campaign on blockchain...');
-        const onChainResult = await createCampaignOnChain({
-          campaignId,
-          startTime: params.startTime,
-          endTime: params.endTime,
-        });
+        let onChainResult = null;
+        
+        // Step 4: Create campaign on blockchain only if user can propose admin actions (80%)
+        if (canCreateCampaign) {
+          setUploadProgress(80);
+          console.log('⛓️  Creating campaign on blockchain...');
+          onChainResult = await createCampaignOnChain({
+            campaignId,
+            startTime: params.startTime,
+            endTime: params.endTime,
+          });
 
-        if (!onChainResult) {
-          throw new Error('Failed to create campaign on blockchain');
+          if (!onChainResult) {
+            throw new Error('Failed to create campaign on blockchain');
+          }
+          
+          console.log('🎉 Campaign created successfully on blockchain!');
+          console.log('Block result:', onChainResult);
         }
 
         setUploadProgress(100);
         console.log('🎉 Campaign created successfully!');
         console.log('Campaign ID:', campaignId);
-        console.log('Block result:', onChainResult);
 
         toast({
           title: 'Success',
-          description: 'Campaign created successfully!',
+          description: canCreateCampaign 
+            ? 'Campaign created successfully on blockchain!' 
+            : 'Campaign submitted for admin approval!',
         });
 
         return {
           campaignId,
           imageUrls,
           ...campaignData,
-          txHash: onChainResult.txHash,
+          txHash: onChainResult?.txHash,
         };
       } catch (error) {
         console.error('Error creating campaign:', error);
@@ -116,12 +137,13 @@ export const useCreateCampaign = () => {
         setUploadProgress(0);
       }
     },
-    [address, isConnected, createCampaignOnChain]
+    [address, isConnected, canCreateCampaign, createCampaignOnChain]
   );
 
   return {
     createCampaign,
     isLoading: isLoading || isOnChainLoading,
     uploadProgress,
+    isMultisigAdmin: canCreateCampaign,
   };
 };

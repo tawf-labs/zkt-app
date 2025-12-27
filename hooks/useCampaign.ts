@@ -1,32 +1,34 @@
 'use client';
 
-import { useCallback, useState } from 'react';
-import { useContractRead } from 'wagmi';
-import { DonationABI, DONATION_CONTRACT_ADDRESS, type Campaign } from '@/lib/donate';
+import { useReadContract } from 'wagmi';
+import { CONTRACT_ADDRESSES, ZKTCoreABI } from '@/lib/abi';
+import { generateCampaignId } from './useCampaigns';
 
-export const useCampaign = (campaignId: string | undefined) => {
-  const [isLoading, setIsLoading] = useState(false);
+/**
+ * Hook to fetch a single campaign by its campaign ID (string)
+ * Converts the string to keccak256 hash and queries the blockchain
+ */
+export function useCampaign(campaignIdString: string | undefined) {
+  const campaignId = campaignIdString ? generateCampaignId(campaignIdString) : undefined;
 
-  const { data: campaign, isLoading: isReadLoading, refetch } = useContractRead({
-    address: DONATION_CONTRACT_ADDRESS as `0x${string}`,
-    abi: DonationABI,
-    functionName: 'campaigns',
-    args: campaignId ? [campaignId as `0x${string}`] : undefined,
-    enabled: !!campaignId,
+  const { data, isLoading, error, refetch } = useReadContract({
+    address: CONTRACT_ADDRESSES.ZKTCore,
+    abi: ZKTCoreABI,
+    functionName: 'getCampaign',
+    args: campaignId ? [campaignId] : undefined,
+    query: {
+      enabled: !!campaignId,
+      staleTime: 30_000,
+      gcTime: 300_000,
+    },
   });
 
-  const reloadCampaign = useCallback(async () => {
-    setIsLoading(true);
-    try {
-      await refetch();
-    } finally {
-      setIsLoading(false);
-    }
-  }, [refetch]);
-
   return {
-    campaign: campaign as Campaign | undefined,
-    isLoading: isReadLoading || isLoading,
-    refetch: reloadCampaign,
+    campaign: data,
+    campaignId,
+    isLoading,
+    error,
+    refetch,
   };
-};
+}
+

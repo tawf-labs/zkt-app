@@ -1,12 +1,14 @@
 'use client';
 
-import { useCallback, useState } from 'react';
-import { useWriteContract, useAccount, useWaitForTransactionReceipt } from 'wagmi';
-import { DonationABI, DONATION_CONTRACT_ADDRESS } from '@/lib/donate';
+import { useCallback } from 'react';
+import { useAccount, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
+import { CONTRACT_ADDRESSES, ZKTCoreABI } from '@/lib/abi';
+import { generateCampaignId } from './useCampaigns';
+import { canProposeAdminAction, isMultisigSigner } from '@/lib/constants';
 import { toast } from '@/components/ui/use-toast';
 
 interface UseCreateCampaignOnChainParams {
-  campaignId: string;
+  campaignId: string; // String identifier that will be hashed
   startTime: number;
   endTime: number;
 }
@@ -16,12 +18,14 @@ interface UseCreateCampaignOnChainOptions {
   onError?: (error: Error) => void;
 }
 
-export const useCreateCampaignOnChain = (options?: UseCreateCampaignOnChainOptions) => {
+export function useCreateCampaignOnChain(options?: UseCreateCampaignOnChainOptions) {
   const { address, isConnected } = useAccount();
-  const [isLoading, setIsLoading] = useState(false);
-  const [txHash, setTxHash] = useState<string | null>(null);
+  const { writeContract, data: hash, isPending } = useWriteContract();
 
-  const { writeContract, isPending, data: hash } = useWriteContract();
+  // Wait for transaction confirmation
+  const { isLoading: isConfirming, isSuccess: isConfirmed } = useWaitForTransactionReceipt({
+    hash,
+  });
 
   const createCampaignOnChain = useCallback(
     async (params: UseCreateCampaignOnChainParams) => {
@@ -29,6 +33,16 @@ export const useCreateCampaignOnChain = (options?: UseCreateCampaignOnChainOptio
         toast({
           title: 'Error',
           description: 'Please connect your wallet',
+          variant: 'destructive',
+        });
+        return null;
+      }
+
+      // Check if user can propose admin actions (multisig admin or signer)
+      if (!canProposeAdminAction(address)) {
+        toast({
+          title: 'Unauthorized',
+          description: 'Only multisig admin or signers can create campaigns',
           variant: 'destructive',
         });
         return null;
@@ -54,44 +68,54 @@ export const useCreateCampaignOnChain = (options?: UseCreateCampaignOnChainOptio
         return null;
       }
 
-      setIsLoading(true);
       try {
+        // Generate campaignID from string (keccak256 hash)
+        const campaignIdHash = generateCampaignId(params.campaignId);
+        
+        // Check if connected with a signer (not the multisig itself)
+        const isSigner = isMultisigSigner(address);
+        
+        if (isSigner) {
+          toast({
+            title: 'Multisig Transaction',
+            description: 'This will create a proposal that requires approval from other signers',
+            duration: 5000,
+          });
+        }
+
         console.log('Creating campaign on-chain:', {
-          contract: DONATION_CONTRACT_ADDRESS,
-          campaignId: params.campaignId,
+          contract: CONTRACT_ADDRESSES.ZKTCore,
+          campaignIdString: params.campaignId,
+          campaignIdHash,
           startTime: params.startTime,
           endTime: params.endTime,
+          isSigner,
         });
 
-        await writeContract({
-          address: DONATION_CONTRACT_ADDRESS as `0x${string}`,
-          abi: DonationABI,
+        writeContract({
+          address: CONTRACT_ADDRESSES.ZKTCore,
+          abi: ZKTCoreABI,
           functionName: 'createCampaign',
           args: [
-            params.campaignId as `0x${string}`,
+            campaignIdHash,
             BigInt(params.startTime),
             BigInt(params.endTime),
           ],
         });
 
-        // Wait for transaction to be included
-        await new Promise((resolve) => setTimeout(resolve, 2000));
-
-        const finalHash = hash || 'pending';
-        setTxHash(finalHash);
-
         toast({
-          title: 'Success',
-          description: `Campaign created on-chain! Tx: ${finalHash?.slice(0, 10)}...`,
+          title: isSigner ? 'Proposing Campaign' : 'Creating Campaign',
+          description: isSigner 
+            ? 'Creating multisig proposal. Other signers need to approve.'
+            : 'Please confirm the transaction in your wallet...',
         });
-
-        options?.onSuccess?.(finalHash);
 
         return {
           campaignId: params.campaignId,
+          campaignIdHash,
           startTime: params.startTime,
           endTime: params.endTime,
-          txHash: finalHash,
+          txHash: hash || 'pending',
         };
       } catch (error) {
         const err = error instanceof Error ? error : new Error('Unknown error');
@@ -104,16 +128,26 @@ export const useCreateCampaignOnChain = (options?: UseCreateCampaignOnChainOptio
         });
         
         options?.onError?.(err);
-        setIsLoading(false);
         return null;
       }
     },
-    [isConnected, writeContract, hash, options]
+    [isConnected, address, writeContract, hash, options]
   );
+
+  // Handle success
+  if (isConfirmed && hash) {
+    toast({
+      title: 'Success!',
+      description: 'Campaign created on blockchain',
+    });
+    options?.onSuccess?.(hash);
+  }
 
   return {
     createCampaignOnChain,
-    isLoading: isLoading || isPending,
-    txHash: txHash || hash,
+    isLoading: isPending || isConfirming,
+    isConfirmed,
+    txHash: hash,
   };
-};
+}
+
