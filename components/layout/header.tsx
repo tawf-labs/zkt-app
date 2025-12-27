@@ -127,7 +127,7 @@ export function Header() {
           </div>
 
           <Link href="/campaigns/new" className="hidden sm:flex items-center gap-2 border border-border h-10 px-5 rounded-lg hover:bg-accent hover:border-primary/30 transition-all text-sm font-medium">
-            Start a Campaign
+            {t("header.start_campaign")}
           </Link>
 
           <ConnectWalletButton />
