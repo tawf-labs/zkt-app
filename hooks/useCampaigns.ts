@@ -1,98 +1,86 @@
 "use client";
 
-import { useReadContracts } from "wagmi";
-import { CONTRACT_ADDRESSES, ZKTCoreABI } from "@/lib/abi";
-import { formatIDRX } from "@/lib/abi";
+import { useEffect, useState, useCallback } from "react";
 
-// Campaign structure based on ZKTCore smart contract
+// Campaign structure
 export interface Campaign {
-  id: bigint;
+  id: number;
   title: string;
   description: string;
   imageUrl: string;
+  image: string;
   organizationName: string;
   organizationAddress: string;
   category: string;
   location: string;
-  targetAmount: bigint;
-  currentAmount: bigint;
-  startDate: bigint;
-  endDate: bigint;
+  raised: number;
+  goal: number;
+  donors: number;
+  daysLeft: number;
   isActive: boolean;
   isVerified: boolean;
-  donorCount: bigint;
+  startDate: number;
+  endDate: number;
 }
 
-// Helper to fetch single campaign data
-function useCampaignData(poolId: number) {
-  const result = useReadContracts({
-    contracts: [
-      {
-        address: CONTRACT_ADDRESSES.ZKTCore,
-        abi: ZKTCoreABI,
-        functionName: "getCampaign",
-        args: [BigInt(poolId)],
-      },
-    ],
-    query: {
-      staleTime: 30_000, // 30 seconds
-      gcTime: 300_000, // 5 minutes
-    },
-  });
+export function useCampaigns() {
+  const [campaigns, setCampaigns] = useState<Campaign[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
 
-  return result;
-}
+  // Fetch all campaigns from API
+  const fetchCampaigns = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
 
-export function useCampaigns(poolIds: number[] = [0, 1, 2, 3, 4, 5]) {
-  // Fetch all campaigns in parallel
-  const campaigns = poolIds.map((id) => useCampaignData(id));
+      const response = await fetch('/api/campaigns', {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' },
+        cache: 'no-store',
+      });
 
-  const isLoading = campaigns.some((c) => c.isLoading);
-  const error = campaigns.find((c) => c.error)?.error;
-
-  const data: Campaign[] = campaigns
-    .map((campaign, index) => {
-      if (!campaign.data) return null;
-
-      const [campaignData] = campaign.data;
-
-      // Type guard to check if campaignData has the expected structure
-      if (
-        !campaignData ||
-        typeof campaignData !== "object" ||
-        !("result" in campaignData)
-      ) {
-        return null;
+      if (!response.ok) {
+        throw new Error(`Failed to fetch campaigns: ${response.status}`);
       }
 
-      const camp = campaignData.result as any;
+      const data = await response.json();
 
-      return {
-        id: BigInt(poolIds[index]),
-        title: camp.name || `Campaign ${poolIds[index]}`,
-        description: camp.description || "",
-        imageUrl: "https://images.unsplash.com/photo-1532629345422-7515f3d16bb6",
-        organizationName: "Unknown Organization",
-        organizationAddress: camp.organization || "",
-        category: "General",
-        location: "Unknown",
-        targetAmount: camp.targetAmount || BigInt(0),
-        currentAmount: camp.raisedAmount || BigInt(0),
-        startDate: BigInt(0),
-        endDate: BigInt(0),
-        isActive: camp.isActive || false,
-        isVerified: false,
-        donorCount: BigInt(0),
-      };
-    })
-    .filter((c): c is Campaign => c !== null);
+      if (data.success && Array.isArray(data.campaigns)) {
+        setCampaigns(data.campaigns);
+      } else {
+        throw new Error('Invalid response format');
+      }
+    } catch (err) {
+      const error = err instanceof Error ? err : new Error('Unknown error');
+      setError(error);
+      console.error('Error fetching campaigns:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
 
-  const refetch = () => {
-    campaigns.forEach((c) => c.refetch());
-  };
+  // Refetch campaigns
+  const refetch = useCallback(() => {
+    fetchCampaigns();
+  }, [fetchCampaigns]);
+
+  // Initial fetch
+  useEffect(() => {
+    fetchCampaigns();
+  }, [fetchCampaigns]);
+
+  // Polling for real-time updates (every 15 seconds)
+  useEffect(() => {
+    const interval = setInterval(() => {
+      fetchCampaigns();
+    }, 15_000);
+
+    return () => clearInterval(interval);
+  }, [fetchCampaigns]);
 
   return {
-    campaigns: data,
+    campaigns,
     isLoading,
     error,
     refetch,

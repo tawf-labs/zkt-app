@@ -1,68 +1,91 @@
 "use client";
 
-import { useState } from 'react';
-import { ArrowLeft, Users, Clock, CircleCheck, Share2, Heart, MapPin, Calendar, Target, TrendingUp, Shield, FileText } from 'lucide-react';
-
-const campaignDetail = {
-  id: 1,
-  title: "Emergency Relief for Earthquake Victims in Cianjur",
-  organization: {
-    name: "Baznas Indonesia",
-    verified: true,
-    logo: "/org-logo.jpg"
-  },
-  category: "Emergency",
-  location: "Cianjur, West Java, Indonesia",
-  raised: 125000,
-  goal: 150000,
-  donors: 2500,
-  daysLeft: 12,
-  createdDate: "Oct 15, 2024",
-  image: "https://www.ypp.co.id/site/uploads/slides/6391630281061-header-cianjur-2.jpeg",
-  images: [
-    "https://www.ypp.co.id/site/uploads/slides/6391630281061-header-cianjur-2.jpeg",
-    "https://img.jakpost.net/c/2023/03/09/2023_03_09_136404_1678347888._medium.jpg",
-    "https://cdn.antaranews.com/cache/1200x800/2022/12/10/es-center.jpg"
-  ],
-  description: `The devastating earthquake that struck Cianjur has left thousands of families without homes, food, and basic necessities. The disaster has affected over 10,000 residents, with many losing everything they owned.
-
-Our emergency relief campaign aims to provide immediate assistance to the affected families through:
-
-• Emergency food packages for 1,000 families
-• Temporary shelter and bedding materials
-• Clean water and sanitation facilities
-• Medical aid and healthcare services
-• Psychological support for trauma victims
-
-Every donation, no matter how small, will make a direct impact on the lives of those affected. Your generosity will help rebuild hope and restore dignity to families in their darkest hour.
-
-We are working closely with local authorities and volunteers to ensure that aid reaches those who need it most. All funds are managed transparently, and we provide regular updates on the distribution of aid.`,
-  updates: [
-    {
-      date: "Nov 20, 2024",
-      title: "Distribution of 500 Food Packages Completed",
-      content: "Alhamdulillah, we have successfully distributed 500 emergency food packages to affected families in the most severely impacted areas."
-    },
-    {
-      date: "Nov 15, 2024",
-      title: "Medical Team Deployed",
-      content: "Our medical team has arrived on-site and has begun providing healthcare services to earthquake victims."
-    }
-  ],
-  milestones: [
-    { amount: 50000, label: "Emergency food for 300 families", achieved: true },
-    { amount: 100000, label: "Temporary shelters for 500 families", achieved: true },
-    { amount: 150000, label: "Medical aid and rehabilitation", achieved: false }
-  ]
-};
+import { useState, useEffect } from 'react';
+import { useParams } from 'next/navigation';
+import { ArrowLeft, Users, Clock, CircleCheck, Share2, Heart, MapPin, Calendar, Target, TrendingUp, Shield, FileText, Loader2 } from 'lucide-react';
+import { DonationDialog } from '@/components/donations/donation-dialog';
 
 const donationAmounts = [10000, 25000, 50000, 100000, 250000, 500000];
 
+interface CampaignDetailData {
+  id: number;
+  title: string;
+  organization: {
+    name: string;
+    verified: boolean;
+    logo: string;
+  };
+  category: string;
+  location: string;
+  raised: number;
+  goal: number;
+  donors: number;
+  daysLeft: number;
+  createdDate: string;
+  image: string;
+  images: string[];
+  description: string;
+  updates: Array<{
+    date: string;
+    title: string;
+    content: string;
+  }>;
+  milestones: Array<{
+    amount: number;
+    label: string;
+    achieved: boolean;
+  }>;
+}
+
 export default function CampaignDetail() {
+  const params = useParams();
+  const campaignId = params.id as string;
+  
+  const [campaignDetail, setCampaignDetail] = useState<CampaignDetailData | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [selectedAmount, setSelectedAmount] = useState<number | null>(null);
   const [customAmount, setCustomAmount] = useState('');
   const [activeTab, setActiveTab] = useState('story');
   const [selectedImage, setSelectedImage] = useState(0);
+  const [showDonationDialog, setShowDonationDialog] = useState(false);
+
+  // Fetch campaign detail
+  useEffect(() => {
+    const fetchCampaignDetail = async () => {
+      try {
+        setIsLoading(true);
+        setError(null);
+
+        const response = await fetch(`/api/campaigns/${campaignId}`, {
+          method: 'GET',
+          headers: { 'Content-Type': 'application/json' },
+          cache: 'no-store',
+        });
+
+        if (!response.ok) {
+          throw new Error(`Failed to fetch campaign: ${response.status}`);
+        }
+
+        const data = await response.json();
+
+        if (data.success && data.campaign) {
+          setCampaignDetail(data.campaign);
+        } else {
+          throw new Error(data.error || 'Invalid response format');
+        }
+      } catch (err) {
+        const errorMsg = err instanceof Error ? err.message : 'Unknown error';
+        setError(errorMsg);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    if (campaignId) {
+      fetchCampaignDetail();
+    }
+  }, [campaignId]);
 
   const calculateProgress = (raised: number, goal: number) => {
     return (raised / goal) * 100;
@@ -71,6 +94,42 @@ export default function CampaignDetail() {
   const formatCurrency = (amount: number) => {
     return `${amount.toLocaleString('id-ID', { maximumFractionDigits: 0 })} IDRX`;
   };
+
+  if (isLoading) {
+    return (
+      <main className="flex-1 py-8 lg:py-12 bg-background">
+        <div className="container px-4 mx-auto max-w-7xl flex items-center justify-center min-h-96">
+          <div className="flex flex-col items-center gap-4">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            <p className="text-muted-foreground">Loading campaign details...</p>
+          </div>
+        </div>
+      </main>
+    );
+  }
+
+  if (error || !campaignDetail) {
+    return (
+      <main className="flex-1 py-8 lg:py-12 bg-background">
+        <div className="container px-4 mx-auto max-w-7xl">
+          <button className="inline-flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground mb-6 transition-colors">
+            <ArrowLeft className="h-4 w-4" />
+            Back to Campaigns
+          </button>
+          <div className="flex flex-col items-center justify-center py-12">
+            <p className="text-red-500 font-semibold mb-4">Error loading campaign</p>
+            <p className="text-muted-foreground mb-4">{error}</p>
+            <button
+              onClick={() => window.location.reload()}
+              className="px-4 py-2 rounded-md bg-primary text-primary-foreground hover:bg-primary/90"
+            >
+              Retry
+            </button>
+          </div>
+        </div>
+      </main>
+    );
+  }
 
   const progress = calculateProgress(campaignDetail.raised, campaignDetail.goal);
 
@@ -461,7 +520,10 @@ export default function CampaignDetail() {
                 </div>
 
                 {/* Donate Button */}
-                <button className="w-full bg-primary text-primary-foreground hover:bg-primary/90 border border-transparent rounded-md h-11 px-4 text-sm font-bold transition-all shadow-sm mb-4">
+                <button 
+                  onClick={() => setShowDonationDialog(true)}
+                  className="w-full bg-primary text-primary-foreground hover:bg-primary/90 border border-transparent rounded-md h-11 px-4 text-sm font-bold transition-all shadow-sm mb-4"
+                >
                   Donate Now
                 </button>
 
@@ -505,6 +567,22 @@ export default function CampaignDetail() {
           </div>
         </div>
       </div>
+
+      {/* Donation Dialog */}
+      {campaignDetail && (
+        <DonationDialog
+          open={showDonationDialog}
+          onOpenChange={setShowDonationDialog}
+          campaignId={campaignDetail.id}
+          campaignTitle={campaignDetail.title}
+          campaignGoal={campaignDetail.goal}
+          campaignRaised={campaignDetail.raised}
+          onSuccess={() => {
+            setShowDonationDialog(false);
+            // User must manually refresh to see updated data
+          }}
+        />
+      )}
     </main>
   );
 }

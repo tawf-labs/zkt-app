@@ -5,7 +5,6 @@ import { useAccount } from 'wagmi';
 import { uploadFilesToPinata } from '@/lib/pinata-client';
 import { saveCampaignData, type CampaignData } from '@/lib/supabase-client';
 import { toast } from '@/components/ui/use-toast';
-import { createCampaignId } from '@/lib/donate';
 import { useCreateCampaignOnChain } from './useCreateCampaignOnChain';
 
 interface CreateCampaignParams {
@@ -45,17 +44,15 @@ export const useCreateCampaign = () => {
       try {
         // Step 1: Upload images to Pinata (20%)
         setUploadProgress(20);
-        console.log('📤 Uploading images to Pinata...');
         const imageUrls = await uploadFilesToPinata(params.imageFiles);
         
         // Step 2: Create campaign ID (30%)
         setUploadProgress(30);
-        console.log('🔑 Generating campaign ID...');
-        const campaignId = createCampaignId(`${params.title}-${Date.now()}`);
+        // Generate numeric campaign ID based on timestamp
+        const campaignId = Math.floor(Date.now() / 1000) + Math.floor(Math.random() * 1000);
 
         // Step 3: Save off-chain data to Supabase (50%)
         setUploadProgress(50);
-        console.log('💾 Saving metadata to Supabase...');
         const campaignData: CampaignData = {
           campaignId,
           title: params.title,
@@ -72,11 +69,9 @@ export const useCreateCampaign = () => {
         };
 
         const supabaseResult = await saveCampaignData(campaignData);
-        console.log('✅ Campaign data saved to Supabase:', supabaseResult);
 
         // Step 4: Create campaign on blockchain (80%)
         setUploadProgress(80);
-        console.log('⛓️  Creating campaign on blockchain...');
         const onChainResult = await createCampaignOnChain({
           campaignId,
           startTime: params.startTime,
@@ -88,9 +83,6 @@ export const useCreateCampaign = () => {
         }
 
         setUploadProgress(100);
-        console.log('🎉 Campaign created successfully!');
-        console.log('Campaign ID:', campaignId);
-        console.log('Block result:', onChainResult);
 
         toast({
           title: 'Success',

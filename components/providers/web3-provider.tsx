@@ -8,9 +8,11 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { XellarKitProvider, defaultConfig, darkTheme, useConnectModal } from "@xellar/kit";
 import axios from "axios";
 import { baseSepolia } from "viem/chains";
+import { pad, toHex } from "viem";
 import { getClientConfig } from "@/lib/client-config";
 import { useIDRXBalance } from "@/hooks/useIDRXBalance";
-import { CONTRACT_ADDRESSES, MockIDRXABI, ZKTCoreABI } from "@/lib/abi";
+import { CONTRACT_ADDRESSES, MockIDRXABI } from "@/lib/abi";
+import { DONATION_CONTRACT_ADDRESS, DonationABI } from "@/lib/donate";
 import { handleTransactionError, handleWalletError } from "@/lib/errors";
 
 const queryClient = new QueryClient();
@@ -63,8 +65,7 @@ function WalletStateController({ children }: { children: ReactNode }) {
 	const { balance: idrxBalance, formattedBalance: formattedIdrxBalance, refetch: refetchBalance } = useIDRXBalance();
 	
 	// Contract write hooks for donation flow
-	const { writeContractAsync: writeApprove } = useWriteContract();
-	const { writeContractAsync: writeDonate } = useWriteContract();
+	const { writeContractAsync } = useWriteContract();
 
 	const address = wagmiAddress;
 	const isConnected = wagmiIsConnected;
@@ -78,7 +79,6 @@ function WalletStateController({ children }: { children: ReactNode }) {
 		// Check if access token already exists
 		const existingToken = localStorage.getItem("access_token");
 		if (existingToken) {
-			console.log("Access token already exists");
 			return;
 		}
 		try {
@@ -96,9 +96,7 @@ function WalletStateController({ children }: { children: ReactNode }) {
 			});
 
 			const { access_token } = signatureResponse.data;
-			console.log("Access token received:", access_token);
 			localStorage.setItem("access_token", access_token);
-			console.log("Message signed successfully:", signature);
 		} catch (error) {
 			console.error("Error requesting or signing message:", error);
 			toast({
@@ -111,11 +109,9 @@ function WalletStateController({ children }: { children: ReactNode }) {
 
 	useEffect(() => {
 		if (wagmiStatus === "connected") {
-			console.log("Wallet connected successfully via wagmi:", address);
 			// TODO: fix this
 			// signAuthMessage();
 		} else if (wagmiStatus === "disconnected") {
-			console.log("Wallet disconnected via wagmi");
 		}
 	}, [wagmiStatus, address, toast]);
 
@@ -139,20 +135,21 @@ function WalletStateController({ children }: { children: ReactNode }) {
 		setIsDonating(true);
 		
 		try {
-			// Step 1: Approve ZKTCore to spend IDRX
+			// Step 1: Approve token to Donation contract
 			toast({
 				title: "Approval Required",
 				description: "Please approve the contract to spend your IDRX tokens",
 			});
 			
-			const approvalTxHash = await writeApprove({
+			const approvalTxHash = await writeContractAsync({
 				address: CONTRACT_ADDRESSES.MockIDRX,
 				abi: MockIDRXABI,
 				functionName: "approve",
-				args: [CONTRACT_ADDRESSES.ZKTCore, amountIDRX],
+				args: [DONATION_CONTRACT_ADDRESS, amountIDRX],
 			});
 			
-			console.log("Approval transaction:", approvalTxHash);
+			// Add small delay to ensure approval is processed
+			await new Promise(resolve => setTimeout(resolve, 2000));
 			
 			toast({
 				title: "Approval Confirmed",
@@ -160,14 +157,15 @@ function WalletStateController({ children }: { children: ReactNode }) {
 			});
 			
 			// Step 2: Execute donation
-			const donateTxHash = await writeDonate({
-				address: CONTRACT_ADDRESSES.ZKTCore,
-				abi: ZKTCoreABI,
-				functionName: "donate",
-				args: [poolId, amountIDRX],
-			});
+			// Convert numeric poolId to bytes32
+			const campaignIdBytes32 = pad(toHex(BigInt(poolId.toString().replace('0x', ''), 16)), { size: 32 });
 			
-			console.log(`Donated ${amountIDRX} IDRX to ${campaignTitle} (Pool ID: ${poolId})`);
+			const donateTxHash = await writeContractAsync({
+				address: DONATION_CONTRACT_ADDRESS as `0x${string}`,
+				abi: DonationABI,
+				functionName: "donate",
+				args: [campaignIdBytes32, amountIDRX],
+			});
 			
 			toast({
 				title: "Donation Successful! 🎉",
@@ -179,7 +177,14 @@ function WalletStateController({ children }: { children: ReactNode }) {
 			
 			return { txHash: donateTxHash };
 		} catch (error: any) {
-			console.error("Donation error:", error);
+			console.error("❌ Donation error details:", {
+				message: error?.message,
+				code: error?.code,
+				reason: error?.reason,
+				data: error?.data,
+				cause: error?.cause,
+				fullError: JSON.stringify(error, null, 2),
+			});
 			handleTransactionError(error, { toast, action: "donate" });
 			throw error;
 		} finally {
