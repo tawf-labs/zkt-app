@@ -247,9 +247,17 @@ export interface AllocationParams {
 }
 
 // Helper functions
-export const createCampaignId = (identifier: string): string => {
-  // Convert identifier to bytes32 format
-  return '0x' + identifier.padEnd(64, '0');
+export const createCampaignId = (identifier: string): number => {
+  // Create a numeric campaign ID using a hash of the identifier
+  // This is a simple approach - in production, you'd want a more robust solution
+  let hash = 0;
+  for (let i = 0; i < identifier.length; i++) {
+    const char = identifier.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash = hash & hash; // Convert to 32bit integer
+  }
+  // Convert to a positive number and use modulo to keep it reasonable
+  return Math.abs(hash) % 1000000;
 };
 
 export const createNgoId = (identifier: string): string => {

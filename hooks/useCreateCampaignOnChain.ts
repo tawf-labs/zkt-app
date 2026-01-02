@@ -1,12 +1,13 @@
 'use client';
 
 import { useCallback, useState } from 'react';
-import { useWriteContract, useAccount, useWaitForTransactionReceipt } from 'wagmi';
-import { DonationABI, DONATION_CONTRACT_ADDRESS } from '@/lib/donate';
+import { useWriteContract, useAccount } from 'wagmi';
+import { DONATION_CONTRACT_ADDRESS, DonationABI } from '@/lib/donate';
 import { toast } from '@/components/ui/use-toast';
+import { pad, toHex } from 'viem';
 
 interface UseCreateCampaignOnChainParams {
-  campaignId: string;
+  campaignId: number;
   startTime: number;
   endTime: number;
 }
@@ -21,11 +22,11 @@ export const useCreateCampaignOnChain = (options?: UseCreateCampaignOnChainOptio
   const [isLoading, setIsLoading] = useState(false);
   const [txHash, setTxHash] = useState<string | null>(null);
 
-  const { writeContract, isPending, data: hash } = useWriteContract();
+  const { writeContractAsync } = useWriteContract();
 
   const createCampaignOnChain = useCallback(
     async (params: UseCreateCampaignOnChainParams) => {
-      if (!isConnected) {
+      if (!isConnected || !address) {
         toast({
           title: 'Error',
           description: 'Please connect your wallet',
@@ -56,64 +57,59 @@ export const useCreateCampaignOnChain = (options?: UseCreateCampaignOnChainOptio
 
       setIsLoading(true);
       try {
-        console.log('Creating campaign on-chain:', {
-          contract: DONATION_CONTRACT_ADDRESS,
-          campaignId: params.campaignId,
-          startTime: params.startTime,
-          endTime: params.endTime,
-        });
+        // Convert numeric campaignId to bytes32
+        const campaignIdBytes32 = pad(toHex(BigInt(params.campaignId)), { size: 32 });
 
-        await writeContract({
+        const txHash = await writeContractAsync({
           address: DONATION_CONTRACT_ADDRESS as `0x${string}`,
           abi: DonationABI,
           functionName: 'createCampaign',
           args: [
-            params.campaignId as `0x${string}`,
+            campaignIdBytes32,
             BigInt(params.startTime),
             BigInt(params.endTime),
           ],
         });
 
-        // Wait for transaction to be included
-        await new Promise((resolve) => setTimeout(resolve, 2000));
-
-        const finalHash = hash || 'pending';
-        setTxHash(finalHash);
+        setTxHash(txHash);
 
         toast({
           title: 'Success',
-          description: `Campaign created on-chain! Tx: ${finalHash?.slice(0, 10)}...`,
+          description: `Campaign created on-chain! Campaign ID: ${params.campaignId}`,
         });
 
-        options?.onSuccess?.(finalHash);
+        options?.onSuccess?.(txHash);
 
         return {
           campaignId: params.campaignId,
-          startTime: params.startTime,
-          endTime: params.endTime,
-          txHash: finalHash,
+          txHash: txHash,
         };
-      } catch (error) {
-        const err = error instanceof Error ? error : new Error('Unknown error');
-        console.error('Error creating campaign on-chain:', err);
-        
+      } catch (error: any) {
+        const errorMsg = error?.reason || error?.message || 'Unknown error';
+        console.error('❌ Error creating campaign on-chain:', {
+          message: errorMsg,
+          code: error?.code,
+          cause: error?.cause,
+        });
+
         toast({
           title: 'Error',
-          description: err.message || 'Failed to create campaign on-chain',
+          description: `Failed to create campaign: ${errorMsg}`,
           variant: 'destructive',
         });
-        
-        options?.onError?.(err);
-        setIsLoading(false);
+
+        options?.onError?.(error);
         return null;
+      } finally {
+        setIsLoading(false);
       }
     },
-    [isConnected, writeContract, hash, options]
+    [isConnected, address, writeContractAsync, options]
   );
 
   return {
     createCampaignOnChain,
-    isLoading: isLoading || isPending,
-    txHash: txHash || hash,
+    isLoading,
+    txHash,
   };
 };

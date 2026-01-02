@@ -8,7 +8,8 @@ import { Label } from "@/components/ui/label";
 import { Loader2, AlertCircle } from "lucide-react";
 import { useWallet } from "@/components/providers/web3-provider";
 import { useToast } from "@/hooks/use-toast";
-import { parseIDRX } from "@/lib/abi";
+import { parseDonationAmount } from "@/lib/donate";
+import { supabase } from "@/lib/supabase-client";
 
 interface DonationDialogProps {
   open: boolean;
@@ -17,6 +18,7 @@ interface DonationDialogProps {
   campaignTitle: string;
   campaignGoal: number;
   campaignRaised: number;
+  onSuccess?: () => void;
 }
 
 export function DonationDialog({
@@ -26,6 +28,7 @@ export function DonationDialog({
   campaignTitle,
   campaignGoal,
   campaignRaised,
+  onSuccess,
 }: DonationDialogProps) {
   const [amount, setAmount] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
@@ -56,13 +59,34 @@ export function DonationDialog({
       setIsProcessing(true);
       
       // Convert to BigInt (wei format)
-      const amountInWei = parseIDRX(donationAmount);
+      const amountInWei = parseDonationAmount(donationAmount.toString());
 
       const { txHash } = await donate({
         poolId: BigInt(campaignId),
         campaignTitle,
         amountIDRX: amountInWei,
       });
+
+      // Update Supabase with new raised amount
+      try {
+        const { data: campaign } = await supabase
+          .from('campaigns')
+          .select('total_raised')
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .single();
+
+        const newTotalRaised = (campaign?.total_raised || campaignRaised) + donationAmount;
+        
+        await supabase
+          .from('campaigns')
+          .update({ total_raised: newTotalRaised })
+          .eq('campaign_id', campaignId);
+
+        console.log(`✅ Supabase updated: ${newTotalRaised} IDRX`);
+      } catch (supabaseError) {
+        console.warn('Could not update Supabase (non-critical):', supabaseError);
+      }
 
       toast({
         title: "Donation Successful! 🎉",
@@ -72,9 +96,25 @@ export function DonationDialog({
       // Reset and close
       setAmount("");
       onOpenChange(false);
+
+      // Trigger parent refresh
+      if (onSuccess) {
+        onSuccess();
+      }
     } catch (error: any) {
-      console.error("Donation error:", error);
-      // Error handling is done in the donate function
+      console.error("❌ Donation error details:", {
+        message: error?.message,
+        cause: error?.cause,
+        reason: error?.reason,
+        code: error?.code,
+        fullError: error,
+      });
+      
+      toast({
+        variant: "destructive",
+        title: "Donation Failed",
+        description: error?.reason || error?.message || "Transaction failed. Please try again.",
+      });
     } finally {
       setIsProcessing(false);
     }
