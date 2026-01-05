@@ -1,16 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
 import { createPublicClient, http, getAddress } from 'viem';
 import { baseSepolia } from 'viem/chains';
 import { DONATION_CONTRACT_ADDRESS, DonationABI } from '@/lib/donate';
 import { Campaign } from '@/hooks/useCampaigns';
 import { formatPinataImageUrl } from '@/lib/pinata-client';
-
-// Create Supabase client
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL || '',
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
-);
+import { supabase } from '@/lib/supabase-client';
 
 // Create a public client for reading contract data
 const publicClient = createPublicClient({
@@ -24,67 +18,6 @@ function calculateDaysLeft(endDate: number): number {
   const daysLeft = Math.ceil((endDate - now) / 86400);
   return Math.max(daysLeft, 0);
 }
-
-// Mock campaigns for fallback
-const getMockCampaigns = (): Campaign[] => [
-  {
-    id: 0,
-    title: "Emergency Relief for Earthquake Victims in Cianjur",
-    description: "Help victims of the recent earthquake in Cianjur with emergency relief",
-    imageUrl: "https://www.ypp.co.id/site/uploads/slides/6391630281061-header-cianjur-2.jpeg",
-    image: "https://www.ypp.co.id/site/uploads/slides/6391630281061-header-cianjur-2.jpeg",
-    organizationName: "Baznas Indonesia",
-    organizationAddress: "0x0000000000000000000000000000000000000001",
-    category: "Emergency",
-    location: "Indonesia",
-    raised: 125000,
-    goal: 150000,
-    donors: 2500,
-    daysLeft: 12,
-    isActive: true,
-    isVerified: true,
-    startDate: Math.floor(Date.now() / 1000) - 86400 * 7,
-    endDate: Math.floor(Date.now() / 1000) + 86400 * 12,
-  },
-  {
-    id: 1,
-    title: "Build a Clean Water Well for Remote Village",
-    description: "Provide clean water access to remote villages in Indonesia",
-    imageUrl: "https://waterwellsforafrica.org/wp-content/uploads/2023/11/home-helping-kids-02-1200x800-1-768x512.jpg",
-    image: "https://waterwellsforafrica.org/wp-content/uploads/2023/11/home-helping-kids-02-1200x800-1-768x512.jpg",
-    organizationName: "Human Initiative",
-    organizationAddress: "0x0000000000000000000000000000000000000002",
-    category: "Waqf",
-    location: "Indonesia",
-    raised: 8500,
-    goal: 12000,
-    donors: 170,
-    daysLeft: 45,
-    isActive: true,
-    isVerified: true,
-    startDate: Math.floor(Date.now() / 1000) - 86400 * 10,
-    endDate: Math.floor(Date.now() / 1000) + 86400 * 45,
-  },
-  {
-    id: 2,
-    title: "Scholarship Fund for 100 Orphan Students",
-    description: "Provide educational scholarships for orphaned students",
-    imageUrl: "https://orphanlifefoundation.org/wp-content/uploads/2021/07/Children-smiling.png",
-    image: "https://orphanlifefoundation.org/wp-content/uploads/2021/07/Children-smiling.png",
-    organizationName: "Rumah Zakat",
-    organizationAddress: "0x0000000000000000000000000000000000000003",
-    category: "Zakat",
-    location: "Indonesia",
-    raised: 45000,
-    goal: 50000,
-    donors: 900,
-    daysLeft: 5,
-    isActive: true,
-    isVerified: true,
-    startDate: Math.floor(Date.now() / 1000) - 86400 * 20,
-    endDate: Math.floor(Date.now() / 1000) + 86400 * 5,
-  },
-];
 
 export async function GET(request: NextRequest) {
   try {
@@ -213,15 +146,12 @@ export async function GET(request: NextRequest) {
     }
     }
 
-    // Fallback to mock if no data
-    const finalCampaigns = campaigns.length > 0 ? campaigns : getMockCampaigns();
-
     return NextResponse.json(
       {
         success: true,
-        campaigns: finalCampaigns,
-        total: finalCampaigns.length,
-        source: campaigns.length > 0 ? (campaigns.some(c => !c.organizationAddress) ? 'supabase' : 'contract') : 'mock',
+        campaigns: campaigns,
+        total: campaigns.length,
+        source: campaigns.length > 0 ? 'supabase' : 'empty',
         timestamp: new Date().toISOString(),
       },
       {
@@ -234,17 +164,13 @@ export async function GET(request: NextRequest) {
     );
   } catch (error) {
     console.error('Error fetching campaigns:', error);
-    // Return mock data on error
     return NextResponse.json(
       {
-        success: true,
-        campaigns: getMockCampaigns(),
-        total: 3,
-        source: 'mock_fallback',
-        error: error instanceof Error ? error.message : 'Using fallback data',
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to fetch campaigns',
         timestamp: new Date().toISOString(),
       },
-      { status: 200 }
+      { status: 500 }
     );
   }
 }

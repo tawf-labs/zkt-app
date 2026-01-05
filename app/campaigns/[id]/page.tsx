@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
+import Link from 'next/link';
 import { ArrowLeft, Users, Clock, CircleCheck, Share2, Heart, MapPin, Calendar, Target, TrendingUp, Shield, FileText, Loader2 } from 'lucide-react';
 import { DonationDialog } from '@/components/donations/donation-dialog';
 
@@ -112,10 +113,10 @@ export default function CampaignDetail() {
     return (
       <main className="flex-1 py-8 lg:py-12 bg-background">
         <div className="container px-4 mx-auto max-w-7xl">
-          <button className="inline-flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground mb-6 transition-colors">
+          <Link href="/campaigns" className="inline-flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground mb-6 transition-colors">
             <ArrowLeft className="h-4 w-4" />
             Back to Campaigns
-          </button>
+          </Link>
           <div className="flex flex-col items-center justify-center py-12">
             <p className="text-red-500 font-semibold mb-4">Error loading campaign</p>
             <p className="text-muted-foreground mb-4">{error}</p>
@@ -137,10 +138,10 @@ export default function CampaignDetail() {
     <main className="flex-1 py-8 lg:py-12 bg-background">
       <div className="container px-4 mx-auto max-w-7xl">
         {/* Back Button */}
-        <button className="inline-flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground mb-6 transition-colors">
+        <Link href="/campaigns" className="inline-flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground mb-6 transition-colors">
           <ArrowLeft className="h-4 w-4" />
           Back to Campaigns
-        </button>
+        </Link>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Main Content */}
