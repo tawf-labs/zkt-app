@@ -2,7 +2,7 @@
 
 import { createContext, useContext, type ReactNode, useEffect, useState } from "react";
 import { useToast } from "@/hooks/use-toast";
-import { useSignMessage, WagmiProvider, type Config, useWriteContract, useWaitForTransactionReceipt } from "wagmi";
+import { useSignMessage, WagmiProvider, type Config, useWriteContract, useWaitForTransactionReceipt, useSwitchChain, useChainId } from "wagmi";
 import { useAccount, useBalance, useDisconnect } from "wagmi";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { XellarKitProvider, defaultConfig, darkTheme, useConnectModal } from "@xellar/kit";
@@ -14,6 +14,7 @@ import { useIDRXBalance } from "@/hooks/useIDRXBalance";
 import { CONTRACT_ADDRESSES, MockIDRXABI } from "@/lib/abi";
 import { DONATION_CONTRACT_ADDRESS, DonationABI } from "@/lib/donate";
 import { handleTransactionError, handleWalletError } from "@/lib/errors";
+import { AlertTriangle } from "lucide-react";
 
 const queryClient = new QueryClient();
 
@@ -50,6 +51,92 @@ const WalletContext = createContext<WalletContextType>({
 });
 
 export const useWallet = () => useContext(WalletContext);
+
+// Component to enforce Base Sepolia chain connection
+function ChainEnforcer({ children }: { children: ReactNode }) {
+	const { toast } = useToast();
+	const chainId = useChainId();
+	const { isConnected } = useAccount();
+	const { switchChain, isPending: isSwitching } = useSwitchChain();
+	const [showWarning, setShowWarning] = useState(false);
+
+	const isWrongChain = isConnected && chainId !== baseSepolia.id;
+
+	useEffect(() => {
+		if (isWrongChain) {
+			setShowWarning(true);
+			// Auto-attempt to switch chain when user connects with wrong chain
+			switchChain(
+				{ chainId: baseSepolia.id },
+				{
+					onSuccess: () => {
+						setShowWarning(false);
+						toast({
+							title: "Network Switched",
+							description: "Successfully connected to Base Sepolia",
+						});
+					},
+					onError: (error) => {
+						console.error("Failed to switch chain:", error);
+						toast({
+							variant: "destructive",
+							title: "Network Switch Required",
+							description: "Please switch to Base Sepolia network to use this app",
+						});
+					},
+				}
+			);
+		} else {
+			setShowWarning(false);
+		}
+	}, [isWrongChain, switchChain, toast]);
+
+	const handleManualSwitch = () => {
+		switchChain(
+			{ chainId: baseSepolia.id },
+			{
+				onSuccess: () => {
+					setShowWarning(false);
+					toast({
+						title: "Network Switched",
+						description: "Successfully connected to Base Sepolia",
+					});
+				},
+				onError: (error) => {
+					console.error("Failed to switch chain:", error);
+					toast({
+						variant: "destructive",
+						title: "Switch Failed",
+						description: "Please manually switch to Base Sepolia in your wallet",
+					});
+				},
+			}
+		);
+	};
+
+	return (
+		<>
+			{showWarning && isWrongChain && (
+				<div className="fixed top-0 left-0 right-0 z-[100] bg-yellow-500 text-black px-4 py-3 flex items-center justify-center gap-3 shadow-lg">
+					<AlertTriangle className="h-5 w-5" />
+					<span className="font-medium">
+						Wrong network detected. Please switch to Base Sepolia to use this app.
+					</span>
+					<button
+						onClick={handleManualSwitch}
+						disabled={isSwitching}
+						className="ml-2 px-4 py-1.5 bg-black text-white rounded-md font-medium hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+					>
+						{isSwitching ? "Switching..." : "Switch Network"}
+					</button>
+				</div>
+			)}
+			<div className={showWarning && isWrongChain ? "pt-14" : ""}>
+				{children}
+			</div>
+		</>
+	);
+}
 
 // Inner component to handle context logic and wagmi hooks
 function WalletStateController({ children }: { children: ReactNode }) {
@@ -158,7 +245,7 @@ function WalletStateController({ children }: { children: ReactNode }) {
 			
 			// Step 2: Execute donation
 			// Convert numeric poolId to bytes32
-			const campaignIdBytes32 = pad(toHex(BigInt(poolId.toString().replace('0x', ''), 16)), { size: 32 });
+			const campaignIdBytes32 = pad(toHex(poolId), { size: 32 });
 			
 			const donateTxHash = await writeContractAsync({
 				address: DONATION_CONTRACT_ADDRESS as `0x${string}`,
@@ -247,7 +334,9 @@ export function WalletProvider({ children }: { children: ReactNode }) {
 		<WagmiProvider config={clientConfig}>
 			<QueryClientProvider client={queryClient}>
 				<XellarKitProvider theme={darkTheme}>
-					<WalletStateController>{children}</WalletStateController>
+					<ChainEnforcer>
+						<WalletStateController>{children}</WalletStateController>
+					</ChainEnforcer>
 				</XellarKitProvider>
 			</QueryClientProvider>
 		</WagmiProvider>
