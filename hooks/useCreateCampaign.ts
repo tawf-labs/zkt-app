@@ -3,9 +3,10 @@
 import { useCallback, useState } from 'react';
 import { useAccount } from 'wagmi';
 import { uploadFilesToPinata } from '@/lib/pinata-client';
-import { saveCampaignData, type CampaignData } from '@/lib/supabase-client';
+import { saveCampaignData, updateCampaignTxHash, type CampaignData } from '@/lib/supabase-client';
 import { toast } from '@/components/ui/use-toast';
 import { useCreateCampaignOnChain } from './useCreateCampaignOnChain';
+import { keccak256, stringToBytes } from 'viem';
 
 interface CreateCampaignParams {
   title: string;
@@ -21,40 +22,88 @@ interface CreateCampaignParams {
   endTime: number;
 }
 
+// Generate unique campaign identifier
+const generateCampaignIdentifier = (walletAddress: string, title: string): string => {
+  const timestamp = Date.now();
+  return `${walletAddress}-${title}-${timestamp}`;
+};
+
 export const useCreateCampaign = () => {
   const { address, isConnected } = useAccount();
   const { createCampaignOnChain, isLoading: isOnChainLoading } = useCreateCampaignOnChain();
+  
   const [isLoading, setIsLoading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
+  const [currentStep, setCurrentStep] = useState<string>('');
 
   const createCampaign = useCallback(
     async (params: CreateCampaignParams) => {
       if (!address || !isConnected) {
         toast({
           title: 'Error',
-          description: 'Please connect your wallet',
+          description: 'Please connect your wallet first',
           variant: 'destructive',
         });
-        return;
+        return null;
       }
 
       setIsLoading(true);
       setUploadProgress(0);
 
       try {
-        // Step 1: Upload images to Pinata (20%)
-        setUploadProgress(20);
-        const imageUrls = await uploadFilesToPinata(params.imageFiles);
+        // ============================================
+        // STEP 1: Generate unique campaign ID
+        // ============================================
+        setCurrentStep('Generating campaign ID...');
+        setUploadProgress(10);
         
-        // Step 2: Create campaign ID (30%)
-        setUploadProgress(30);
-        // Generate numeric campaign ID based on timestamp
-        const campaignId = Math.floor(Date.now() / 1000) + Math.floor(Math.random() * 1000);
+        const campaignIdentifier = generateCampaignIdentifier(address, params.title);
+        const campaignIdHash = keccak256(stringToBytes(campaignIdentifier));
+        
+        console.log('📝 Campaign ID generated:', {
+          identifier: campaignIdentifier,
+          hash: campaignIdHash,
+        });
 
-        // Step 3: Save off-chain data to Supabase (50%)
+        // ============================================
+        // STEP 2: Upload images to IPFS/Pinata
+        // ============================================
+        setCurrentStep('Uploading images...');
+        setUploadProgress(25);
+        
+        let imageUrls: string[] = [];
+        if (params.imageFiles.length > 0) {
+          imageUrls = await uploadFilesToPinata(params.imageFiles);
+          console.log('🖼️ Images uploaded:', imageUrls);
+        }
+
+        // ============================================
+        // STEP 3: Create campaign on blockchain FIRST
+        // ============================================
+        setCurrentStep('Creating campaign on blockchain...');
         setUploadProgress(50);
+
+        const onChainResult = await createCampaignOnChain({
+          campaignId: campaignIdentifier,
+          startTime: params.startTime,
+          endTime: params.endTime,
+        });
+
+        if (!onChainResult) {
+          throw new Error('Failed to create campaign on blockchain');
+        }
+
+        console.log('⛓️ On-chain creation successful:', onChainResult);
+
+        // ============================================
+        // STEP 4: Save metadata to Supabase
+        // ============================================
+        setCurrentStep('Saving campaign data...');
+        setUploadProgress(75);
+
         const campaignData: CampaignData = {
-          campaignId,
+          campaignId: campaignIdentifier,
+          campaignIdHash: onChainResult.campaignIdBytes32,
           title: params.title,
           description: params.description,
           category: params.category,
@@ -66,46 +115,52 @@ export const useCreateCampaign = () => {
           tags: params.tags,
           startTime: params.startTime,
           endTime: params.endTime,
+          txHash: onChainResult.txHash,
+          creatorAddress: address,
+          status: 'active',
         };
 
         const supabaseResult = await saveCampaignData(campaignData);
+        
+        console.log('💾 Supabase save successful:', supabaseResult);
 
-        // Step 4: Create campaign on blockchain (80%)
-        setUploadProgress(80);
-        const onChainResult = await createCampaignOnChain({
-          campaignId,
-          startTime: params.startTime,
-          endTime: params.endTime,
-        });
-
-        if (!onChainResult) {
-          throw new Error('Failed to create campaign on blockchain');
-        }
-
+        // ============================================
+        // STEP 5: Complete
+        // ============================================
+        setCurrentStep('Complete!');
         setUploadProgress(100);
 
         toast({
-          title: 'Success',
-          description: 'Campaign created successfully!',
+          title: 'Success! 🎉',
+          description: 'Campaign created successfully on blockchain and database',
         });
 
         return {
-          campaignId,
-          imageUrls,
           ...campaignData,
-          txHash: onChainResult.txHash,
+          ...onChainResult,
         };
+
       } catch (error) {
-        console.error('Error creating campaign:', error);
+        console.error('❌ Campaign creation failed:', error);
+
+        // Detailed error message
+        let errorMessage = 'Failed to create campaign';
+        if (error instanceof Error) {
+          errorMessage = error.message;
+        }
+
         toast({
-          title: 'Error',
-          description: error instanceof Error ? error.message : 'Failed to create campaign',
+          title: 'Campaign Creation Failed',
+          description: errorMessage,
           variant: 'destructive',
         });
-        throw error;
+
+        return null;
+
       } finally {
         setIsLoading(false);
         setUploadProgress(0);
+        setCurrentStep('');
       }
     },
     [address, isConnected, createCampaignOnChain]
@@ -115,5 +170,6 @@ export const useCreateCampaign = () => {
     createCampaign,
     isLoading: isLoading || isOnChainLoading,
     uploadProgress,
+    currentStep,
   };
 };

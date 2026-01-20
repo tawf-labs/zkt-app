@@ -5,11 +5,14 @@ import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft, Users, Clock, CircleCheck, Share2, Heart, MapPin, Calendar, Target, TrendingUp, Shield, FileText, Loader2 } from 'lucide-react';
 import { DonationDialog } from '@/components/donations/donation-dialog';
+import { CampaignStatusBadge } from '@/components/campaigns/campaign-status-badge';
+import { useCampaignStatus } from '@/hooks/useCampaignStatus';
 
 const donationAmounts = [10000, 25000, 50000, 100000, 250000, 500000];
 
 interface CampaignDetailData {
   id: number;
+  campaignIdHash: string; // blockchain campaign ID (hash for Safe campaigns)
   title: string;
   organization: {
     name: string;
@@ -41,7 +44,7 @@ interface CampaignDetailData {
 export default function CampaignDetail() {
   const params = useParams();
   const campaignId = params.id as string;
-  
+
   const [campaignDetail, setCampaignDetail] = useState<CampaignDetailData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -50,6 +53,12 @@ export default function CampaignDetail() {
   const [activeTab, setActiveTab] = useState('story');
   const [selectedImage, setSelectedImage] = useState(0);
   const [showDonationDialog, setShowDonationDialog] = useState(false);
+
+  // Fetch campaign status from contract
+  const campaignIdHash = campaignDetail?.campaignIdHash;
+  const { statusInfo, canDonate, isLoading: isLoadingStatus } = useCampaignStatus(
+    campaignIdHash && campaignIdHash.startsWith('0x') ? campaignIdHash : null
+  );
 
   // Fetch campaign detail
   useEffect(() => {
@@ -207,6 +216,9 @@ export default function CampaignDetail() {
                   <h1 className="text-3xl font-bold tracking-tight mb-3">
                     {campaignDetail.title}
                   </h1>
+                  <div className="flex items-center gap-2 mb-3">
+                    <CampaignStatusBadge statusInfo={statusInfo} isLoading={isLoadingStatus} size="md" />
+                  </div>
                   <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
                     <div className="flex items-center gap-1">
                       <MapPin className="h-4 w-4" />
@@ -521,11 +533,16 @@ export default function CampaignDetail() {
                 </div>
 
                 {/* Donate Button */}
-                <button 
+                <button
                   onClick={() => setShowDonationDialog(true)}
-                  className="w-full bg-primary text-primary-foreground hover:bg-primary/90 border border-transparent rounded-md h-11 px-4 text-sm font-bold transition-all shadow-sm mb-4"
+                  disabled={!canDonate}
+                  className={`w-full border border-transparent rounded-md h-11 px-4 text-sm font-bold transition-all shadow-sm mb-4 ${
+                    canDonate
+                      ? 'bg-primary text-primary-foreground hover:bg-primary/90'
+                      : 'bg-muted text-muted-foreground cursor-not-allowed opacity-60'
+                  }`}
                 >
-                  Donate Now
+                  {isLoadingStatus ? 'Loading...' : !canDonate ? 'Campaign Not Ready' : 'Donate Now'}
                 </button>
 
                 <p className="text-xs text-center text-muted-foreground">
@@ -574,7 +591,8 @@ export default function CampaignDetail() {
         <DonationDialog
           open={showDonationDialog}
           onOpenChange={setShowDonationDialog}
-          campaignId={campaignDetail.id}
+          campaignId={campaignDetail.campaignIdHash || campaignDetail.id.toString()}
+          campaignIdHash={campaignDetail.campaignIdHash}
           campaignTitle={campaignDetail.title}
           campaignGoal={campaignDetail.goal}
           campaignRaised={campaignDetail.raised}

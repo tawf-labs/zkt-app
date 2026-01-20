@@ -59,6 +59,7 @@ export async function GET(
 
     const campaignDetail = {
       id: campaignId,
+      campaignIdHash: campaign.campaign_id || '', // blockchain campaign ID (hash for Safe campaigns, numeric for others)
       title: campaign.title || '',
       description: campaign.description || '',
       organization: {

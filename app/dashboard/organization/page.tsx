@@ -1,9 +1,73 @@
 "use client";
 
 import React, { useState } from 'react';
-import { LayoutDashboard, TrendingUp, Users, FileText, Settings, Download, Plus, ArrowUpRight, ArrowDownRight, CheckCircle2, DollarSign, Calendar } from 'lucide-react';
+import { LayoutDashboard, TrendingUp, Users, FileText, Settings, Download, Plus, ArrowUpRight, ArrowDownRight, CheckCircle2, DollarSign, Calendar, Loader2 } from 'lucide-react';
+import { LockAllocationButton } from '@/components/shared/lock-allocation-button';
+import { CampaignStatusBadge } from '@/components/campaigns/campaign-status-badge';
+import { AllocationProgress } from '@/components/campaigns/allocation-progress';
+import { useCampaignStatus } from '@/hooks/useCampaignStatus';
+import { Progress } from '@/components/ui/progress';
 
 type SidebarTab = 'overview' | 'campaigns' | 'donors' | 'reports' | 'settings';
+
+interface CampaignData {
+  id: string;
+  name: string;
+  target: string;
+  raised: string;
+  percentage: number;
+  status: string;
+  locked: boolean;
+}
+
+// Campaign card component with status tracking
+function CampaignCard({ campaign }: { campaign: CampaignData }) {
+  const { statusInfo, totalBps, allocationLocked, canDonate, isLoading } = useCampaignStatus(campaign.id);
+
+  return (
+    <div className="border border-border rounded-lg p-4 space-y-4">
+      <div className="flex items-start justify-between">
+        <div className="flex-1">
+          <div className="flex items-center gap-2 mb-1">
+            <h3 className="font-semibold">{campaign.name}</h3>
+            <CampaignStatusBadge statusInfo={statusInfo} isLoading={isLoading} size="sm" />
+          </div>
+          <p className="text-sm text-muted-foreground">
+            {campaign.raised} raised of {campaign.target} target
+          </p>
+        </div>
+      </div>
+
+      {/* Fundraising Progress */}
+      <div className="w-full bg-gray-200 rounded-full h-2">
+        <div className="bg-primary h-2 rounded-full" style={{ width: `${campaign.percentage}%` }}></div>
+      </div>
+      <div className="flex items-center justify-between text-xs text-muted-foreground">
+        <span>{campaign.percentage}% complete</span>
+        <span>{canDonate ? '✓ Accepting donations' : 'Not accepting donations'}</span>
+      </div>
+
+      {/* Allocation Progress - Only show for active campaigns */}
+      {campaign.status === 'Active' && (
+        <div className="pt-3 border-t border-border">
+          {isLoading ? (
+            <div className="flex items-center justify-center py-4">
+              <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+              <span className="ml-2 text-sm text-muted-foreground">Loading allocation status...</span>
+            </div>
+          ) : (
+            <AllocationProgress
+              totalBps={totalBps}
+              allocationLocked={allocationLocked}
+              campaignId={campaign.id}
+              campaignName={campaign.name}
+            />
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function BaznasDashboard() {
   const [sidebarTab, setSidebarTab] = useState<SidebarTab>('overview');
@@ -294,29 +358,11 @@ export default function BaznasDashboard() {
               <div className="p-6">
                 <div className="space-y-4">
                   {[
-                    { name: 'Emergency Relief Fund', target: '$50,000', raised: '$38,500', percentage: 77, status: 'Active' },
-                    { name: 'Education for All', target: '$30,000', raised: '$24,000', percentage: 80, status: 'Active' },
-                    { name: 'Clean Water Initiative', target: '$40,000', raised: '$40,000', percentage: 100, status: 'Completed' },
+                    { id: '0x7d8b402003c09b26e55ac0a61bc8cf936a62a286490096ca7a193a3b63ae81f8', name: 'Emergency Relief Fund', target: '$50,000', raised: '$38,500', percentage: 77, status: 'Active', locked: false },
+                    { id: '0x1a2b3c4d5e6f7g8h9i0j1k2l3m4n5o6p7q8r9s0', name: 'Education for All', target: '$30,000', raised: '$24,000', percentage: 80, status: 'Active', locked: false },
+                    { id: '0x9z8y7x6w5v4u3t2s1r0q9p8o7n6m5l4k3j2i1h', name: 'Clean Water Initiative', target: '$40,000', raised: '$40,000', percentage: 100, status: 'Completed', locked: true },
                   ].map((campaign, idx) => (
-                    <div key={idx} className="border border-border rounded-lg p-4">
-                      <div className="flex items-start justify-between mb-3">
-                        <div>
-                          <h3 className="font-semibold">{campaign.name}</h3>
-                          <p className="text-sm text-muted-foreground mt-1">
-                            {campaign.raised} raised of {campaign.target} target
-                          </p>
-                        </div>
-                        <span className={`px-2 py-1 rounded-md text-xs font-medium ${
-                          campaign.status === 'Active' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'
-                        }`}>
-                          {campaign.status}
-                        </span>
-                      </div>
-                      <div className="w-full bg-gray-200 rounded-full h-2 mb-2">
-                        <div className="bg-primary h-2 rounded-full" style={{ width: `${campaign.percentage}%` }}></div>
-                      </div>
-                      <div className="text-sm text-muted-foreground">{campaign.percentage}% complete</div>
-                    </div>
+                    <CampaignCard key={idx} campaign={campaign} />
                   ))}
                 </div>
               </div>

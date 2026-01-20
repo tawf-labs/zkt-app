@@ -8,18 +8,18 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { XellarKitProvider, defaultConfig, darkTheme, useConnectModal } from "@xellar/kit";
 import axios from "axios";
 import { baseSepolia } from "viem/chains";
-import { pad, toHex } from "viem";
+import { pad, toHex, createPublicClient, http } from "viem";
 import { getClientConfig } from "@/lib/client-config";
 import { useIDRXBalance } from "@/hooks/useIDRXBalance";
 import { CONTRACT_ADDRESSES, MockIDRXABI } from "@/lib/abi";
 import { DONATION_CONTRACT_ADDRESS, DonationABI } from "@/lib/donate";
-import { handleTransactionError, handleWalletError } from "@/lib/errors";
+import { useCampaignEventListener } from "@/hooks/useCampaignEventListener";
 import { AlertTriangle } from "lucide-react";
 
 const queryClient = new QueryClient();
 
 type DonationParams = {
-	poolId: bigint;
+	poolId: bigint | string; // can be bytes32 hash string or numeric bigint
 	campaignTitle: string;
 	amountIDRX: bigint;
 };
@@ -33,6 +33,7 @@ type WalletContextType = {
 	connect: () => Promise<void>;
 	disconnect: () => void;
 	donate: (params: DonationParams) => Promise<{ txHash: string }>;
+	lockCampaignAllocations: (campaignIdHash: string) => Promise<{ txHash: string }>;
 	isDonating: boolean;
 };
 
@@ -47,6 +48,7 @@ const WalletContext = createContext<WalletContextType>({
 	},
 	disconnect: () => {},
 	donate: async () => ({ txHash: "0x0" }),
+	lockCampaignAllocations: async () => ({ txHash: "0x0" }),
 	isDonating: false,
 });
 
@@ -154,6 +156,9 @@ function WalletStateController({ children }: { children: ReactNode }) {
 	// Contract write hooks for donation flow
 	const { writeContractAsync } = useWriteContract();
 
+	// Setup campaign event listener
+	useCampaignEventListener();
+
 	const address = wagmiAddress;
 	const isConnected = wagmiIsConnected;
 	const balance = wagmiBalanceData?.formatted ?? "0";
@@ -205,17 +210,50 @@ function WalletStateController({ children }: { children: ReactNode }) {
 	const donate = async (params: DonationParams): Promise<{ txHash: string }> => {
 		const { poolId, campaignTitle, amountIDRX } = params;
 		
-		// Validation
+		// Comprehensive validation
 		if (!amountIDRX || amountIDRX <= BigInt(0)) {
-			handleWalletError(new Error("Invalid amount"), { toast });
-			throw new Error("Invalid amount");
+			toast({
+				variant: "destructive",
+				title: "Invalid Amount",
+				description: "Amount must be greater than 0",
+			});
+			throw new Error("Invalid amount: must be greater than 0");
 		}
+		
 		if (!isConnected || !address) {
-			handleWalletError(new Error("not-connected"), { toast });
+			toast({
+				variant: "destructive",
+				title: "Wallet Not Connected",
+				description: "Please connect your wallet to continue",
+			});
 			throw new Error("Wallet not connected");
 		}
+		
+		if (!poolId) {
+			toast({
+				variant: "destructive",
+				title: "Invalid Campaign",
+				description: "Invalid campaign ID",
+			});
+			throw new Error("Invalid campaign ID");
+		}
+		
+		// Validate poolId value
+		if (typeof poolId === 'bigint' && poolId <= BigInt(0)) {
+			toast({
+				variant: "destructive",
+				title: "Invalid Campaign",
+				description: "Invalid campaign ID",
+			});
+			throw new Error("Invalid campaign ID");
+		}
+		
 		if (idrxBalance && amountIDRX > idrxBalance) {
-			handleWalletError(new Error("insufficient-balance"), { toast });
+			toast({
+				variant: "destructive",
+				title: "Insufficient Balance",
+				description: "Your wallet doesn't have enough funds",
+			});
 			throw new Error("Insufficient IDRX balance");
 		}
 		
@@ -228,15 +266,20 @@ function WalletStateController({ children }: { children: ReactNode }) {
 				description: "Please approve the contract to spend your IDRX tokens",
 			});
 			
+			console.log(`[Donate] Starting approval for ${amountIDRX.toString()} IDRX to ${DONATION_CONTRACT_ADDRESS}`);
+			
 			const approvalTxHash = await writeContractAsync({
 				address: CONTRACT_ADDRESSES.MockIDRX,
 				abi: MockIDRXABI,
 				functionName: "approve",
 				args: [DONATION_CONTRACT_ADDRESS, amountIDRX],
+				account: address as `0x${string}`,
 			});
 			
-			// Add small delay to ensure approval is processed
-			await new Promise(resolve => setTimeout(resolve, 2000));
+			console.log(`[Donate] Approval tx hash: ${approvalTxHash}`);
+			
+			// Add delay to ensure approval is processed
+			await new Promise(resolve => setTimeout(resolve, 3000));
 			
 			toast({
 				title: "Approval Confirmed",
@@ -244,14 +287,45 @@ function WalletStateController({ children }: { children: ReactNode }) {
 			});
 			
 			// Step 2: Execute donation
-			// Convert numeric poolId to bytes32
-			const campaignIdBytes32 = pad(toHex(poolId), { size: 32 });
+			// Convert poolId to bytes32 format for the contract
+			let campaignIdBytes32: string;
+			
+			if (typeof poolId === 'string' && poolId.startsWith('0x')) {
+				// It's already a hash, ensure it's padded to 32 bytes
+				campaignIdBytes32 = poolId.length === 66 ? poolId : pad(poolId as `0x${string}`, { size: 32 });
+				console.log(`[Donate] Using hash campaign ID (bytes32): ${campaignIdBytes32}`);
+			} else {
+				// It's numeric, convert to bytes32
+				const numericId = typeof poolId === 'string' ? BigInt(poolId) : poolId;
+				campaignIdBytes32 = pad(toHex(numericId), { size: 32 });
+				console.log(`[Donate] Campaign ID (BigInt): ${numericId.toString()}`);
+				console.log(`[Donate] Campaign ID (bytes32): ${campaignIdBytes32}`);
+			}
+			
+			console.log(`[Donate] Amount: ${amountIDRX.toString()}`);
+			
+			// Get gas fees for better estimation
+			const publicClient = createPublicClient({
+				chain: baseSepolia,
+				transport: http(),
+			});
+			
+			let gasPrice = BigInt(1000000000); // 1 gwei default
+			try {
+				const feeData = await publicClient.getGasPrice();
+				gasPrice = feeData;
+				console.log(`[Donate] Network gas price: ${gasPrice.toString()} wei`);
+			} catch (error) {
+				console.log(`[Donate] Using default gas price: ${gasPrice.toString()} wei`);
+			}
 			
 			const donateTxHash = await writeContractAsync({
 				address: DONATION_CONTRACT_ADDRESS as `0x${string}`,
 				abi: DonationABI,
 				functionName: "donate",
 				args: [campaignIdBytes32, amountIDRX],
+				account: address as `0x${string}`,
+				gasPrice: gasPrice,
 			});
 			
 			toast({
@@ -270,12 +344,80 @@ function WalletStateController({ children }: { children: ReactNode }) {
 				reason: error?.reason,
 				data: error?.data,
 				cause: error?.cause,
-				fullError: JSON.stringify(error, null, 2),
+				chainId: error?.chainId,
+				contractAddress: DONATION_CONTRACT_ADDRESS,
+				senderAddress: address,
+				fullError: error,
 			});
-			handleTransactionError(error, { toast, action: "donate" });
+			
+			let errorMessage = "Transaction failed. Please try again.";
+			if (error?.reason) errorMessage = error.reason;
+			else if (error?.message) errorMessage = error.message;
+			
+			toast({
+				variant: "destructive",
+				title: "Donation Failed",
+				description: errorMessage,
+			});
 			throw error;
 		} finally {
 			setIsDonating(false);
+		}
+	};
+
+	// Function to lock allocations for a campaign (required before donations can be accepted)
+	const lockCampaignAllocations = async (campaignIdHash: string): Promise<{ txHash: string }> => {
+		if (!isConnected || !address) {
+			throw new Error("Wallet not connected");
+		}
+
+		try {
+			// Get the organization address from the creator
+			const orgAddress = address;
+			
+			// Convert org address to bytes32 (padded)
+			const orgIdBytes32 = pad(orgAddress as `0x${string}`, { size: 32 });
+			
+			// Ensure campaign ID is bytes32 format
+			const campaignIdBytes32 = campaignIdHash.startsWith('0x') && campaignIdHash.length === 66 
+				? campaignIdHash 
+				: pad(campaignIdHash as `0x${string}`, { size: 32 });
+
+			console.log(`[LockAllocations] Campaign ID (bytes32): ${campaignIdBytes32}`);
+			console.log(`[LockAllocations] Organization ID (bytes32): ${orgIdBytes32}`);
+			console.log(`[LockAllocations] Setting allocation to 10000 bps (100%)...`);
+
+			// Step 1: Set allocation to 100% (10000 basis points) for the organization
+			const setAllocationTx = await writeContractAsync({
+				address: DONATION_CONTRACT_ADDRESS as `0x${string}`,
+				abi: DonationABI,
+				functionName: "setAllocation",
+				args: [campaignIdBytes32, orgIdBytes32, BigInt(10000)], // 10000 bps = 100%
+				account: address as `0x${string}`,
+			});
+
+			console.log(`[LockAllocations] Allocation set! TX: ${setAllocationTx}`);
+
+			// Wait a bit for the transaction to be processed
+			await new Promise(resolve => setTimeout(resolve, 2000));
+
+			// Step 2: Lock the allocations
+			console.log(`[LockAllocations] Locking allocations...`);
+			
+			const lockAllocationTx = await writeContractAsync({
+				address: DONATION_CONTRACT_ADDRESS as `0x${string}`,
+				abi: DonationABI,
+				functionName: "lockAllocation",
+				args: [campaignIdBytes32],
+				account: address as `0x${string}`,
+			});
+
+			console.log(`[LockAllocations] Allocations locked! TX: ${lockAllocationTx}`);
+
+			return { txHash: lockAllocationTx };
+		} catch (error: any) {
+			console.error("❌ Lock allocations error:", error);
+			throw error;
 		}
 	};
 
@@ -312,6 +454,7 @@ function WalletStateController({ children }: { children: ReactNode }) {
 				disconnect,
 				donate,
 				isDonating,
+				lockCampaignAllocations,
 			}}
 		>
 			{children}

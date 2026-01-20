@@ -23,6 +23,8 @@ export async function GET(request: NextRequest) {
   try {
     const campaigns: Campaign[] = [];
 
+    console.log('📡 [API] Fetching campaigns...')
+
     // Fetch campaigns from Supabase first
     try {
       const { data: supabaseCampaigns, error } = await supabase
@@ -31,16 +33,28 @@ export async function GET(request: NextRequest) {
         .order('created_at', { ascending: false });
 
       if (error) {
-        console.error('Supabase error:', error);
+        console.error('❌ Supabase error:', error);
       } else if (supabaseCampaigns && supabaseCampaigns.length > 0) {
+        console.log(`✅ Found ${supabaseCampaigns.length} campaigns in Supabase`)
+        
         // Convert Supabase campaigns to Campaign type
         const now = Math.floor(Date.now() / 1000);
         supabaseCampaigns.forEach((camp: any, index: number) => {
           // Skip expired campaigns
           const endTime = camp.end_time || Math.floor(Date.now() / 1000) + 86400 * 90;
           if (endTime < now) {
+            console.log(`⏰ Skipping expired campaign: ${camp.title}`)
             return;
           }
+
+          // ⚠️ IMPORTANT: Skip campaigns still pending Safe execution (waiting for 3/3 signatures)
+          // Only show campaigns that have been fully executed on-chain (status === 'active')
+          if (camp.status === 'pending_execution') {
+            console.log(`⏳ Skipping pending Safe transaction: ${camp.title} (ID: ${camp.campaign_id?.substring(0, 16)}...) - waiting for 3/3 signatures`)
+            return;
+          }
+
+          console.log(`📝 Processing campaign: ${camp.title} (ID: ${camp.campaign_id?.substring(0, 16)}...)`)
 
           // Get image URL and ensure it's properly formatted for Pinata
           let imageUrl = 'https://images.unsplash.com/photo-1532629345422-7515f3d16bb6?w=500';
@@ -69,9 +83,13 @@ export async function GET(request: NextRequest) {
           };
           campaigns.push(campaign);
         });
+        
+        console.log(`✅ Processed ${campaigns.length} active campaigns`)
+      } else {
+        console.log('⚠️ No campaigns found in Supabase')
       }
     } catch (error) {
-      console.error('Error fetching from Supabase:', error);
+      console.error('❌ Error fetching from Supabase:', error);
     }
 
     // Try to fetch from contract as secondary source (only if Supabase is empty)
@@ -85,7 +103,7 @@ export async function GET(request: NextRequest) {
               address: getAddress(DONATION_CONTRACT_ADDRESS),
               abi: DonationABI,
               functionName: 'campaigns',
-              args: [BigInt(i)],
+              args: [i as any] as any,
             }) as any;
 
             if (!campaignData || !campaignData.name) continue;
@@ -153,6 +171,10 @@ export async function GET(request: NextRequest) {
         total: campaigns.length,
         source: campaigns.length > 0 ? 'supabase' : 'empty',
         timestamp: new Date().toISOString(),
+        debug: {
+          message: campaigns.length === 0 ? '❌ No campaigns found - check Supabase data' : `✅ ${campaigns.length} campaigns loaded`,
+          checkUrl: '/api/debug/supabase-campaigns'
+        }
       },
       {
         status: 200,
@@ -162,6 +184,8 @@ export async function GET(request: NextRequest) {
         },
       }
     );
+
+    console.log(`📊 [API] Returning ${campaigns.length} campaigns`)
   } catch (error) {
     console.error('Error fetching campaigns:', error);
     return NextResponse.json(

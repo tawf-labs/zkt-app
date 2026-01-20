@@ -5,16 +5,18 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Loader2, AlertCircle } from "lucide-react";
+import { Loader2, AlertCircle, Lock } from "lucide-react";
 import { useWallet } from "@/components/providers/web3-provider";
 import { useToast } from "@/hooks/use-toast";
 import { parseDonationAmount } from "@/lib/donate";
 import { supabase } from "@/lib/supabase-client";
+import { useCampaignStatus } from "@/hooks/useCampaignStatus";
 
 interface DonationDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  campaignId: number;
+  campaignId: string | number; // can be hash (string) or numeric ID
+  campaignIdHash?: string; // on-chain campaign ID (bytes32 hash)
   campaignTitle: string;
   campaignGoal: number;
   campaignRaised: number;
@@ -25,6 +27,7 @@ export function DonationDialog({
   open,
   onOpenChange,
   campaignId,
+  campaignIdHash,
   campaignTitle,
   campaignGoal,
   campaignRaised,
@@ -35,7 +38,22 @@ export function DonationDialog({
   const { donate, isConnected, formattedIdrxBalance, isDonating } = useWallet();
   const { toast } = useToast();
 
+  // Fetch campaign status to check if donations are allowed
+  const { statusInfo, canDonate, isLoading: isLoadingStatus } = useCampaignStatus(
+    campaignIdHash || (typeof campaignId === 'string' && campaignId.startsWith('0x') ? campaignId : null)
+  );
+
   const handleDonate = async () => {
+    // Check campaign status before attempting donation
+    if (!canDonate && statusInfo) {
+      toast({
+        variant: "destructive",
+        title: "Campaign Not Ready",
+        description: statusInfo.description || "This campaign is not yet accepting donations",
+      });
+      return;
+    }
+
     if (!isConnected) {
       toast({
         variant: "destructive",
@@ -45,12 +63,32 @@ export function DonationDialog({
       return;
     }
 
+    if (!amount || amount.trim() === "") {
+      toast({
+        variant: "destructive",
+        title: "Amount Required",
+        description: "Please enter a donation amount",
+      });
+      return;
+    }
+
     const donationAmount = parseFloat(amount);
-    if (!donationAmount || donationAmount <= 0) {
+    if (!donationAmount || isNaN(donationAmount) || donationAmount <= 0) {
       toast({
         variant: "destructive",
         title: "Invalid Amount",
-        description: "Please enter a valid donation amount",
+        description: "Please enter a valid donation amount greater than 0",
+      });
+      return;
+    }
+
+    // Check if amount exceeds balance
+    const balance = parseFloat(formattedIdrxBalance || "0");
+    if (donationAmount > balance) {
+      toast({
+        variant: "destructive",
+        title: "Insufficient Balance",
+        description: `You have ${balance.toLocaleString('id-ID')} IDRX available`,
       });
       return;
     }
@@ -61,8 +99,21 @@ export function DonationDialog({
       // Convert to BigInt (wei format)
       const amountInWei = parseDonationAmount(donationAmount.toString());
 
+      // Determine if campaignId is a hash (0x...) or numeric
+      let poolId: string | bigint;
+      if (typeof campaignId === 'string' && campaignId.startsWith('0x')) {
+        // It's a hash, use directly
+        poolId = campaignId;
+        console.log(`[Donate] Using hash campaign ID: ${poolId}`);
+      } else {
+        // It's numeric, convert to BigInt
+        const numericId = typeof campaignId === 'string' ? parseInt(campaignId, 10) : campaignId;
+        poolId = BigInt(numericId);
+        console.log(`[Donate] Using numeric campaign ID: ${poolId.toString()}`);
+      }
+
       const { txHash } = await donate({
-        poolId: BigInt(campaignId),
+        poolId,
         campaignTitle,
         amountIDRX: amountInWei,
       });
@@ -199,6 +250,21 @@ export function DonationDialog({
             </div>
           )}
 
+          {/* Campaign Status Warning */}
+          {!canDonate && statusInfo && (
+            <div className="flex items-start gap-2 p-3 bg-orange-50 border border-orange-200 rounded-lg">
+              <Lock className="h-4 w-4 text-orange-600 mt-0.5 flex-shrink-0" />
+              <div className="flex-1">
+                <p className="text-sm font-semibold text-orange-800">
+                  Campaign Not Ready
+                </p>
+                <p className="text-xs text-orange-700 mt-1">
+                  {statusInfo.description}
+                </p>
+              </div>
+            </div>
+          )}
+
           {/* Transaction Info */}
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm space-y-1">
             <p className="font-semibold text-blue-900">ℹ️ Transaction Details</p>
@@ -223,13 +289,15 @@ export function DonationDialog({
             <Button
               className="flex-1"
               onClick={handleDonate}
-              disabled={!isConnected || !amount || isProcessing || isDonating}
+              disabled={!canDonate || !isConnected || !amount || isProcessing || isDonating || isLoadingStatus}
             >
               {isProcessing || isDonating ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   {isDonating ? "Processing..." : "Confirming..."}
                 </>
+              ) : !canDonate ? (
+                "Campaign Not Ready"
               ) : (
                 "Confirm Donation"
               )}

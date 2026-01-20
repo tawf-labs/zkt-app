@@ -1,9 +1,7 @@
 'use client';
 
-import { useCallback, useState } from 'react';
-import { useContractWrite, useAccount } from 'wagmi';
-import { DonationABI, DONATION_CONTRACT_ADDRESS, type DonationParams } from '@/lib/donate';
-import { toast } from '@/components/ui/use-toast';
+import { useCallback } from 'react';
+import { useWallet } from '@/components/providers/web3-provider';
 
 interface UseDonateOptions {
   onSuccess?: (hash: string) => void;
@@ -11,56 +9,24 @@ interface UseDonateOptions {
 }
 
 export const useDonate = (options?: UseDonateOptions) => {
-  const { address } = useAccount();
-  const [isLoading, setIsLoading] = useState(false);
-
-  const { write, isPending } = useContractWrite({
-    address: DONATION_CONTRACT_ADDRESS as `0x${string}`,
-    abi: DonationABI,
-    functionName: 'donate',
-    onSuccess: (hash) => {
-      toast({
-        title: 'Success',
-        description: `Donation submitted! Hash: ${hash}`,
-      });
-      options?.onSuccess?.(hash);
-    },
-    onError: (error) => {
-      toast({
-        title: 'Error',
-        description: error.message || 'Failed to process donation',
-        variant: 'destructive',
-      });
-      options?.onError?.(error);
-    },
-  });
+  const { donate: contextDonate, isDonating } = useWallet();
 
   const donate = useCallback(
-    async (params: DonationParams) => {
-      if (!address) {
-        toast({
-          title: 'Error',
-          description: 'Please connect your wallet',
-          variant: 'destructive',
-        });
-        return;
-      }
-
-      setIsLoading(true);
+    async (params: any) => {
       try {
-        write({
-          args: [params.campaignId as `0x${string}`, params.amount],
-        });
+        const result = await contextDonate(params);
+        options?.onSuccess?.(result.txHash);
+        return result;
       } catch (error) {
-        setIsLoading(false);
+        options?.onError?.(error as Error);
         throw error;
       }
     },
-    [address, write]
+    [contextDonate, options]
   );
 
   return {
     donate,
-    isLoading: isLoading || isPending,
+    isLoading: isDonating,
   };
 };
