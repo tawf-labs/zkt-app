@@ -5,14 +5,17 @@ import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft, Users, Clock, CircleCheck, Share2, Heart, MapPin, Calendar, Target, TrendingUp, Shield, FileText, Loader2 } from 'lucide-react';
 import { DonationDialog } from '@/components/donations/donation-dialog';
-import { CampaignStatusBadge } from '@/components/campaigns/campaign-status-badge';
-import { useCampaignStatus } from '@/hooks/useCampaignStatus';
+import dynamic from 'next/dynamic';
+
+const CampaignMap = dynamic(() => import('@/components/campaigns/campaign-map'), {
+  loading: () => <div className="w-full h-[400px] bg-muted animate-pulse rounded-xl" />,
+  ssr: false
+});
 
 const donationAmounts = [10000, 25000, 50000, 100000, 250000, 500000];
 
 interface CampaignDetailData {
   id: number;
-  campaignIdHash: string; // blockchain campaign ID (hash for Safe campaigns)
   title: string;
   organization: {
     name: string;
@@ -53,12 +56,6 @@ export default function CampaignDetail() {
   const [activeTab, setActiveTab] = useState('story');
   const [selectedImage, setSelectedImage] = useState(0);
   const [showDonationDialog, setShowDonationDialog] = useState(false);
-
-  // Fetch campaign status from contract
-  const campaignIdHash = campaignDetail?.campaignIdHash;
-  const { statusInfo, canDonate, isLoading: isLoadingStatus } = useCampaignStatus(
-    campaignIdHash && campaignIdHash.startsWith('0x') ? campaignIdHash : null
-  );
 
   // Fetch campaign detail
   useEffect(() => {
@@ -163,7 +160,7 @@ export default function CampaignDetail() {
                   alt={campaignDetail.title}
                   className="w-full h-full object-cover"
                 />
-                
+
                 {/* Category Badge */}
                 <div className="absolute top-4 left-4">
                   <span className="inline-flex items-center justify-center rounded-md px-3 py-1 text-sm font-semibold bg-background/90 backdrop-blur-sm border border-border">
@@ -186,9 +183,8 @@ export default function CampaignDetail() {
                   <button
                     key={idx}
                     onClick={() => setSelectedImage(idx)}
-                    className={`relative h-20 w-24 rounded-lg overflow-hidden border-2 transition-all ${
-                      selectedImage === idx ? 'border-primary' : 'border-border hover:border-primary/50'
-                    }`}
+                    className={`relative h-20 w-24 rounded-lg overflow-hidden border-2 transition-all ${selectedImage === idx ? 'border-primary' : 'border-border hover:border-primary/50'
+                      }`}
                   >
                     <img
                       src={img}
@@ -216,9 +212,6 @@ export default function CampaignDetail() {
                   <h1 className="text-3xl font-bold tracking-tight mb-3">
                     {campaignDetail.title}
                   </h1>
-                  <div className="flex items-center gap-2 mb-3">
-                    <CampaignStatusBadge statusInfo={statusInfo} isLoading={isLoadingStatus} size="md" />
-                  </div>
                   <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
                     <div className="flex items-center gap-1">
                       <MapPin className="h-4 w-4" />
@@ -291,9 +284,8 @@ export default function CampaignDetail() {
                 <div className="space-y-3">
                   {campaignDetail.milestones.map((milestone, idx) => (
                     <div key={idx} className="flex items-start gap-3">
-                      <div className={`h-5 w-5 rounded-full border-2 flex items-center justify-center mt-0.5 ${
-                        milestone.achieved ? 'border-green-600 bg-green-600' : 'border-border'
-                      }`}>
+                      <div className={`h-5 w-5 rounded-full border-2 flex items-center justify-center mt-0.5 ${milestone.achieved ? 'border-green-600 bg-green-600' : 'border-border'
+                        }`}>
                         {milestone.achieved && (
                           <CircleCheck className="h-3 w-3 text-white" />
                         )}
@@ -319,43 +311,48 @@ export default function CampaignDetail() {
               <div className="flex gap-6">
                 <button
                   onClick={() => setActiveTab('story')}
-                  className={`pb-3 px-1 text-sm font-medium border-b-2 transition-colors ${
-                    activeTab === 'story'
-                      ? 'border-primary text-primary'
-                      : 'border-transparent text-muted-foreground hover:text-foreground'
-                  }`}
+                  className={`pb-3 px-1 text-sm font-medium border-b-2 transition-colors ${activeTab === 'story'
+                    ? 'border-primary text-primary'
+                    : 'border-transparent text-muted-foreground hover:text-foreground'
+                    }`}
                 >
                   Campaign Story
                 </button>
                 <button
                   onClick={() => setActiveTab('updates')}
-                  className={`pb-3 px-1 text-sm font-medium border-b-2 transition-colors ${
-                    activeTab === 'updates'
-                      ? 'border-primary text-primary'
-                      : 'border-transparent text-muted-foreground hover:text-foreground'
-                  }`}
+                  className={`pb-3 px-1 text-sm font-medium border-b-2 transition-colors ${activeTab === 'updates'
+                    ? 'border-primary text-primary'
+                    : 'border-transparent text-muted-foreground hover:text-foreground'
+                    }`}
                 >
                   Updates ({campaignDetail.updates.length})
                 </button>
                 <button
                   onClick={() => setActiveTab('donors')}
-                  className={`pb-3 px-1 text-sm font-medium border-b-2 transition-colors ${
-                    activeTab === 'donors'
-                      ? 'border-primary text-primary'
-                      : 'border-transparent text-muted-foreground hover:text-foreground'
-                  }`}
+                  className={`pb-3 px-1 text-sm font-medium border-b-2 transition-colors ${activeTab === 'donors'
+                    ? 'border-primary text-primary'
+                    : 'border-transparent text-muted-foreground hover:text-foreground'
+                    }`}
                 >
                   Donors
                 </button>
                 <button
                   onClick={() => setActiveTab('blockchain')}
-                  className={`pb-3 px-1 text-sm font-medium border-b-2 transition-colors ${
-                    activeTab === 'blockchain'
-                      ? 'border-primary text-primary'
-                      : 'border-transparent text-muted-foreground hover:text-foreground'
-                  }`}
+                  className={`pb-3 px-1 text-sm font-medium border-b-2 transition-colors ${activeTab === 'blockchain'
+                    ? 'border-primary text-primary'
+                    : 'border-transparent text-muted-foreground hover:text-foreground'
+                    }`}
                 >
                   Blockchain
+                </button>
+                <button
+                  onClick={() => setActiveTab('distribution')}
+                  className={`pb-3 px-1 text-sm font-medium border-b-2 transition-colors ${activeTab === 'distribution'
+                    ? 'border-primary text-primary'
+                    : 'border-transparent text-muted-foreground hover:text-foreground'
+                    }`}
+                >
+                  Distribution
                 </button>
               </div>
             </div>
@@ -368,7 +365,7 @@ export default function CampaignDetail() {
                     {campaignDetail.description}
                   </div>
                 </div>
-                
+
                 {/* Blockchain Verified Badge */}
                 <div className="bg-primary/5 border border-primary/20 rounded-xl p-4">
                   <div className="flex items-start gap-3">
@@ -482,6 +479,52 @@ export default function CampaignDetail() {
                 </div>
               </div>
             )}
+
+            {activeTab === 'distribution' && (
+              <div className="space-y-6">
+                <div className="bg-card border border-border rounded-xl p-6">
+                  <div className="flex items-center gap-2 mb-4">
+                    <MapPin className="h-5 w-5 text-primary" />
+                    <h3 className="font-bold text-lg">Distribution Locations</h3>
+                  </div>
+                  <p className="text-sm text-muted-foreground mb-6">
+                    See where the funds and aid are being distributed to the beneficiaries.
+                  </p>
+
+                  <CampaignMap
+                    center={[-6.2088, 106.8456]}
+                    zoom={12}
+                    locations={[
+                      { lat: -6.2088, lng: 106.8456, name: "Main Distribution Center", description: "Central warehouse for aid collection" },
+                      { lat: -6.1751, lng: 106.8650, name: "North Jakarta Relief Post", description: "Distribution point for flood victims" },
+                      { lat: -6.2251, lng: 106.8000, name: "South Jakarta Community Hall", description: "Food package distribution center" }
+                    ]}
+                  />
+
+                  <div className="mt-6 space-y-4">
+                    <h4 className="font-semibold text-sm text-foreground">Distribution Activity</h4>
+                    <div className="space-y-3">
+                      <div className="flex items-start gap-3 text-sm">
+                        <div className="h-2 w-2 rounded-full bg-green-500 mt-2"></div>
+                        <div>
+                          <p className="font-medium">North Jakarta Relief Post</p>
+                          <p className="text-muted-foreground">distributed 500 food packages</p>
+                          <p className="text-xs text-muted-foreground mt-1">2 hours ago</p>
+                        </div>
+                      </div>
+                      <div className="flex items-start gap-3 text-sm">
+                        <div className="h-2 w-2 rounded-full bg-green-500 mt-2"></div>
+                        <div>
+                          <p className="font-medium">South Jakarta Community Hall</p>
+                          <p className="text-muted-foreground">distributed medical supplies</p>
+                          <p className="text-xs text-muted-foreground mt-1">5 hours ago</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Donation Sidebar */}
@@ -499,11 +542,10 @@ export default function CampaignDetail() {
                         setSelectedAmount(amount);
                         setCustomAmount('');
                       }}
-                      className={`border rounded-lg py-3 px-4 text-center font-semibold transition-all ${
-                        selectedAmount === amount
-                          ? 'border-primary bg-primary text-primary-foreground'
-                          : 'border-border hover:border-primary hover:bg-accent'
-                      }`}
+                      className={`border rounded-lg py-3 px-4 text-center font-semibold transition-all ${selectedAmount === amount
+                        ? 'border-primary bg-primary text-primary-foreground'
+                        : 'border-border hover:border-primary hover:bg-accent'
+                        }`}
                     >
                       {(amount / 1000).toFixed(0)}K IDRX
                     </button>
@@ -535,14 +577,9 @@ export default function CampaignDetail() {
                 {/* Donate Button */}
                 <button
                   onClick={() => setShowDonationDialog(true)}
-                  disabled={!canDonate}
-                  className={`w-full border border-transparent rounded-md h-11 px-4 text-sm font-bold transition-all shadow-sm mb-4 ${
-                    canDonate
-                      ? 'bg-primary text-primary-foreground hover:bg-primary/90'
-                      : 'bg-muted text-muted-foreground cursor-not-allowed opacity-60'
-                  }`}
+                  className="w-full bg-primary text-primary-foreground hover:bg-primary/90 border border-transparent rounded-md h-11 px-4 text-sm font-bold transition-all shadow-sm mb-4"
                 >
-                  {isLoadingStatus ? 'Loading...' : !canDonate ? 'Campaign Not Ready' : 'Donate Now'}
+                  Donate Now
                 </button>
 
                 <p className="text-xs text-center text-muted-foreground">
@@ -591,8 +628,7 @@ export default function CampaignDetail() {
         <DonationDialog
           open={showDonationDialog}
           onOpenChange={setShowDonationDialog}
-          campaignId={campaignDetail.campaignIdHash || campaignDetail.id.toString()}
-          campaignIdHash={campaignDetail.campaignIdHash}
+          campaignId={campaignDetail.id}
           campaignTitle={campaignDetail.title}
           campaignGoal={campaignDetail.goal}
           campaignRaised={campaignDetail.raised}
