@@ -34,7 +34,7 @@ export function Header() {
             <img src="/logo.png" className="h-8 object-contain" />
           </Link>
 
-          <nav className="hidden md:flex items-center gap-8 text-sm font-medium">
+          <nav className="hidden md:flex items-center gap-8 text-[0.79rem] font-medium">
             <Link href="/zakat" className="text-foreground hover:text-primary transition-colors">{t("header.zakat")}</Link>
             <Link href="/campaigns" className="text-foreground hover:text-primary transition-colors">{t("header.campaigns")}</Link>
             {/* <Link href="/faucet" className="text-foreground hover:text-primary transition-colors">{t("header.faucet")}</Link> */}
@@ -82,7 +82,7 @@ export function Header() {
         <div className="flex items-center gap-4">
 
           {/* SEARCH BAR */}
-          <div className="relative hidden lg:block w-80">
+          <div className="relative hidden lg:block w-40">
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
 
             <input
