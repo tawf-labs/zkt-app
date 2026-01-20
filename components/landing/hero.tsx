@@ -5,16 +5,21 @@ import { Shield, TrendingUp } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useLanguage } from '@/components/providers/language-provider';
+import { CardBody, CardContainer, CardItem } from '../ui/3d-card';
 
 export function Hero() {
   const { t } = useLanguage();
   
   return (
-    <section className="relative overflow-hidden bg-gradient-to-br from-white via-secondary/30 to-accent py-20 lg:py-32">
-      <div className="container px-4 mx-auto auto-center gap-12 lg-gap-20">
+    <section className="relative overflow-hidden bg-gradient-to-br from-white via-secondary/30 to-accent pt-15 pb-20 lg:pt-32 lg:pb-28">
+     
+        <div className="absolute flex h-full w-full opacity-50">
+          <Image fill alt="hero background" src="zkt-hero-background.png" className='object-cover'/>
+        </div>
+<div className="container relative z-10 px-4 mx-auto auto-center gap-12 lg-gap-20">
         <div className="flex flex-col lg:flex-row items-center gap-16 lg:gap-24">
           {/* Left Content */}
-          <div className="flex-1 space-y-8 text-center lg:text-left">
+          <div className="flex-[0.9] space-y-8 text-center lg:text-left">
             {/* Badge */}
             <div className="inline-flex items-center rounded-full border border-primary/20 bg-primary/5 px-4 py-2 text-sm font-medium text-primary">
               ✓ Blockchain Traced
@@ -64,32 +69,38 @@ export function Hero() {
            </div>
 
           {/* Right Mockup Section */}
-         <div className="flex-1 w-full max-w-2xl relative">
+         <CardContainer className="flex-1 w-full max-w-2xl relative">
           {/* Main Browser/Device Mockup */}
-          <div className="relative rounded-3xl overflow-hidden border-2 border-border bg-gradient-to-br from-secondary to-white aspect-[4/3] shadow-2xl shadow-primary/10">
+          <CardBody className="relative rounded-3xl overflow-hidden border-2 border-border bg-gradient-to-br from-secondary to-white aspect-[4/3] shadow-2xl shadow-primary/50">
 
             {/* IMAGE REPLACEMENT */}
-            <Image
+
+
+<Image
               src="https://www.globalgiving.org/pfil/50448/pict_large.jpg"   
               alt="Preview"
               fill
               className="object-cover w-full h-auto"
             />
 
+ 
+
+           
+
             {/* Floating Card - Top Left */}
-            <div className="absolute top-6 left-6 bg-white p-3 rounded-xl border border-primary/20 shadow-lg max-w-[160px]">
+            <CardItem translateZ={50} className="absolute top-6 left-6 bg-white p-3 rounded-xl border border-primary/20 shadow-lg max-w-[160px]">
               <div className="text-xs font-semibold text-primary">Zakat Verified</div>
-            </div>
+            </CardItem>
 
             {/* Floating Card - Bottom Right */}
-            <div className="absolute bottom-6 right-6 bg-white p-3 rounded-xl border border-primary/20 shadow-lg max-w-[200px]">
+            <CardItem translateZ={20} className="absolute bottom-6 right-6 bg-white p-3 rounded-xl border border-primary/20 shadow-lg max-w-[200px]">
               <div className="space-y-1">
                 <div className="text-xs text-muted-foreground">Impact Tracking</div>
                 <div className="text-sm font-bold text-primary">Real-time Audit</div>
               </div>
-            </div>
-          </div>
-        </div>
+            </CardItem>
+          </CardBody>
+        </CardContainer>
 
         </div>
       </div>
