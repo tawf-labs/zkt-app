@@ -35,7 +35,7 @@ export function DonationDialog({
 }: DonationDialogProps) {
   const [amount, setAmount] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
-  const { donate, isConnected, formattedIdrxBalance, isDonating } = useWallet();
+  const { donate, isConnected, idrxBalance, formattedIdrxBalance, isDonating } = useWallet();
   const { toast } = useToast();
 
   // Fetch campaign status to check if donations are allowed
