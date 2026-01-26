@@ -401,12 +401,14 @@ export const DonationReceiptNFTABI = [
 
 // Helper functions for formatting blockchain data
 export function formatIDRX(amount: bigint): string {
-  const value = Number(amount) / 1e18;
+  // USDC uses 6 decimals, not 18!
+  const value = Number(amount) / 1e6;
   return value.toLocaleString('id-ID', { maximumFractionDigits: 0 });
 }
 
 export function parseIDRX(amount: number): bigint {
-  return BigInt(Math.floor(amount * 1e18));
+  // USDC uses 6 decimals, not 18!
+  return BigInt(Math.floor(amount * 1e6));
 }
 
 export function formatAddress(address: string): string {
