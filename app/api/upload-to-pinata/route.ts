@@ -27,13 +27,12 @@ export async function POST(request: NextRequest) {
 
     // Upload to Pinata
     const upload = await pinata.upload.file(file);
-    
-    // Format gateway URL properly
-    const gatewayDomain = process.env.NEXT_PUBLIC_PINATA_GATEWAY || 'gateway.pinata.cloud';
-    const gatewayUrl = `https://${gatewayDomain.replace(/^https?:\/\//, '')}`;
-    const url = `${gatewayUrl}/ipfs/${upload.IpfsHash}`;
 
-    console.log(`✅ Uploaded to Pinata: ${url}`);
+    // Format gateway URL properly with https://
+    const gatewayDomain = process.env.NEXT_PUBLIC_PINATA_GATEWAY || 'gateway.pinata.cloud';
+    const cleanGateway = gatewayDomain.replace(/^https?:\/\//, '');
+    const url = `https://${cleanGateway}/ipfs/${upload.IpfsHash}`;
+
 
     return NextResponse.json({
       success: true,

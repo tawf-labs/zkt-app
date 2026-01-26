@@ -1,7 +1,8 @@
 'use client';
 
 import { useCallback, useState } from 'react';
-import { useWallet } from '@/components/providers/web3-provider';
+import { useAccount, useWriteContract, useReadContract } from 'wagmi';
+import { ZKT_CAMPAIGN_POOL_ADDRESS, ZKTCampaignPoolABI } from '@/lib/zkt-campaign-pool';
 import { toast } from '@/components/ui/use-toast';
 
 interface UseLockAllocationsOptions {
@@ -11,20 +12,26 @@ interface UseLockAllocationsOptions {
 
 /**
  * Hook to lock allocations for a campaign
- * Must be called after:
- * 1. Safe creates the campaign (via createCampaign)
- * 2. Campaign exists on-chain
- * 
- * This will:
- * 1. Set allocation to 100% (10000 bps) to organization
- * 2. Lock the allocation so donations can be accepted
+ *
+ * PREREQUISITES:
+ * 1. Campaign must exist on-chain (created via createCampaign)
+ * 2. Allocations must be set (via setAllocation)
+ * 3. Total allocations must equal 100%
+ *
+ * After locking:
+ * - Allocations cannot be changed
+ * - Campaign can accept donations
  */
 export const useLockAllocations = (options?: UseLockAllocationsOptions) => {
-  const { lockCampaignAllocations, isConnected, address } = useWallet();
+  const { address, isConnected } = useAccount();
   const [isLoading, setIsLoading] = useState(false);
+  const [txHash, setTxHash] = useState<string | null>(null);
+
+  const { writeContractAsync } = useWriteContract();
 
   const lockAllocations = useCallback(
     async (campaignIdHash: string) => {
+      // Validation: Wallet connected
       if (!isConnected || !address) {
         const errorMsg = 'Please connect your wallet first';
         toast({
@@ -35,7 +42,8 @@ export const useLockAllocations = (options?: UseLockAllocationsOptions) => {
         throw new Error(errorMsg);
       }
 
-      if (!campaignIdHash) {
+      // Validation: Campaign ID
+      if (!campaignIdHash || !campaignIdHash.startsWith('0x')) {
         const errorMsg = 'Campaign ID is required';
         toast({
           title: 'Error',
@@ -46,40 +54,66 @@ export const useLockAllocations = (options?: UseLockAllocationsOptions) => {
       }
 
       setIsLoading(true);
-      
+
       try {
-        console.log('[useLockAllocations] Locking campaign allocations for:', campaignIdHash);
-        
-        const result = await lockCampaignAllocations(campaignIdHash);
-        
+
+        // Execute transaction
+        const hash = await writeContractAsync({
+          address: ZKT_CAMPAIGN_POOL_ADDRESS,
+          abi: ZKTCampaignPoolABI,
+          functionName: 'lockAllocation',
+          args: [campaignIdHash as `0x${string}`],
+        });
+
+        setTxHash(hash);
+
         toast({
           title: '🔒 Success!',
           description: 'Campaign allocations locked. Ready for donations!',
         });
-        
-        options?.onSuccess?.(result.txHash);
-        return result;
-      } catch (error) {
-        const errorMsg = error instanceof Error ? error.message : String(error);
-        console.error('[useLockAllocations] Error:', errorMsg);
-        
+
+
+        options?.onSuccess?.(hash);
+        return { txHash: hash };
+
+      } catch (error: any) {
+        console.error('❌ Error locking allocations:', error);
+
+        let errorMsg = 'Failed to lock allocations';
+
+        if (error?.message?.includes('user rejected')) {
+          errorMsg = 'Transaction rejected by user';
+        } else if (error?.message?.includes('Campaign does not exist')) {
+          errorMsg = 'Campaign does not exist. Create campaign first!';
+        } else if (error?.message?.includes('Allocation not complete')) {
+          errorMsg = 'Total allocation must be 100% before locking';
+        } else if (error?.message?.includes('Already locked')) {
+          errorMsg = 'Allocation is already locked';
+        } else if (error?.reason) {
+          errorMsg = error.reason;
+        } else if (error?.message) {
+          errorMsg = error.message;
+        }
+
         toast({
           title: 'Error',
-          description: errorMsg || 'Failed to lock allocations',
+          description: errorMsg,
           variant: 'destructive',
         });
-        
+
         options?.onError?.(error as Error);
         throw error;
+
       } finally {
         setIsLoading(false);
       }
     },
-    [lockCampaignAllocations, isConnected, address, options]
+    [isConnected, address, writeContractAsync, options]
   );
 
   return {
     lockAllocations,
     isLoading,
+    txHash,
   };
 };

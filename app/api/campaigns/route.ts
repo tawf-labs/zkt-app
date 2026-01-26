@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createPublicClient, http, getAddress } from 'viem';
+import { createPublicClient, http } from 'viem';
 import { baseSepolia } from 'viem/chains';
-import { DONATION_CONTRACT_ADDRESS, DonationABI } from '@/lib/donate';
+import { ZKT_CAMPAIGN_POOL_ADDRESS, ZKTCampaignPoolABI } from '@/lib/zkt-campaign-pool';
 import { Campaign } from '@/hooks/useCampaigns';
 import { formatPinataImageUrl } from '@/lib/pinata-client';
 import { supabase } from '@/lib/supabase-client';
@@ -21,160 +21,184 @@ function calculateDaysLeft(endDate: number): number {
 
 export async function GET(request: NextRequest) {
   try {
+    console.log('[API Campaigns] Fetching campaigns from Supabase...');
     const campaigns: Campaign[] = [];
 
-    console.log('📡 [API] Fetching campaigns...')
+    // Fetch campaigns from Supabase (for metadata only: title, description, images)
+    // Select specific columns to avoid 406 errors
+    const { data: supabaseCampaigns, error } = await supabase
+      .from('campaigns')
+      .select('id,campaign_id,title,description,category,location,goal,organization_name,organization_verified,image_urls,tags,start_time,end_time,status,total_raised,created_at')
+      .order('created_at', { ascending: false });
 
-    // Fetch campaigns from Supabase first
-    try {
-      const { data: supabaseCampaigns, error } = await supabase
-        .from('campaigns')
-        .select('*')
-        .order('created_at', { ascending: false });
+    if (error) {
+      console.error('[API Campaigns] Supabase error:', {
+        message: error.message,
+        code: error.code,
+        details: error.details,
+        hint: error.hint,
+      });
+      return NextResponse.json(
+        {
+          success: false,
+          error: error.message,
+          campaigns: [],
+        },
+        { status: 500 }
+      );
+    }
 
-      if (error) {
-        console.error('❌ Supabase error:', error);
-      } else if (supabaseCampaigns && supabaseCampaigns.length > 0) {
-        console.log(`✅ Found ${supabaseCampaigns.length} campaigns in Supabase`)
-        
-        // Convert Supabase campaigns to Campaign type
-        const now = Math.floor(Date.now() / 1000);
-        supabaseCampaigns.forEach((camp: any, index: number) => {
-          // Skip expired campaigns
-          const endTime = camp.end_time || Math.floor(Date.now() / 1000) + 86400 * 90;
-          if (endTime < now) {
-            console.log(`⏰ Skipping expired campaign: ${camp.title}`)
-            return;
-          }
+    console.log('[API Campaigns] Fetched', supabaseCampaigns?.length || 0, 'campaigns from Supabase');
 
-          // ⚠️ IMPORTANT: Skip campaigns still pending Safe execution (waiting for 3/3 signatures)
-          // Only show campaigns that have been fully executed on-chain (status === 'active')
-          if (camp.status === 'pending_execution') {
-            console.log(`⏳ Skipping pending Safe transaction: ${camp.title} (ID: ${camp.campaign_id?.substring(0, 16)}...) - waiting for 3/3 signatures`)
-            return;
-          }
+    if (!supabaseCampaigns || supabaseCampaigns.length === 0) {
+      return NextResponse.json(
+        {
+          success: true,
+          campaigns: [],
+          total: 0,
+        },
+        {
+          status: 200,
+          headers: {
+            'Cache-Control': 'no-store, max-age=0',
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+    }
 
-          console.log(`📝 Processing campaign: ${camp.title} (ID: ${camp.campaign_id?.substring(0, 16)}...)`)
+    const now = Math.floor(Date.now() / 1000);
 
-          // Get image URL and ensure it's properly formatted for Pinata
+    // Check each campaign: must exist on-chain AND be still active (not expired)
+    for (const camp of supabaseCampaigns) {
+      // Skip if no campaign_id or not bytes32 format
+      if (!camp.campaign_id || !camp.campaign_id.startsWith('0x')) {
+        continue;
+      }
+
+      try {
+        // Read campaign data from contract
+        const campaignData = await publicClient.readContract({
+          address: ZKT_CAMPAIGN_POOL_ADDRESS,
+          abi: ZKTCampaignPoolABI,
+          functionName: 'campaigns',
+          args: [camp.campaign_id as `0x${string}`],
+        }) as any;
+
+        // campaignData returns:
+        // [0] exists (bool)
+        // [1] allocationLocked (bool)
+        // [2] disbursed (bool)
+        // [3] closed (bool)
+        // [4] totalRaised (uint256)
+        // [5] startTime (uint256)
+        // [6] endTime (uint256)
+
+        const exists = campaignData && campaignData[0];
+        if (!exists) {
+          // Campaign doesn't exist on contract - skip it
+          console.log(`[API] Campaign ${camp.campaign_id} does not exist on contract, skipping`);
+          continue;
+        }
+
+        const endTime = Number(campaignData[6]) || 0;
+
+        // Check if campaign is still active (not expired)
+        if (endTime <= now) {
+          // Campaign has expired - skip it
+          console.log(`[API] Campaign ${camp.campaign_id} has expired, skipping`);
+          continue;
+        }
+
+        const closed = campaignData[3];
+        const disbursed = campaignData[2];
+        const totalRaised = campaignData[4];
+        const startTime = campaignData[5];
+
+        // Skip if campaign is closed or disbursed
+        if (closed || disbursed) {
+          console.log(`[API] Campaign ${camp.campaign_id} is closed or disbursed, skipping`);
+          continue;
+        }
+
+        // Campaign exists AND is still active - show it!
+        const isActive = true;
+
+        // Get image URL
+        let imageUrl = 'https://images.unsplash.com/photo-1532629345422-7515f3d16bb6?w=500';
+        if (camp.image_urls && Array.isArray(camp.image_urls) && camp.image_urls.length > 0) {
+          imageUrl = formatPinataImageUrl(camp.image_urls[0]);
+        }
+
+        const campaign: Campaign = {
+          id: camp.campaign_id,
+          title: camp.title || '',
+          description: camp.description || '',
+          imageUrl: imageUrl,
+          image: imageUrl,
+          organizationName: camp.organization_name || 'Unknown',
+          organizationAddress: '', // No longer using this field from Supabase
+          category: camp.category || 'General',
+          location: camp.location || 'Global',
+          raised: Number(totalRaised) || camp.total_raised || 0,
+          goal: camp.goal || 0,
+          donors: 0, // No donors_count column in Supabase
+          daysLeft: calculateDaysLeft(endTime),
+          isActive: isActive,
+          isVerified: camp.organization_verified || false,
+          startDate: Number(startTime) || camp.start_time || now,
+          endDate: endTime || camp.end_time || now + 86400 * 90,
+          status: 'active',
+        };
+        campaigns.push(campaign);
+
+      } catch (error) {
+        // Error reading contract - log but don't skip if campaign was recently created
+        const campaignAge = now - (Math.floor(new Date(camp.created_at).getTime() / 1000));
+        // If campaign was created in the last 5 minutes, show it anyway (might still be indexing)
+        if (campaignAge < 300) {
+          console.log(`[API] Campaign ${camp.campaign_id} recently created, showing despite contract error:`, error);
           let imageUrl = 'https://images.unsplash.com/photo-1532629345422-7515f3d16bb6?w=500';
           if (camp.image_urls && Array.isArray(camp.image_urls) && camp.image_urls.length > 0) {
             imageUrl = formatPinataImageUrl(camp.image_urls[0]);
           }
 
           const campaign: Campaign = {
-            id: camp.campaign_id || index,
+            id: camp.campaign_id,
             title: camp.title || '',
             description: camp.description || '',
             imageUrl: imageUrl,
             image: imageUrl,
             organizationName: camp.organization_name || 'Unknown',
-            organizationAddress: camp.organization_address || '',
+            organizationAddress: '',
             category: camp.category || 'General',
             location: camp.location || 'Global',
             raised: camp.total_raised || 0,
             goal: camp.goal || 0,
-            donors: camp.donors_count || 0,
-            daysLeft: calculateDaysLeft(endTime),
-            isActive: camp.status === 'active' && endTime > now,
+            donors: 0, // No donors_count column in Supabase
+            daysLeft: camp.end_time ? calculateDaysLeft(camp.end_time) : 90,
+            isActive: true,
             isVerified: camp.organization_verified || false,
             startDate: camp.start_time || now,
-            endDate: endTime,
+            endDate: camp.end_time || now + 86400 * 90,
+            status: 'active',
           };
           campaigns.push(campaign);
-        });
-        
-        console.log(`✅ Processed ${campaigns.length} active campaigns`)
-      } else {
-        console.log('⚠️ No campaigns found in Supabase')
-      }
-    } catch (error) {
-      console.error('❌ Error fetching from Supabase:', error);
-    }
-
-    // Try to fetch from contract as secondary source (only if Supabase is empty)
-    if (campaigns.length === 0) {
-      try {
-        const campaignCount = 3;
-
-        for (let i = 0; i < campaignCount; i++) {
-          try {
-            const campaignData = await publicClient.readContract({
-              address: getAddress(DONATION_CONTRACT_ADDRESS),
-              abi: DonationABI,
-              functionName: 'campaigns',
-              args: [i as any] as any,
-            }) as any;
-
-            if (!campaignData || !campaignData.name) continue;
-
-          const targetAmountBigInt = BigInt(campaignData.targetAmount || 0);
-          const raisedAmountBigInt = BigInt(campaignData.raisedAmount || 0);
-
-          const targetAmount = Number(targetAmountBigInt) / 1e18;
-          const raisedAmount = Number(raisedAmountBigInt) / 1e18;
-
-          if (targetAmount === 0) continue;
-
-          // Use contract endTime if available, otherwise add 90 days
-          const contractEndTime = campaignData.endTime ? Number(campaignData.endTime) : null;
-          const endDate = contractEndTime || Math.floor(Date.now() / 1000) + (90 * 86400);
-          const now = Math.floor(Date.now() / 1000);
-
-          // Skip expired campaigns
-          if (endDate < now) {
-            console.log(`⏰ Skipping expired contract campaign: ${campaignData.name}`);
-            continue;
-          }
-
-          const daysLeft = calculateDaysLeft(endDate);
-
-          // Only add if not already in Supabase campaigns
-          const alreadyExists = campaigns.some(c => c.title === campaignData.name);
-          if (!alreadyExists) {
-            const campaign: Campaign = {
-              id: campaigns.length,
-              title: campaignData.name,
-              description: campaignData.description || '',
-              imageUrl: 'https://images.unsplash.com/photo-1532629345422-7515f3d16bb6?w=500',
-              image: 'https://images.unsplash.com/photo-1532629345422-7515f3d16bb6?w=500',
-              organizationName: 'Unknown Organization',
-              organizationAddress: campaignData.organization || '',
-              category: 'General',
-              location: 'Global',
-              raised: Math.floor(raisedAmount),
-              goal: Math.floor(targetAmount),
-              donors: 0,
-              daysLeft,
-              isActive: (campaignData.isActive || false) && endDate > now,
-              isVerified: false,
-              startDate: Math.floor(Date.now() / 1000),
-              endDate,
-            };
-            campaigns.push(campaign);
-          }
-        } catch (error) {
-          // Silently skip contract errors - use Supabase data instead
-          continue;
+        } else {
+          console.log(`[API] Error reading contract for campaign ${camp.campaign_id}, skipping:`, error);
         }
+        continue;
       }
-    } catch (error) {
-      // Silently skip contract access errors
-      console.log('ℹ️ Contract data skipped - using Supabase data only');
     }
-    }
+
+    console.log('[API Campaigns] Returning', campaigns.length, 'campaigns');
 
     return NextResponse.json(
       {
         success: true,
         campaigns: campaigns,
         total: campaigns.length,
-        source: campaigns.length > 0 ? 'supabase' : 'empty',
         timestamp: new Date().toISOString(),
-        debug: {
-          message: campaigns.length === 0 ? '❌ No campaigns found - check Supabase data' : `✅ ${campaigns.length} campaigns loaded`,
-          checkUrl: '/api/debug/supabase-campaigns'
-        }
       },
       {
         status: 200,
@@ -185,13 +209,13 @@ export async function GET(request: NextRequest) {
       }
     );
 
-    console.log(`📊 [API] Returning ${campaigns.length} campaigns`)
   } catch (error) {
-    console.error('Error fetching campaigns:', error);
+    console.error('[API Campaigns] Unexpected error:', error);
     return NextResponse.json(
       {
         success: false,
         error: error instanceof Error ? error.message : 'Failed to fetch campaigns',
+        campaigns: [],
         timestamp: new Date().toISOString(),
       },
       { status: 500 }

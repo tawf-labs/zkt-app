@@ -15,7 +15,8 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
-    const campaignId = parseInt(id, 10);
+    
+    console.log('[API] Fetching campaign with ID:', id);
 
     // Fetch all campaigns from Supabase
     const { data: campaigns, error } = await supabase
@@ -31,14 +32,26 @@ export async function GET(
       );
     }
 
-    // Find campaign by campaign_id
-    const campaign = campaigns?.find((c: any) => {
-      // Parse campaign_id if it's numeric
-      const cId = parseInt(c.campaign_id, 10);
-      return cId === campaignId;
-    });
+    // Find campaign by campaign_id (support both bytes32 hash and numeric ID)
+    let campaign = null;
+    
+    if (id.startsWith('0x')) {
+      // It's a bytes32 hash - direct match
+      console.log('[API] Searching by bytes32 hash:', id);
+      campaign = campaigns?.find((c: any) => c.campaign_id === id);
+    } else {
+      // Try numeric ID
+      console.log('[API] Searching by numeric ID:', id);
+      const campaignId = parseInt(id, 10);
+      campaign = campaigns?.find((c: any) => {
+        // Try parsing campaign_id as numeric
+        const cId = parseInt(c.campaign_id, 10);
+        return cId === campaignId;
+      });
+    }
 
     if (!campaign) {
+      console.log('[API] Campaign not found with ID:', id);
       return NextResponse.json(
         { success: false, error: 'Campaign not found' },
         { status: 404 }
@@ -57,11 +70,16 @@ export async function GET(
       images.push('https://images.unsplash.com/photo-1532629345422-7515f3d16bb6?w=500');
     }
 
+    // Use campaign_id as is (could be hash or numeric)
+    const campaignIdValue = campaign.campaign_id;
+
     const campaignDetail = {
-      id: campaignId,
-      campaignIdHash: campaign.campaign_id || '', // blockchain campaign ID (hash for Safe campaigns, numeric for others)
+      id: id.startsWith('0x') ? id : parseInt(id, 10),
+      campaignIdHash: campaignIdValue || '', // blockchain campaign ID (hash for Safe campaigns, numeric for others)
       title: campaign.title || '',
       description: campaign.description || '',
+      status: campaign.status || 'active',
+      safeTxHash: campaign.safe_tx_hash || undefined,
       organization: {
         name: campaign.organization_name || 'Unknown Organization',
         verified: campaign.organization_verified || false,

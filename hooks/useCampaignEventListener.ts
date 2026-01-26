@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from 'react'
 import { usePublicClient } from 'wagmi'
-import { DONATION_CONTRACT_ADDRESS } from '@/lib/donate'
+import { ZKT_CAMPAIGN_POOL_ADDRESS, ZKTCampaignPoolABI } from '@/lib/zkt-campaign-pool'
 import { supabase } from '@/lib/supabase-client'
 
 /**
@@ -27,7 +27,6 @@ export const useCampaignEventListener = () => {
 
     const setupListener = async () => {
       try {
-        console.log('🎧 Setting up campaign event listener...')
 
         // Get the initial block number
         const currentBlock = await publicClient.getBlockNumber()
@@ -41,12 +40,8 @@ export const useCampaignEventListener = () => {
             if (latestBlock <= lastBlockRef.current) {
               return // No new blocks
             }
-
-            console.log(
-              `📡 Polling CampaignCreated events: blocks ${lastBlockRef.current} → ${latestBlock}`
-            )
             const logs = await (publicClient as any).getLogs({
-              address: DONATION_CONTRACT_ADDRESS as `0x${string}`,
+              address: ZKT_CAMPAIGN_POOL_ADDRESS,
               event: {
                 name: 'CampaignCreated',
                 type: 'event',
@@ -62,15 +57,9 @@ export const useCampaignEventListener = () => {
 
             lastBlockRef.current = latestBlock
 
-            if (logs.length > 0) {
-              console.log(`✅ Found ${logs.length} CampaignCreated event(s)`)
-            }
-
             // Process each event
             for (const log of logs) {
               const campaignId = log.args?.campaignId as string
-
-              console.log('📢 CampaignCreated event detected:', campaignId)
 
               // Check if campaign already exists in Supabase
               try {
@@ -84,50 +73,24 @@ export const useCampaignEventListener = () => {
                   error &&
                   error.code === 'PGRST116'
                 ) {
-                  console.log(
-                    '⚠️ Campaign exists on-chain but not in Supabase:',
-                    campaignId
-                  )
                 } else if (!error && data) {
                   // Campaign exists in Supabase
                   if (data.status === 'pending_execution') {
                     // Update status to 'active' since Safe transaction executed
-                    console.log(
-                      '🔄 Updating campaign status to active (Safe executed):',
-                      campaignId
-                    )
-                    
                     const { error: updateError } = await supabase
                       .from('campaigns')
                       .update({ status: 'active' })
                       .eq('campaign_id', campaignId)
-                    
-                    if (updateError) {
-                      console.error('❌ Failed to update campaign status:', updateError)
-                    } else {
-                      console.log('✅ Campaign status updated to active - now visible in explorer!')
-                    }
-                  } else {
-                    console.log(
-                      '✅ Campaign already active in Supabase'
-                    )
                   }
                 }
               } catch (err) {
-                console.error(
-                  '❌ Error checking/updating campaign in Supabase:',
-                  err
-                )
               }
             }
           } catch (pollError) {
-            console.error('❌ Error polling for events:', pollError)
           }
         }, 15000) // Poll every 15 seconds
 
-        console.log('✅ Campaign event listener setup complete')
       } catch (err) {
-        console.error('❌ Failed to setup event listener:', err)
       }
     }
 
@@ -137,7 +100,6 @@ export const useCampaignEventListener = () => {
     return () => {
       if (intervalRef.current) {
         clearInterval(intervalRef.current)
-        console.log('🛑 Campaign event listener stopped')
       }
     }
   }, [publicClient])

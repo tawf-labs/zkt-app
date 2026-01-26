@@ -2,14 +2,14 @@
 
 import { useCallback, useState } from 'react';
 import { useContractRead } from 'wagmi';
-import { DonationABI, DONATION_CONTRACT_ADDRESS, type Campaign } from '@/lib/donate';
+import { ZKT_CAMPAIGN_POOL_ADDRESS, ZKTCampaignPoolABI } from '@/lib/zkt-campaign-pool';
 
 export const useCampaign = (campaignId: string | undefined) => {
   const [isLoading, setIsLoading] = useState(false);
 
   const { data: campaign, isLoading: isReadLoading, refetch } = useContractRead({
-    address: DONATION_CONTRACT_ADDRESS as `0x${string}`,
-    abi: DonationABI,
+    address: ZKT_CAMPAIGN_POOL_ADDRESS,
+    abi: ZKTCampaignPoolABI,
     functionName: 'campaigns',
     args: campaignId ? [campaignId as `0x${string}`] : undefined,
     enabled: !!campaignId,
@@ -25,7 +25,7 @@ export const useCampaign = (campaignId: string | undefined) => {
   }, [refetch]);
 
   return {
-    campaign: campaign as Campaign | undefined,
+    campaign: campaign,
     isLoading: isReadLoading || isLoading,
     refetch: reloadCampaign,
   };

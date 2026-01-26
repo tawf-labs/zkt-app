@@ -21,6 +21,8 @@ export interface Campaign {
   isVerified: boolean;
   startDate: number;
   endDate: number;
+  status?: string;  // 'pending_execution' | 'active' | 'completed' | 'closed'
+  safeTxHash?: string;  // Safe transaction hash for pending campaigns
 }
 
 export function useCampaigns() {
@@ -70,14 +72,7 @@ export function useCampaigns() {
     fetchCampaigns();
   }, [fetchCampaigns]);
 
-  // Polling for real-time updates (every 15 seconds)
-  useEffect(() => {
-    const interval = setInterval(() => {
-      fetchCampaigns();
-    }, 15_000);
-
-    return () => clearInterval(interval);
-  }, [fetchCampaigns]);
+  // No auto-polling - campaigns only refresh on page reload or manual refetch
 
   return {
     campaigns,

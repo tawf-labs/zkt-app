@@ -12,7 +12,7 @@ import { pad, toHex, createPublicClient, http } from "viem";
 import { getClientConfig } from "@/lib/client-config";
 import { useIDRXBalance } from "@/hooks/useIDRXBalance";
 import { CONTRACT_ADDRESSES, MockIDRXABI } from "@/lib/abi";
-import { DONATION_CONTRACT_ADDRESS, DonationABI } from "@/lib/donate";
+import { ZKT_CAMPAIGN_POOL_ADDRESS, ZKTCampaignPoolABI } from "@/lib/zkt-campaign-pool";
 import { useCampaignEventListener } from "@/hooks/useCampaignEventListener";
 import { AlertTriangle } from "lucide-react";
 
@@ -33,7 +33,7 @@ type WalletContextType = {
 	connect: () => Promise<void>;
 	disconnect: () => void;
 	donate: (params: DonationParams) => Promise<{ txHash: string }>;
-	lockCampaignAllocations: (campaignIdHash: string) => Promise<{ txHash: string }>;
+	// lockCampaignAllocations: (campaignIdHash: string) => Promise<{ txHash: string }>; // DISABLED - Not using Safe anymore
 	isDonating: boolean;
 };
 
@@ -44,11 +44,10 @@ const WalletContext = createContext<WalletContextType>({
 	idrxBalance: undefined,
 	formattedIdrxBalance: "0",
 	connect: async () => {
-		console.warn("Connect function should be triggered by XellarKit UI components.");
 	},
 	disconnect: () => {},
 	donate: async () => ({ txHash: "0x0" }),
-	lockCampaignAllocations: async () => ({ txHash: "0x0" }),
+	// lockCampaignAllocations: async () => ({ txHash: "0x0" }), // DISABLED - Not using Safe anymore
 	isDonating: false,
 });
 
@@ -266,17 +265,15 @@ function WalletStateController({ children }: { children: ReactNode }) {
 				description: "Please approve the contract to spend your IDRX tokens",
 			});
 			
-			console.log(`[Donate] Starting approval for ${amountIDRX.toString()} IDRX to ${DONATION_CONTRACT_ADDRESS}`);
 			
 			const approvalTxHash = await writeContractAsync({
 				address: CONTRACT_ADDRESSES.MockIDRX,
 				abi: MockIDRXABI,
 				functionName: "approve",
-				args: [DONATION_CONTRACT_ADDRESS, amountIDRX],
+				args: [ZKT_CAMPAIGN_POOL_ADDRESS, amountIDRX],
 				account: address as `0x${string}`,
 			});
 			
-			console.log(`[Donate] Approval tx hash: ${approvalTxHash}`);
 			
 			// Add delay to ensure approval is processed
 			await new Promise(resolve => setTimeout(resolve, 3000));
@@ -293,16 +290,12 @@ function WalletStateController({ children }: { children: ReactNode }) {
 			if (typeof poolId === 'string' && poolId.startsWith('0x')) {
 				// It's already a hash, ensure it's padded to 32 bytes
 				campaignIdBytes32 = poolId.length === 66 ? poolId : pad(poolId as `0x${string}`, { size: 32 });
-				console.log(`[Donate] Using hash campaign ID (bytes32): ${campaignIdBytes32}`);
 			} else {
 				// It's numeric, convert to bytes32
 				const numericId = typeof poolId === 'string' ? BigInt(poolId) : poolId;
 				campaignIdBytes32 = pad(toHex(numericId), { size: 32 });
-				console.log(`[Donate] Campaign ID (BigInt): ${numericId.toString()}`);
-				console.log(`[Donate] Campaign ID (bytes32): ${campaignIdBytes32}`);
 			}
 			
-			console.log(`[Donate] Amount: ${amountIDRX.toString()}`);
 			
 			// Get gas fees for better estimation
 			const publicClient = createPublicClient({
@@ -314,14 +307,12 @@ function WalletStateController({ children }: { children: ReactNode }) {
 			try {
 				const feeData = await publicClient.getGasPrice();
 				gasPrice = feeData;
-				console.log(`[Donate] Network gas price: ${gasPrice.toString()} wei`);
 			} catch (error) {
-				console.log(`[Donate] Using default gas price: ${gasPrice.toString()} wei`);
 			}
 			
 			const donateTxHash = await writeContractAsync({
-				address: DONATION_CONTRACT_ADDRESS as `0x${string}`,
-				abi: DonationABI,
+				address: ZKT_CAMPAIGN_POOL_ADDRESS as `0x${string}`,
+				abi: ZKTCampaignPoolABI,
 				functionName: "donate",
 				args: [campaignIdBytes32, amountIDRX],
 				account: address as `0x${string}`,
@@ -345,7 +336,7 @@ function WalletStateController({ children }: { children: ReactNode }) {
 				data: error?.data,
 				cause: error?.cause,
 				chainId: error?.chainId,
-				contractAddress: DONATION_CONTRACT_ADDRESS,
+				contractAddress: ZKT_CAMPAIGN_POOL_ADDRESS,
 				senderAddress: address,
 				fullError: error,
 			});
@@ -365,7 +356,8 @@ function WalletStateController({ children }: { children: ReactNode }) {
 		}
 	};
 
-	// Function to lock allocations for a campaign (required before donations can be accepted)
+	// Function to lock allocations for a campaign (DISABLED - Not using Safe anymore, allocations locked on creation)
+	/*
 	const lockCampaignAllocations = async (campaignIdHash: string): Promise<{ txHash: string }> => {
 		if (!isConnected || !address) {
 			throw new Error("Wallet not connected");
@@ -374,45 +366,39 @@ function WalletStateController({ children }: { children: ReactNode }) {
 		try {
 			// Get the organization address from the creator
 			const orgAddress = address;
-			
+
 			// Convert org address to bytes32 (padded)
 			const orgIdBytes32 = pad(orgAddress as `0x${string}`, { size: 32 });
-			
+
 			// Ensure campaign ID is bytes32 format
-			const campaignIdBytes32 = campaignIdHash.startsWith('0x') && campaignIdHash.length === 66 
-				? campaignIdHash 
+			const campaignIdBytes32 = campaignIdHash.startsWith('0x') && campaignIdHash.length === 66
+				? campaignIdHash
 				: pad(campaignIdHash as `0x${string}`, { size: 32 });
 
-			console.log(`[LockAllocations] Campaign ID (bytes32): ${campaignIdBytes32}`);
-			console.log(`[LockAllocations] Organization ID (bytes32): ${orgIdBytes32}`);
-			console.log(`[LockAllocations] Setting allocation to 10000 bps (100%)...`);
 
 			// Step 1: Set allocation to 100% (10000 basis points) for the organization
 			const setAllocationTx = await writeContractAsync({
-				address: DONATION_CONTRACT_ADDRESS as `0x${string}`,
-				abi: DonationABI,
+				address: ZKT_CAMPAIGN_POOL_ADDRESS as `0x${string}`,
+				abi: ZKTCampaignPoolABI,
 				functionName: "setAllocation",
 				args: [campaignIdBytes32, orgIdBytes32, BigInt(10000)], // 10000 bps = 100%
 				account: address as `0x${string}`,
 			});
 
-			console.log(`[LockAllocations] Allocation set! TX: ${setAllocationTx}`);
 
 			// Wait a bit for the transaction to be processed
 			await new Promise(resolve => setTimeout(resolve, 2000));
 
 			// Step 2: Lock the allocations
-			console.log(`[LockAllocations] Locking allocations...`);
-			
+
 			const lockAllocationTx = await writeContractAsync({
-				address: DONATION_CONTRACT_ADDRESS as `0x${string}`,
-				abi: DonationABI,
+				address: ZKT_CAMPAIGN_POOL_ADDRESS as `0x${string}`,
+				abi: ZKTCampaignPoolABI,
 				functionName: "lockAllocation",
 				args: [campaignIdBytes32],
 				account: address as `0x${string}`,
 			});
 
-			console.log(`[LockAllocations] Allocations locked! TX: ${lockAllocationTx}`);
 
 			return { txHash: lockAllocationTx };
 		} catch (error: any) {
@@ -420,9 +406,9 @@ function WalletStateController({ children }: { children: ReactNode }) {
 			throw error;
 		}
 	};
+	*/
 
 	const connect = async () => {
-		console.warn("Programmatic connect via context is not standard with XellarKit. Please use XellarKit's UI components.");
 		toast({
 			variant: "default",
 			title: "Connect Wallet",
@@ -435,7 +421,6 @@ function WalletStateController({ children }: { children: ReactNode }) {
 		wagmiDisconnect();
 		// Remove the access token from localStorage when disconnecting
 		localStorage.removeItem("access_token");
-		console.log("Wallet disconnect initiated via context");
 		toast({
 			title: "Wallet disconnected",
 			description: "Your wallet has been disconnected.",
@@ -454,7 +439,7 @@ function WalletStateController({ children }: { children: ReactNode }) {
 				disconnect,
 				donate,
 				isDonating,
-				lockCampaignAllocations,
+				// lockCampaignAllocations, // DISABLED - Not using Safe anymore
 			}}
 		>
 			{children}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -39,17 +39,51 @@ export function DonationDialog({
   const { toast } = useToast();
 
   // Fetch campaign status to check if donations are allowed
-  const { statusInfo, canDonate, isLoading: isLoadingStatus } = useCampaignStatus(
+  const { 
+    statusInfo,
+    canDonate,
+    isLoading: isLoadingStatus,
+    campaign,
+    allocationLocked,
+    refetch: refetchCampaignStatus,
+  } = useCampaignStatus(
     campaignIdHash || (typeof campaignId === 'string' && campaignId.startsWith('0x') ? campaignId : null)
   );
 
+  // Force refetch when dialog opens to bypass cache and get latest contract state
+  useEffect(() => {
+    if (open && !isLoadingStatus) {
+      refetchCampaignStatus();
+    }
+  }, [open, refetchCampaignStatus, campaign, allocationLocked, canDonate]);
+
   const handleDonate = async () => {
+    // CRITICAL: Hard block donations unless allocation is explicitly locked
+
+    if (!campaign?.exists) {
+      toast({
+        variant: "destructive",
+        title: "Campaign Not Found",
+        description: "This campaign does not exist on-chain. Please try again.",
+      });
+      return;
+    }
+
+    if (!allocationLocked) {
+      toast({
+        variant: "destructive",
+        title: "Allocation Not Locked",
+        description: "This campaign's allocation has not been finalized and locked yet. Donations cannot be accepted. Please contact the campaign administrator.",
+      });
+      return;
+    }
+
     // Check campaign status before attempting donation
     if (!canDonate && statusInfo) {
       toast({
         variant: "destructive",
         title: "Campaign Not Ready",
-        description: statusInfo.description || "This campaign is not yet accepting donations",
+        description: statusInfo.description || "This campaign is not yet accepting donations. Allocation must be locked and campaign must be within active time window.",
       });
       return;
     }
@@ -104,12 +138,10 @@ export function DonationDialog({
       if (typeof campaignId === 'string' && campaignId.startsWith('0x')) {
         // It's a hash, use directly
         poolId = campaignId;
-        console.log(`[Donate] Using hash campaign ID: ${poolId}`);
       } else {
         // It's numeric, convert to BigInt
         const numericId = typeof campaignId === 'string' ? parseInt(campaignId, 10) : campaignId;
         poolId = BigInt(numericId);
-        console.log(`[Donate] Using numeric campaign ID: ${poolId.toString()}`);
       }
 
       const { txHash } = await donate({
@@ -133,10 +165,7 @@ export function DonationDialog({
           .from('campaigns')
           .update({ total_raised: newTotalRaised })
           .eq('campaign_id', campaignId);
-
-        console.log(`✅ Supabase updated: ${newTotalRaised} IDRX`);
       } catch (supabaseError) {
-        console.warn('Could not update Supabase (non-critical):', supabaseError);
       }
 
       toast({
@@ -153,13 +182,6 @@ export function DonationDialog({
         onSuccess();
       }
     } catch (error: any) {
-      console.error("❌ Donation error details:", {
-        message: error?.message,
-        cause: error?.cause,
-        reason: error?.reason,
-        code: error?.code,
-        fullError: error,
-      });
       
       toast({
         variant: "destructive",
@@ -183,6 +205,20 @@ export function DonationDialog({
         </DialogHeader>
 
         <div className="space-y-6 py-4">
+          {/* Allocation Guard Alert */}
+          {!allocationLocked && (
+            <div className="flex items-start gap-3 p-4 bg-red-50 border border-red-200 rounded-lg">
+              <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+              <div className="flex-1">
+                <p className="font-semibold text-red-900 text-sm">Donations Disabled</p>
+                <p className="text-xs text-red-800 mt-1">
+                  This campaign is not ready to accept donations. The allocation has not been finalized and locked. 
+                  Please contact the campaign administrator.
+                </p>
+              </div>
+            </div>
+          )}
+
           {/* Campaign Progress */}
           <div className="bg-muted/50 rounded-lg p-4 space-y-2">
             <div className="flex justify-between text-sm">
@@ -289,13 +325,16 @@ export function DonationDialog({
             <Button
               className="flex-1"
               onClick={handleDonate}
-              disabled={!canDonate || !isConnected || !amount || isProcessing || isDonating || isLoadingStatus}
+              disabled={!canDonate || !isConnected || !amount || isProcessing || isDonating || isLoadingStatus || !allocationLocked}
+              title={!allocationLocked ? "Allocation must be locked to donate" : ""}
             >
               {isProcessing || isDonating ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   {isDonating ? "Processing..." : "Confirming..."}
                 </>
+              ) : !allocationLocked ? (
+                "Allocation Not Locked"
               ) : !canDonate ? (
                 "Campaign Not Ready"
               ) : (

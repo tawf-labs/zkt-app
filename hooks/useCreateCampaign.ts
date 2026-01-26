@@ -3,7 +3,7 @@
 import { useCallback, useState } from 'react';
 import { useAccount } from 'wagmi';
 import { uploadFilesToPinata } from '@/lib/pinata-client';
-import { saveCampaignData, updateCampaignTxHash, type CampaignData } from '@/lib/supabase-client';
+import { saveCampaignData, updateCampaignData, type CampaignData } from '@/lib/supabase-client';
 import { toast } from '@/components/ui/use-toast';
 import { useCreateCampaignOnChain } from './useCreateCampaignOnChain';
 import { keccak256, stringToBytes } from 'viem';
@@ -59,11 +59,6 @@ export const useCreateCampaign = () => {
         
         const campaignIdentifier = generateCampaignIdentifier(address, params.title);
         const campaignIdHash = keccak256(stringToBytes(campaignIdentifier));
-        
-        console.log('📝 Campaign ID generated:', {
-          identifier: campaignIdentifier,
-          hash: campaignIdHash,
-        });
 
         // ============================================
         // STEP 2: Upload images to IPFS/Pinata
@@ -74,7 +69,6 @@ export const useCreateCampaign = () => {
         let imageUrls: string[] = [];
         if (params.imageFiles.length > 0) {
           imageUrls = await uploadFilesToPinata(params.imageFiles);
-          console.log('🖼️ Images uploaded:', imageUrls);
         }
 
         // ============================================
@@ -93,8 +87,6 @@ export const useCreateCampaign = () => {
           throw new Error('Failed to create campaign on blockchain');
         }
 
-        console.log('⛓️ On-chain creation successful:', onChainResult);
-
         // ============================================
         // STEP 4: Save metadata to Supabase
         // ============================================
@@ -102,8 +94,7 @@ export const useCreateCampaign = () => {
         setUploadProgress(75);
 
         const campaignData: CampaignData = {
-          campaignId: campaignIdentifier,
-          campaignIdHash: onChainResult.campaignIdBytes32,
+          campaignId: onChainResult.campaignIdBytes32,
           title: params.title,
           description: params.description,
           category: params.category,
@@ -115,14 +106,11 @@ export const useCreateCampaign = () => {
           tags: params.tags,
           startTime: params.startTime,
           endTime: params.endTime,
-          txHash: onChainResult.txHash,
-          creatorAddress: address,
+          createdBy: address,
           status: 'active',
         };
 
         const supabaseResult = await saveCampaignData(campaignData);
-        
-        console.log('💾 Supabase save successful:', supabaseResult);
 
         // ============================================
         // STEP 5: Complete
@@ -141,7 +129,6 @@ export const useCreateCampaign = () => {
         };
 
       } catch (error) {
-        console.error('❌ Campaign creation failed:', error);
 
         // Detailed error message
         let errorMessage = 'Failed to create campaign';

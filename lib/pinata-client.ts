@@ -19,7 +19,6 @@ export const uploadFileToPinata = async (file: File): Promise<string> => {
     const data = await response.json();
     return data.url;
   } catch (error) {
-    console.error('Error uploading file to Pinata:', error);
     throw error;
   }
 };
@@ -31,7 +30,6 @@ export const uploadFilesToPinata = async (files: File[]): Promise<string[]> => {
     const urls = await Promise.all(uploadPromises);
     return urls;
   } catch (error) {
-    console.error('Error uploading files to Pinata:', error);
     throw error;
   }
 };
@@ -58,7 +56,6 @@ export const uploadMetadataToPinata = async (metadata: Record<string, any>): Pro
     const data = await response.json();
     return data.url;
   } catch (error) {
-    console.error('Error uploading metadata to Pinata:', error);
     throw error;
   }
 };
@@ -81,15 +78,12 @@ export const getMetadataFromPinata = async (ipfsHash: string): Promise<Record<st
     });
 
     if (!response.ok) {
-      console.warn(`Failed to fetch metadata from Pinata: ${response.statusText}`);
       return null;
     }
 
     const metadata = await response.json();
-    console.log('📋 Metadata fetched from Pinata:', metadata);
     return metadata;
   } catch (error) {
-    console.warn('Error fetching metadata from Pinata:', error);
     return null;
   }
 };
@@ -100,24 +94,31 @@ export const formatPinataImageUrl = (url: string | undefined): string => {
     return 'https://images.unsplash.com/photo-1532629345422-7515f3d16bb6?w=500';
   }
 
-  // Already a full URL (starts with http/https)
-  if (url.startsWith('http')) {
+  // Already a full URL with https://
+  if (url.startsWith('https://')) {
     return url;
   }
 
-  // Handle IPFS hash formats
+  // URL with http:// (upgrade to https)
+  if (url.startsWith('http://')) {
+    return url.replace('http://', 'https://');
+  }
+
+  // Handle IPFS hash formats or gateway paths
   const gatewayDomain = process.env.NEXT_PUBLIC_PINATA_GATEWAY || 'gateway.pinata.cloud';
-  const gateway = `https://${gatewayDomain.replace(/^https?:\/\//, '')}`;
-  
-  if (url.includes('ipfs')) {
-    return url; // Already formatted with ipfs path
+  const cleanGateway = gatewayDomain.replace(/^https?:\/\//, '');
+  const gateway = `https://${cleanGateway}`;
+
+  // Already has ipfs path but missing protocol
+  if (url.includes('/ipfs/')) {
+    return `${gateway}${url.startsWith('/') ? '' : '/'}${url}`;
   }
 
   // Pure IPFS hash (bafs... or Qm...)
-  if (url.startsWith('bafs') || url.startsWith('Qm')) {
+  if (url.startsWith('bafs') || url.startsWith('Qm') || url.startsWith('bae')) {
     return `${gateway}/ipfs/${url}`;
   }
 
-  // Just return as-is if we can't determine format
-  return url;
+  // Just return with https as fallback
+  return url.startsWith('http') ? url : `https://${url}`;
 };

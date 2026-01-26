@@ -3,9 +3,49 @@
 import { useState, useEffect } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { Users, Clock, CircleCheck } from "lucide-react";
+import { Users, Clock, CircleCheck, AlertCircle } from "lucide-react";
 import { Campaign } from "@/hooks/useCampaigns";
 import { DonationDialog } from "@/components/donations/donation-dialog";
+
+// Status badge component
+function StatusBadge({ status }: { status?: string }) {
+  if (!status || status === 'active') {
+    return (
+      <span className="inline-flex items-center gap-1.5 bg-green-100 text-green-700 px-2.5 py-1 rounded-md text-xs font-medium shadow-sm">
+        <span className="h-2 w-2 rounded-full bg-green-500 animate-pulse" />
+        Active
+      </span>
+    );
+  }
+
+  if (status === 'pending_execution') {
+    return (
+      <span className="inline-flex items-center gap-1.5 bg-amber-100 text-amber-700 px-2.5 py-1 rounded-md text-xs font-medium shadow-sm">
+        <AlertCircle className="h-3 w-3" />
+        Pending
+      </span>
+    );
+  }
+
+  if (status === 'completed') {
+    return (
+      <span className="inline-flex items-center gap-1.5 bg-blue-100 text-blue-700 px-2.5 py-1 rounded-md text-xs font-medium shadow-sm">
+        <CircleCheck className="h-3 w-3" />
+        Completed
+      </span>
+    );
+  }
+
+  if (status === 'closed') {
+    return (
+      <span className="inline-flex items-center gap-1.5 bg-gray-100 text-gray-700 px-2.5 py-1 rounded-md text-xs font-medium shadow-sm">
+        Closed
+      </span>
+    );
+  }
+
+  return null;
+}
 
 interface CampaignCardProps {
   campaign: Campaign;
@@ -75,6 +115,7 @@ export function CampaignCard({ campaign, onDonationSuccess }: CampaignCardProps)
           <span className="inline-flex items-center justify-center rounded-md px-3 py-1 text-xs font-semibold bg-white/95 backdrop-blur-sm border border-primary/20 text-primary w-fit">
             {campaign.category || "General"}
           </span>
+          <StatusBadge status={campaign.status} />
         </div>
 
         <div className="absolute bottom-3 right-3">

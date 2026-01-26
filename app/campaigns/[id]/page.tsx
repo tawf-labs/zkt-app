@@ -3,10 +3,13 @@
 import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, Users, Clock, CircleCheck, Share2, Heart, MapPin, Calendar, Target, TrendingUp, Shield, FileText, Loader2 } from 'lucide-react';
+import { ArrowLeft, Users, Clock, CircleCheck, Share2, Heart, MapPin, Calendar, Target, TrendingUp, Shield, FileText, Loader2, AlertCircle, ExternalLink } from 'lucide-react';
 import { DonationDialog } from '@/components/donations/donation-dialog';
 import { CampaignStatusBadge } from '@/components/campaigns/campaign-status-badge';
+import { AllocationBreakdown } from '@/components/campaigns/allocation-breakdown';
 import { useCampaignStatus } from '@/hooks/useCampaignStatus';
+import { useCampaignAllocations } from '@/hooks/useCampaignAllocations';
+import { useCampaignStatusSync } from '@/hooks/useCampaignStatusSync';
 
 const donationAmounts = [10000, 25000, 50000, 100000, 250000, 500000];
 
@@ -14,6 +17,8 @@ interface CampaignDetailData {
   id: number;
   campaignIdHash: string; // blockchain campaign ID (hash for Safe campaigns)
   title: string;
+  status?: string;  // 'pending_execution' | 'active' | 'completed' | 'closed'
+  safeTxHash?: string;  // Safe transaction hash
   organization: {
     name: string;
     verified: boolean;
@@ -56,9 +61,25 @@ export default function CampaignDetail() {
 
   // Fetch campaign status from contract
   const campaignIdHash = campaignDetail?.campaignIdHash;
-  const { statusInfo, canDonate, isLoading: isLoadingStatus } = useCampaignStatus(
+
+  const { statusInfo, canDonate, isLoading: isLoadingStatus, campaign: contractCampaign } = useCampaignStatus(
     campaignIdHash && campaignIdHash.startsWith('0x') ? campaignIdHash : null
   );
+
+  // Poll for campaign status updates if campaign is pending (DISABLED - Not using Safe anymore)
+  // useCampaignStatusSync(
+  //   campaignDetail?.status === 'pending_execution' && campaignIdHash && campaignIdHash.startsWith('0x') ? campaignIdHash : null,
+  //   true, // enabled
+  //   30000 // poll every 30 seconds
+  // );
+
+  // Fetch campaign allocations from contract
+  const {
+    allocations,
+    totalPercentage,
+    isLoading: isLoadingAllocations,
+    hasAllocations,
+  } = useCampaignAllocations(campaignIdHash && campaignIdHash.startsWith('0x') ? campaignIdHash : null);
 
   // Fetch campaign detail
   useEffect(() => {
@@ -151,6 +172,29 @@ export default function CampaignDetail() {
           <ArrowLeft className="h-4 w-4" />
           Back to Campaigns
         </Link>
+
+        {/* Pending Status Banner (DISABLED - Not using Safe anymore) */}
+        {/* {campaignDetail.status === 'pending_execution' && (
+          <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-lg flex items-start gap-3">
+            <AlertCircle className="h-5 w-5 text-amber-600 mt-0.5 flex-shrink-0" />
+            <div className="flex-1">
+              <h3 className="font-semibold text-amber-900 mb-1">Pending Safe Multisig Approval</h3>
+              <p className="text-sm text-amber-800 mb-2">
+                This campaign is waiting for approval from Safe multisig signers. Once approved, it will become active and accept donations.
+              </p>
+              {campaignDetail.safeTxHash && (
+                <a
+                  href={`https://app.safe.global/transactions/unsafe?safe=base:0xD264BE80817EAfaC5F7575698913FEc4cB38a016`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 text-sm font-medium text-amber-900 hover:text-amber-700 underline"
+                >
+                  View Safe Transaction <ExternalLink className="h-3 w-3" />
+                </a>
+              )}
+            </div>
+          </div>
+        )} */}
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Main Content */}
@@ -581,6 +625,16 @@ export default function CampaignDetail() {
                   View Profile
                 </button>
               </div>
+
+              {/* Fund Allocation */}
+              {(hasAllocations || campaignIdHash?.startsWith('0x')) && (
+                <AllocationBreakdown
+                  allocations={allocations}
+                  totalPercentage={totalPercentage}
+                  allocationLocked={contractCampaign?.allocationLocked ?? false}
+                  isLoading={isLoadingAllocations}
+                />
+              )}
             </div>
           </div>
         </div>

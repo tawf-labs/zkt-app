@@ -43,7 +43,6 @@ export function CurrencyProvider({ children }: CurrencyProviderProps) {
 			const response = await axios.get("https://api.exchangerate-api.com/v4/latest/USDT");
 			if (response.data && response.data.rates && response.data.rates.IDRX) {
 				setExchangeRate(response.data.rates.IDRX);
-				console.log(`Exchange rate updated: 1 USDT = ${response.data.rates.IDRX} IDRX`);
 			}
 		} catch (error) {
 			console.error("Failed to fetch exchange rate:", error);
