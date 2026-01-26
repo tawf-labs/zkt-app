@@ -355,48 +355,179 @@ export const VotingTokenABI = [
 // DonationReceiptNFT ABI (Soulbound NFT for donation receipts)
 export const DonationReceiptNFTABI = [
   {
-    type: 'function',
-    name: 'balanceOf',
-    inputs: [{ name: 'owner', type: 'address', internalType: 'address' }],
-    outputs: [{ name: '', type: 'uint256', internalType: 'uint256' }],
-    stateMutability: 'view',
+    inputs: [{ internalType: 'address', name: '_minter', type: 'address' }],
+    stateMutability: 'nonpayable',
+    type: 'constructor'
   },
   {
-    type: 'function',
-    name: 'tokenOfOwnerByIndex',
+    anonymous: false,
     inputs: [
-      { name: 'owner', type: 'address', internalType: 'address' },
-      { name: 'index', type: 'uint256', internalType: 'uint256' },
+      { indexed: true, internalType: 'uint256', name: 'tokenId', type: 'uint256' },
+      { indexed: false, internalType: 'string', name: 'oldCID', type: 'string' },
+      { indexed: false, internalType: 'string', name: 'newCID', type: 'string' }
     ],
-    outputs: [{ name: '', type: 'uint256', internalType: 'uint256' }],
-    stateMutability: 'view',
+    name: 'IPFSCIDUpdated',
+    type: 'event'
   },
   {
-    type: 'function',
-    name: 'tokenURI',
-    inputs: [{ name: 'tokenId', type: 'uint256', internalType: 'uint256' }],
-    outputs: [{ name: '', type: 'string', internalType: 'string' }],
-    stateMutability: 'view',
+    anonymous: false,
+    inputs: [
+      { indexed: true, internalType: 'uint256', name: 'tokenId', type: 'uint256' },
+      { indexed: true, internalType: 'address', name: 'owner', type: 'address' },
+      { indexed: true, internalType: 'bytes32', name: 'campaignId', type: 'bytes32' },
+      { indexed: false, internalType: 'uint256', name: 'amount', type: 'uint256' },
+      { indexed: false, internalType: 'bool', name: 'isImpact', type: 'bool' },
+      { indexed: false, internalType: 'string', name: 'ipfsCID', type: 'string' }
+    ],
+    name: 'Minted',
+    type: 'event'
   },
   {
-    type: 'function',
-    name: 'getReceiptData',
-    inputs: [{ name: 'tokenId', type: 'uint256', internalType: 'uint256' }],
+    inputs: [
+      { internalType: 'address', name: '', type: 'address' },
+      { internalType: 'uint256', name: '', type: 'uint256' }
+    ],
+    name: 'approve',
+    outputs: [],
+    stateMutability: 'pure',
+    type: 'function'
+  },
+  {
+    inputs: [{ internalType: 'address', name: 'owner', type: 'address' }],
+    name: 'balanceOf',
+    outputs: [{ internalType: 'uint256', name: '', type: 'uint256' }],
+    stateMutability: 'view',
+    type: 'function'
+  },
+  {
+    inputs: [
+      { internalType: 'address', name: 'to', type: 'address' },
+      { internalType: 'bytes32', name: 'campaignId', type: 'bytes32' },
+      { internalType: 'uint256', name: 'amount', type: 'uint256' },
+      { internalType: 'string', name: 'ipfsCID', type: 'string' },
+      { internalType: 'bool', name: 'isImpact', type: 'bool' }
+    ],
+    name: 'mint',
+    outputs: [{ internalType: 'uint256', name: 'tokenId', type: 'uint256' }],
+    stateMutability: 'nonpayable',
+    type: 'function'
+  },
+  {
+    inputs: [],
+    name: 'minter',
+    outputs: [{ internalType: 'address', name: '', type: 'address' }],
+    stateMutability: 'view',
+    type: 'function'
+  },
+  {
+    inputs: [],
+    name: 'name',
+    outputs: [{ internalType: 'string', name: '', type: 'string' }],
+    stateMutability: 'view',
+    type: 'function'
+  },
+  {
+    inputs: [{ internalType: 'uint256', name: 'tokenId', type: 'uint256' }],
+    name: 'ownerOf',
+    outputs: [{ internalType: 'address', name: '', type: 'address' }],
+    stateMutability: 'view',
+    type: 'function'
+  },
+  {
+    inputs: [{ internalType: 'uint256', name: '', type: 'uint256' }],
+    name: 'receipts',
     outputs: [
-      {
-        name: '',
-        type: 'tuple',
-        internalType: 'struct DonationReceiptNFT.Receipt',
-        components: [
-          { name: 'poolId', type: 'uint256', internalType: 'uint256' },
-          { name: 'donor', type: 'address', internalType: 'address' },
-          { name: 'amount', type: 'uint256', internalType: 'uint256' },
-          { name: 'timestamp', type: 'uint256', internalType: 'uint256' },
-        ],
-      },
+      { internalType: 'bytes32', name: 'campaignId', type: 'bytes32' },
+      { internalType: 'uint256', name: 'amount', type: 'uint256' },
+      { internalType: 'bool', name: 'isImpact', type: 'bool' },
+      { internalType: 'string', name: 'ipfsCID', type: 'string' },
+      { internalType: 'bytes32', name: 'cidHash', type: 'bytes32' }
     ],
     stateMutability: 'view',
+    type: 'function'
   },
+  {
+    inputs: [
+      { internalType: 'address', name: '', type: 'address' },
+      { internalType: 'address', name: '', type: 'address' },
+      { internalType: 'uint256', name: '', type: 'uint256' }
+    ],
+    name: 'safeTransferFrom',
+    outputs: [],
+    stateMutability: 'pure',
+    type: 'function'
+  },
+  {
+    inputs: [
+      { internalType: 'address', name: '', type: 'address' },
+      { internalType: 'address', name: '', type: 'address' },
+      { internalType: 'uint256', name: '', type: 'uint256' },
+      { internalType: 'bytes', name: '', type: 'bytes' }
+    ],
+    name: 'safeTransferFrom',
+    outputs: [],
+    stateMutability: 'pure',
+    type: 'function'
+  },
+  {
+    inputs: [
+      { internalType: 'address', name: '', type: 'address' },
+      { internalType: 'bool', name: '', type: 'bool' }
+    ],
+    name: 'setApprovalForAll',
+    outputs: [],
+    stateMutability: 'pure',
+    type: 'function'
+  },
+  {
+    inputs: [{ internalType: 'address', name: '_minter', type: 'address' }],
+    name: 'setMinter',
+    outputs: [],
+    stateMutability: 'nonpayable',
+    type: 'function'
+  },
+  {
+    inputs: [],
+    name: 'symbol',
+    outputs: [{ internalType: 'string', name: '', type: 'string' }],
+    stateMutability: 'view',
+    type: 'function'
+  },
+  {
+    inputs: [{ internalType: 'uint256', name: 'tokenId', type: 'uint256' }],
+    name: 'tokenURI',
+    outputs: [{ internalType: 'string', name: '', type: 'string' }],
+    stateMutability: 'view',
+    type: 'function'
+  },
+  {
+    inputs: [],
+    name: 'totalSupply',
+    outputs: [{ internalType: 'uint256', name: '', type: 'uint256' }],
+    stateMutability: 'view',
+    type: 'function'
+  },
+  {
+    inputs: [
+      { internalType: 'address', name: '', type: 'address' },
+      { internalType: 'address', name: '', type: 'address' },
+      { internalType: 'uint256', name: '', type: 'uint256' }
+    ],
+    name: 'transferFrom',
+    outputs: [],
+    stateMutability: 'pure',
+    type: 'function'
+  },
+  {
+    inputs: [
+      { internalType: 'uint256', name: 'tokenId', type: 'uint256' },
+      { internalType: 'string', name: 'newCID', type: 'string' }
+    ],
+    name: 'updateIPFSCID',
+    outputs: [],
+    stateMutability: 'nonpayable',
+    type: 'function'
+  }
 ] as const;
 
 // Helper functions for formatting blockchain data

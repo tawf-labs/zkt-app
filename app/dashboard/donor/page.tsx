@@ -1,62 +1,19 @@
 "use client";
 
 import React, { useState } from 'react';
-import { Award, FileText, Vote, Wallet, ShieldCheck, Download, ExternalLink, TrendingUp, CheckCircle2, XCircle, Clock, Settings } from 'lucide-react';
-
-interface NFTReceipt {
-  id: string;
-  receiptNumber: string;
-  amount: string;
-  category: string;
-  date: string;
-  campaign: string;
-  address: string;
-}
+import { Award, FileText, Vote, Wallet, ShieldCheck, Download, ExternalLink, TrendingUp, CheckCircle2, XCircle, Clock, Settings, Gift, RefreshCw, ImageIcon } from 'lucide-react';
+import { useAccount } from 'wagmi';
+import { useDonationNFTs, DonationNFT } from '@/hooks/useDonationNFTs';
+import { CONTRACT_ADDRESSES } from '@/lib/abi';
+import { formatIDRX } from '@/lib/abi';
 
 type SidebarTab = 'overview' | 'tax-reports' | 'governance-dao' | 'wallet-settings';
 
 const DonorDashboard: React.FC = () => {
+  const { address, isConnected } = useAccount();
+  const { nfts, balance, isLoading, refetch } = useDonationNFTs();
   const [sidebarTab, setSidebarTab] = useState<SidebarTab>('overview');
   const [activeTab, setActiveTab] = useState<'receipts' | 'history' | 'governance'>('receipts');
-
-  const receipts: NFTReceipt[] = [
-    {
-      id: '1',
-      receiptNumber: '1001',
-      amount: '$50.00 USD',
-      category: 'Zakat',
-      date: 'Oct 24, 2025',
-      campaign: 'Emergency Relief Fund',
-      address: '0x8a...92b'
-    },
-    {
-      id: '2',
-      receiptNumber: '1002',
-      amount: '$50.00 USD',
-      category: 'Zakat',
-      date: 'Oct 24, 2025',
-      campaign: 'Emergency Relief Fund',
-      address: '0x8a...92b'
-    },
-    {
-      id: '3',
-      receiptNumber: '1003',
-      amount: '$50.00 USD',
-      category: 'Zakat',
-      date: 'Oct 24, 2025',
-      campaign: 'Emergency Relief Fund',
-      address: '0x8a...92b'
-    },
-    {
-      id: '4',
-      receiptNumber: '1004',
-      amount: '$50.00 USD',
-      category: 'Zakat',
-      date: 'Oct 24, 2025',
-      campaign: 'Emergency Relief Fund',
-      address: '0x8a...92b'
-    }
-  ];
 
   return (
     <div className="min-h-screen bg-white">
@@ -189,46 +146,97 @@ const DonorDashboard: React.FC = () => {
                 {/* Tab Content */}
                 <div className="pt-6">
                   {activeTab === 'receipts' && (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                      {receipts.map((receipt) => (
-                        <div
-                          key={receipt.id}
-                          className="bg-white text-card-foreground rounded-xl border shadow-sm overflow-hidden border-black/60 hover:shadow-md transition-shadow group cursor-pointer"
-                        >
-                          {/* Receipt Visual */}
-                          <div className="relative aspect-square bg-gradient-to-br from-secondary to-background p-6 flex flex-col items-center justify-center border-b border-black/60">
-                            <div className="absolute inset-0 opacity-10 bg-white [background-size:16px_16px]"></div>
-                            <div className="h-16 w-16 rounded-full bg-white/10 flex items-center justify-center text-primary mb-4 shadow-sm group-hover:scale-110 transition-transform">
-                              <ShieldCheck className="h-8 w-8" />
-                            </div>
-                            <div className="text-center relative z-10">
-                              <div className="font-mono text-xs text-muted-foreground mb-1">
-                                RECEIPT #{receipt.receiptNumber}
-                              </div>
-                              <div className="font-bold text-lg">{receipt.amount}</div>
-                              <div className="text-xs text-muted-foreground mt-1">
-                                {receipt.category} • {receipt.date}
-                              </div>
-                            </div>
-                            <span className="inline-flex items-center justify-center rounded-md border px-2 py-0.5 text-xs font-medium absolute top-3 right-3 bg-white/80 backdrop-blur text-foreground border-border/50 shadow-sm">
-                              Verified
-                            </span>
-                          </div>
-
-                          {/* Receipt Info */}
-                          <div className="p-4">
-                            <h3 className="font-semibold truncate">{receipt.campaign}</h3>
-                            <div className="flex justify-between items-center mt-4">
-                              <span className="text-xs font-mono text-muted-foreground">
-                                {receipt.address}
-                              </span>
-                              <button className="inline-flex items-center justify-center whitespace-nowrap text-sm font-medium transition-all hover:bg-accent hover:text-accent-foreground rounded-md h-8 w-8 p-0">
-                                <Download className="h-4 w-4" />
-                              </button>
-                            </div>
-                          </div>
+                    <div>
+                      {/* Header with Refresh Button */}
+                      <div className="flex justify-between items-center mb-6">
+                        <div>
+                          <h3 className="font-semibold text-lg">Your Donation NFTs</h3>
+                          <p className="text-sm text-muted-foreground">
+                            {balance} NFT{balance !== 1 ? 's' : ''} found
+                          </p>
                         </div>
-                      ))}
+                        <button
+                          onClick={() => refetch()}
+                          disabled={isLoading}
+                          className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium border rounded-lg hover:bg-accent transition-colors disabled:opacity-50"
+                        >
+                          <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+                          Refresh
+                        </button>
+                      </div>
+
+                      {/* NFTs Grid */}
+                      {!isConnected ? (
+                        <div className="text-center py-12">
+                          <Wallet className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+                          <p className="text-muted-foreground">Please connect your wallet to view your NFT receipts</p>
+                        </div>
+                      ) : isLoading ? (
+                        <div className="text-center py-12">
+                          <RefreshCw className="h-8 w-8 mx-auto mb-4 animate-spin text-primary" />
+                          <p className="text-muted-foreground">Loading your NFT receipts...</p>
+                        </div>
+                      ) : nfts.length === 0 ? (
+                        <div className="text-center py-12">
+                          <Gift className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+                          <p className="text-muted-foreground mb-2">No donation NFTs yet</p>
+                          <p className="text-sm text-muted-foreground">Your NFT receipts will appear here after you donate to campaigns</p>
+                        </div>
+                      ) : (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                          {nfts.map((nft) => (
+                            <div
+                              key={nft.tokenId.toString()}
+                              className="bg-white text-card-foreground rounded-xl border shadow-sm overflow-hidden border-black/60 hover:shadow-md transition-shadow group cursor-pointer"
+                            >
+                              {/* Receipt Visual */}
+                              <div className="relative aspect-square bg-gradient-to-br from-secondary to-background p-6 flex flex-col items-center justify-center border-b border-black/60">
+                                <div className="absolute inset-0 opacity-10 bg-white [background-size:16px_16px]"></div>
+                                <div className="h-16 w-16 rounded-full bg-white/10 flex items-center justify-center text-primary mb-4 shadow-sm group-hover:scale-110 transition-transform">
+                                  <ShieldCheck className="h-8 w-8" />
+                                </div>
+                                <div className="text-center relative z-10">
+                                  <div className="font-mono text-xs text-muted-foreground mb-1">
+                                    RECEIPT #{nft.tokenId.toString()}
+                                  </div>
+                                  <div className="font-bold text-lg">{formatIDRX(nft.amount)} IDRX</div>
+                                  <div className="text-xs text-muted-foreground mt-1">
+                                    {nft.isImpact ? 'Impact NFT' : 'Donation NFT'} • Campaign ID: {nft.campaignId.slice(0, 8)}...
+                                  </div>
+                                </div>
+                                <span className="inline-flex items-center justify-center rounded-md border px-2 py-0.5 text-xs font-medium absolute top-3 right-3 bg-white/80 backdrop-blur text-foreground border-border/50 shadow-sm">
+                                  Verified
+                                </span>
+                              </div>
+
+                              {/* Receipt Info */}
+                              <div className="p-4">
+                                <div className="flex justify-between items-start mb-3">
+                                  <h3 className="font-semibold text-sm flex-1 truncate">Campaign: {nft.campaignId.slice(0, 10)}...</h3>
+                                  <a
+                                    href={`https://sepolia.basescan.org/nft/${CONTRACT_ADDRESSES.DonationReceiptNFT}/${nft.tokenId}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="inline-flex items-center justify-center whitespace-nowrap text-sm font-medium transition-all hover:bg-accent hover:text-accent-foreground rounded-md h-8 w-8 p-0 ml-2"
+                                  >
+                                    <ExternalLink className="h-4 w-4" />
+                                  </a>
+                                </div>
+                                <div className="space-y-1">
+                                  <div className="flex justify-between text-xs">
+                                    <span className="text-muted-foreground">Token ID:</span>
+                                    <span className="font-mono">{nft.tokenId.toString()}</span>
+                                  </div>
+                                  <div className="flex justify-between text-xs">
+                                    <span className="text-muted-foreground">Amount:</span>
+                                    <span className="font-semibold">{formatIDRX(nft.amount)} IDRX</span>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   )}
                   {activeTab === 'history' && (
