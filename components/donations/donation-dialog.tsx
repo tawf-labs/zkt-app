@@ -5,12 +5,13 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Loader2, AlertCircle, Lock } from "lucide-react";
+import { Loader2, AlertCircle, Lock, ExternalLink, Gift } from "lucide-react";
 import { useWallet } from "@/components/providers/web3-provider";
 import { useToast } from "@/hooks/use-toast";
 import { parseDonationAmount } from "@/lib/donate";
 import { supabase } from "@/lib/supabase-client";
 import { useCampaignStatus } from "@/hooks/useCampaignStatus";
+import { CONTRACT_ADDRESSES } from "@/lib/abi";
 
 interface DonationDialogProps {
   open: boolean;
@@ -35,8 +36,19 @@ export function DonationDialog({
 }: DonationDialogProps) {
   const [amount, setAmount] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
+  const [mintedNftId, setMintedNftId] = useState<bigint | null>(null);
+  const [donationTxHash, setDonationTxHash] = useState<string | null>(null);
   const { donate, isConnected, idrxBalance, formattedIdrxBalance, isDonating } = useWallet();
   const { toast } = useToast();
+
+  // Reset NFT state when dialog closes
+  useEffect(() => {
+    if (!open) {
+      setMintedNftId(null);
+      setDonationTxHash(null);
+      setAmount("");
+    }
+  }, [open]);
 
   // Fetch campaign status to check if donations are allowed
   const { 
@@ -144,11 +156,23 @@ export function DonationDialog({
         poolId = BigInt(numericId);
       }
 
-      const { txHash } = await donate({
+      const { txHash, nftTokenId } = await donate({
         poolId,
         campaignTitle,
         amountIDRX: amountInWei,
       });
+
+      // Store the NFT token ID and tx hash
+      if (nftTokenId !== null && nftTokenId !== undefined) {
+        setMintedNftId(nftTokenId);
+        setDonationTxHash(txHash);
+
+        // Show success toast with NFT info
+        toast({
+          title: "NFT Minted! 🎨",
+          description: `Receipt NFT #${nftTokenId} has been minted to your wallet`,
+        });
+      }
 
       // Update Supabase with new raised amount
       try {
@@ -160,7 +184,7 @@ export function DonationDialog({
           .single();
 
         const newTotalRaised = (campaign?.total_raised || campaignRaised) + donationAmount;
-        
+
         await supabase
           .from('campaigns')
           .update({ total_raised: newTotalRaised })
@@ -168,16 +192,7 @@ export function DonationDialog({
       } catch (supabaseError) {
       }
 
-      toast({
-        title: "Donation Successful! 🎉",
-        description: `You donated ${donationAmount.toLocaleString('id-ID')} IDRX to ${campaignTitle}`,
-      });
-
-      // Reset and close
-      setAmount("");
-      onOpenChange(false);
-
-      // Trigger parent refresh
+      // Trigger parent refresh (but don't close dialog yet)
       if (onSuccess) {
         onSuccess();
       }
@@ -197,13 +212,79 @@ export function DonationDialog({
   const remaining = campaignGoal - campaignRaised;
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={(newOpen) => {
+      // Allow closing only if not processing or if showing success
+      if (!isProcessing && !isDonating) {
+        onOpenChange(newOpen);
+      }
+    }}>
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
-          <DialogTitle>Donate to Campaign</DialogTitle>
-          <DialogDescription>{campaignTitle}</DialogDescription>
+          <DialogTitle>
+            {mintedNftId ? "🎉 Donation Successful!" : "Donate to Campaign"}
+          </DialogTitle>
+          <DialogDescription>
+            {mintedNftId ? "Your NFT receipt has been minted" : campaignTitle}
+          </DialogDescription>
         </DialogHeader>
 
+        {/* Success Screen with NFT Info */}
+        {mintedNftId && (
+          <div className="space-y-4 py-4">
+            <div className="bg-green-50 border border-green-200 rounded-lg p-4 text-center">
+              <Gift className="h-12 w-12 text-green-600 mx-auto mb-2" />
+              <p className="font-semibold text-green-900 mb-1">Your NFT Receipt</p>
+              <p className="text-sm text-green-700 mb-3">
+                Token ID: #{mintedNftId.toString()}
+              </p>
+              <div className="space-y-2 text-xs text-green-800">
+                <p className="font-medium">NFT Contract:</p>
+                <p className="font-mono break-all">{CONTRACT_ADDRESSES.DonationReceiptNFT}</p>
+                <a
+                  href={`https://sepolia.basescan.org/token/${CONTRACT_ADDRESSES.DonationReceiptNFT}?a=${address}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 text-green-700 hover:text-green-900 hover:underline mt-2"
+                >
+                  View on Basescan <ExternalLink className="h-3 w-3" />
+                </a>
+              </div>
+            </div>
+
+            {donationTxHash && (
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-xs">
+                <p className="font-medium text-blue-900 mb-1">Transaction:</p>
+                <a
+                  href={`https://sepolia.basescan.org/tx/${donationTxHash}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="font-mono text-blue-700 hover:text-blue-900 hover:underline break-all"
+                >
+                  {donationTxHash}
+                </a>
+              </div>
+            )}
+
+            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 text-xs text-yellow-900">
+              <p className="font-semibold mb-1">⚠️ NFT Not Showing in Wallet?</p>
+              <ul className="list-disc list-inside space-y-1 text-yellow-800">
+                <li>Check your wallet's NFT/Collectibles tab</li>
+                <li>Import NFT with contract address above</li>
+                <li>Refresh your wallet or switch networks</li>
+              </ul>
+            </div>
+
+            <Button
+              className="w-full"
+              onClick={() => onOpenChange(false)}
+            >
+              Close
+            </Button>
+          </div>
+        )}
+
+        {/* Donation Form (show when no NFT minted yet) */}
+        {!mintedNftId && (
         <div className="space-y-6 py-4">
           {/* Allocation Guard Alert */}
           {!allocationLocked && (
@@ -343,6 +424,7 @@ export function DonationDialog({
             </Button>
           </div>
         </div>
+        )}
       </DialogContent>
     </Dialog>
   );

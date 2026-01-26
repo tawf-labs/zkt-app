@@ -363,16 +363,70 @@ function WalletStateController({ children }: { children: ReactNode }) {
 				account: address as `0x${string}`,
 				gasPrice: gasPrice,
 			});
-			
+
+			console.log('✅ Donation TX Sent:', donateTxHash);
+
+			// Wait for donation transaction to be confirmed and get receipt
 			toast({
-				title: "Donation Successful! 🎉",
-				description: `You donated ${amountIDRX.toString()} IDRX to ${campaignTitle}`,
+				title: "Confirming Donation",
+				description: "Waiting for blockchain confirmation and NFT minting...",
 			});
-			
+
+			const receipt = await publicClient.waitForTransactionReceipt({
+				hash: donateTxHash,
+				confirmations: 1,
+			});
+
+			console.log('✅ Donation Confirmed:', receipt);
+
+			// Parse logs to find the Donated event which contains the tokenId
+			let nftTokenId: bigint | null = null;
+			if (receipt.logs) {
+				for (const log of receipt.logs) {
+					// Try to decode the log as a Donated event
+					try {
+						const decoded = publicClient.decodeEventLog({
+							abi: ZKTCampaignPoolABI,
+							topics: log.topics as [`0x${string}`, ...Array<`0x${string}`>],
+							data: log.data,
+						});
+
+						if (decoded && decoded.eventName === 'Donated') {
+							console.log('🎨 NFT Minted:', decoded);
+							// The Donated event has: campaignId, donor, amount, tokenId
+							// tokenId is at index 3
+							if (Array.isArray(decoded)) {
+								nftTokenId = decoded[3] as bigint;
+							} else if ('args' in decoded) {
+								nftTokenId = decoded.args.tokenId as bigint;
+							}
+							break;
+						}
+					} catch (e) {
+						// Not a Donated event, skip
+					}
+				}
+			}
+
+			if (nftTokenId !== null) {
+				console.log('🎨 Your NFT Token ID:', nftTokenId.toString());
+				const donationAmount = Number(amountIDRX) / 1e6;
+				toast({
+					title: "Donation Successful! 🎉",
+					description: `You donated ${donationAmount.toLocaleString('id-ID')} IDRX to ${campaignTitle}. NFT #${nftTokenId} minted!`,
+				});
+			} else {
+				const donationAmount = Number(amountIDRX) / 1e6;
+				toast({
+					title: "Donation Successful! 🎉",
+					description: `You donated ${donationAmount.toLocaleString('id-ID')} IDRX to ${campaignTitle}`,
+				});
+			}
+
 			// Refetch balance after successful donation
 			await refetchBalance();
-			
-			return { txHash: donateTxHash };
+
+			return { txHash: donateTxHash, nftTokenId };
 		} catch (error: any) {
 			console.error("❌ Donation error details:", {
 				message: error?.message,
