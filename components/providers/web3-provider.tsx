@@ -265,18 +265,11 @@ function WalletStateController({ children }: { children: ReactNode }) {
 				transport: http(),
 			});
 
-			// Get the actual token address from the campaign pool contract
-			const contractTokenAddress = await publicClient.readContract({
-				address: ZKT_CAMPAIGN_POOL_ADDRESS as `0x${string}`,
-				abi: ZKTCampaignPoolABI,
-				functionName: 'token',
-			}) as `0x${string}`;
+			// Always use MockIDRX (old version)
+			const tokenAddress = CONTRACT_ADDRESSES.MockIDRX;
+			const tokenABI = MockIDRXABI;
 
-			console.log('🪙 Campaign Pool Token Address:', contractTokenAddress);
-
-			// Use the token address from the contract (could be IDRX or USDC)
-			const tokenAddress = contractTokenAddress;
-			const tokenABI = MockIDRXABI; // Both ERC20 tokens have the same approve/allowance interface
+			console.log('🪙 Using MockIDRX Token:', tokenAddress);
 
 			// Check current allowance
 			const currentAllowance = await publicClient.readContract({
@@ -296,7 +289,7 @@ function WalletStateController({ children }: { children: ReactNode }) {
 			if (needsApproval) {
 				toast({
 					title: "Step 1/2: Approval Required",
-					description: "Please approve the contract to spend your tokens. Check your wallet...",
+					description: "Please approve the contract to spend your IDRX tokens. Check your wallet...",
 				});
 
 				const approvalTxHash = await writeContractAsync({
