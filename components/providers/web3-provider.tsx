@@ -259,41 +259,103 @@ function WalletStateController({ children }: { children: ReactNode }) {
 		setIsDonating(true);
 		
 		try {
-			// Step 1: Approve token to Donation contract
-			toast({
-				title: "Step 1/2: Approval Required",
-				description: "Please approve the contract to spend your IDRX tokens. Waiting for confirmation...",
-			});
-
-			const approvalTxHash = await writeContractAsync({
-				address: CONTRACT_ADDRESSES.MockIDRX,
-				abi: MockIDRXABI,
-				functionName: "approve",
-				args: [ZKT_CAMPAIGN_POOL_ADDRESS, amountIDRX],
-				account: address as `0x${string}`,
-			});
-
-			// Create public client to wait for transaction receipt
+			// Create public client first
 			const publicClient = createPublicClient({
 				chain: baseSepolia,
 				transport: http(),
 			});
 
-			// Wait for approval transaction to be confirmed
-			toast({
-				title: "Confirming Approval",
-				description: "Waiting for blockchain confirmation...",
-			});
+			// Verify the token address used by the campaign pool contract
+			const contractTokenAddress = await publicClient.readContract({
+				address: ZKT_CAMPAIGN_POOL_ADDRESS as `0x${string}`,
+				abi: ZKTCampaignPoolABI,
+				functionName: 'token',
+			}) as `0x${string}`;
 
-			await publicClient.waitForTransactionReceipt({
-				hash: approvalTxHash,
-				confirmations: 1, // Wait for at least 1 block confirmation
-			});
+			console.log('🪙 Campaign Pool Token Address:', contractTokenAddress);
+			console.log('🪙 Configured IDRX Address:', CONTRACT_ADDRESSES.MockIDRX);
 
-			toast({
-				title: "Approval Confirmed ✓",
-				description: "Now processing your donation...",
-			});
+			if (contractTokenAddress.toLowerCase() !== CONTRACT_ADDRESSES.MockIDRX.toLowerCase()) {
+				toast({
+					variant: "destructive",
+					title: "Configuration Error",
+					description: `Token address mismatch! Contract uses ${contractTokenAddress}, config has ${CONTRACT_ADDRESSES.MockIDRX}`,
+				});
+				throw new Error(`Token address mismatch: ${contractTokenAddress} vs ${CONTRACT_ADDRESSES.MockIDRX}`);
+			}
+
+			// Check current allowance
+			const currentAllowance = await publicClient.readContract({
+				address: CONTRACT_ADDRESSES.MockIDRX,
+				abi: MockIDRXABI,
+				functionName: 'allowance',
+				args: [address as `0x${string}`, ZKT_CAMPAIGN_POOL_ADDRESS],
+			}) as bigint;
+
+			console.log('💰 Current Allowance:', currentAllowance.toString());
+			console.log('💰 Required Amount:', amountIDRX.toString());
+
+			const needsApproval = currentAllowance < amountIDRX;
+			console.log('🔍 Needs Approval:', needsApproval);
+
+			// Step 1: Approve token to Donation contract (only if needed)
+			if (needsApproval) {
+				toast({
+					title: "Step 1/2: Approval Required",
+					description: "Please approve the contract to spend your IDRX tokens. Check your wallet...",
+				});
+
+				const approvalTxHash = await writeContractAsync({
+					address: CONTRACT_ADDRESSES.MockIDRX,
+					abi: MockIDRXABI,
+					functionName: "approve",
+					args: [ZKT_CAMPAIGN_POOL_ADDRESS, amountIDRX],
+					account: address as `0x${string}`,
+				});
+
+				console.log('✅ Approval TX Sent:', approvalTxHash);
+
+				// Wait for approval transaction to be confirmed
+				toast({
+					title: "Confirming Approval",
+					description: "Waiting for blockchain confirmation (this may take a minute)...",
+				});
+
+				const receipt = await publicClient.waitForTransactionReceipt({
+					hash: approvalTxHash,
+					confirmations: 2, // Wait for 2 confirmations to be safe
+				});
+
+				console.log('✅ Approval Confirmed:', receipt);
+
+				if (receipt.status !== 'success') {
+					throw new Error('Approval transaction failed on-chain');
+				}
+
+				// Verify allowance was actually set
+				const newAllowance = await publicClient.readContract({
+					address: CONTRACT_ADDRESSES.MockIDRX,
+					abi: MockIDRXABI,
+					functionName: 'allowance',
+					args: [address as `0x${string}`, ZKT_CAMPAIGN_POOL_ADDRESS],
+				}) as bigint;
+
+				console.log('💰 New Allowance:', newAllowance.toString());
+
+				if (newAllowance < amountIDRX) {
+					throw new Error(`Approval set but insufficient: ${newAllowance.toString()} < ${amountIDRX.toString()}`);
+				}
+
+				toast({
+					title: "Approval Confirmed ✓",
+					description: "Now processing your donation...",
+				});
+			} else {
+				toast({
+					title: "Already Approved",
+					description: "Using existing approval. Processing donation...",
+				});
+			}
 
 			// Step 2: Execute donation
 			// Convert poolId to bytes32 format for the contract
