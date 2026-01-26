@@ -2,10 +2,11 @@
 
 import { useAccount, useReadContract, useWriteContract, useWaitForTransactionReceipt } from "wagmi";
 import { CONTRACT_ADDRESSES, MockIDRXABI, formatIDRX } from "@/lib/abi";
+import { ZKT_CAMPAIGN_POOL_ADDRESS, ZKTCampaignPoolABI } from "@/lib/zkt-campaign-pool";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Loader2, Droplet, CheckCircle2, XCircle, Clock } from "lucide-react";
+import { Loader2, Droplet, CheckCircle2, XCircle, Clock, AlertTriangle } from "lucide-react";
 import { useIDRXBalance } from "@/hooks/useIDRXBalance";
 import { handleTransactionError, handleWalletError } from "@/lib/errors";
 import { useToast } from "@/hooks/use-toast";
@@ -17,7 +18,21 @@ export default function FaucetPage() {
   const { toast } = useToast();
   const [countdown, setCountdown] = useState<number | null>(null);
 
-  // Check if user can claim from faucet
+  // Get the token address from campaign pool to know which token we need
+  const { data: poolTokenAddress } = useReadContract({
+    address: ZKT_CAMPAIGN_POOL_ADDRESS,
+    abi: ZKTCampaignPoolABI,
+    functionName: "token",
+    query: {
+      staleTime: Infinity,
+    },
+  });
+
+  // Check if we're using TestUSDC (different from MockIDRX)
+  const isTestUSDC = poolTokenAddress?.toLowerCase() === CONTRACT_ADDRESSES.TestUSDC.toLowerCase();
+  const isMockIDRX = poolTokenAddress?.toLowerCase() === CONTRACT_ADDRESSES.MockIDRX.toLowerCase();
+
+  // Check if user can claim from faucet (only works for MockIDRX)
   const {
     data: canClaim,
     isLoading: isCheckingEligibility,
@@ -28,8 +43,8 @@ export default function FaucetPage() {
     functionName: "canClaimFaucet",
     args: address ? [address] : undefined,
     query: {
-      enabled: !!address,
-      refetchInterval: 10_000, // Check every 10 seconds
+      enabled: !!address && !isTestUSDC, // Only check MockIDRX faucet if not using TestUSDC
+      refetchInterval: 10_000,
     },
   });
 
@@ -40,7 +55,7 @@ export default function FaucetPage() {
     functionName: "lastClaimTime",
     args: address ? [address] : undefined,
     query: {
-      enabled: !!address && !canClaim,
+      enabled: !!address && !canClaim && !isTestUSDC,
     },
   });
 
@@ -100,6 +115,17 @@ export default function FaucetPage() {
     }
 
     try {
+      // If using TestUSDC, we can't use the faucet - show info
+      if (isTestUSDC) {
+        toast({
+          variant: "destructive",
+          title: "TestUSDC Not Available",
+          description: "TestUSDC faucet is not available yet. Please use MockIDRX campaigns or contact the admin.",
+        });
+        return;
+      }
+
+      // Use MockIDRX faucet
       writeContract({
         address: CONTRACT_ADDRESSES.MockIDRX,
         abi: MockIDRXABI,
@@ -116,12 +142,14 @@ export default function FaucetPage() {
     if (isConfirmed) {
       toast({
         title: "Faucet Claimed!",
-        description: "MockIDRX tokens have been sent to your wallet",
+        description: isTestUSDC
+          ? "TestUSDC tokens have been sent to your wallet"
+          : "MockIDRX tokens have been sent to your wallet",
       });
       refetchBalance();
       refetchEligibility();
     }
-  }, [isConfirmed, toast, refetchBalance, refetchEligibility]);
+  }, [isConfirmed, toast, refetchBalance, refetchEligibility, isTestUSDC]);
 
   // Format countdown
   const formatCountdown = (seconds: number) => {
@@ -138,41 +166,76 @@ export default function FaucetPage() {
           <div className="mx-auto mb-4 w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center">
             <Droplet className="w-8 h-8 text-primary" />
           </div>
-          <CardTitle className="text-3xl">MockIDRX Faucet</CardTitle>
+          <CardTitle className="text-3xl">{isTestUSDC ? "TestUSDC" : "MockIDRX"} Faucet</CardTitle>
           <CardDescription>
-            Get free testnet MockIDRX tokens for testing donations on Base Sepolia
+            Get free {isTestUSDC ? "TestUSDC" : "MockIDRX"} tokens for testing donations on Base Sepolia
           </CardDescription>
         </CardHeader>
 
         <CardContent className="space-y-6">
+          {/* Token Info Alert */}
+          {isTestUSDC && (
+            <Alert className="border-red-500 bg-red-50 dark:bg-red-950/20">
+              <AlertTriangle className="h-4 w-4 text-red-500" />
+              <AlertDescription className="text-red-900 dark:text-red-200">
+                <p className="font-semibold mb-1">⚠️ Campaign Pool Uses TestUSDC</p>
+                <p className="text-sm">
+                  Your current balance is shown above. If you have 0 TestUSDC, you need to get tokens from a faucet or transfer from another address.
+                </p>
+              </AlertDescription>
+            </Alert>
+          )}
+
           {/* Current Balance */}
           <div className="bg-muted/50 rounded-lg p-4 text-center">
-            <p className="text-sm text-muted-foreground mb-1">Your Balance</p>
-            <p className="text-2xl font-bold">{formattedBalance} IDRX</p>
+            <p className="text-sm text-muted-foreground mb-1">Your {isTestUSDC ? "TestUSDC" : "IDRX"} Balance</p>
+            <p className="text-2xl font-bold">{formattedBalance} {isTestUSDC ? "USDC" : "IDRX"}</p>
+            {poolTokenAddress && (
+              <p className="text-xs text-muted-foreground mt-1">
+                Token: {poolTokenAddress.slice(0, 8)}...{poolTokenAddress.slice(-6)}
+              </p>
+            )}
           </div>
 
           {/* Eligibility Status */}
           {isConnected ? (
-            <Alert className={canClaim ? "border-green-500" : "border-yellow-500"}>
-              {canClaim ? (
-                <CheckCircle2 className="h-4 w-4 text-green-500" />
-              ) : (
-                <Clock className="h-4 w-4 text-yellow-500" />
-              )}
-              <AlertDescription>
-                {isCheckingEligibility ? (
-                  "Checking eligibility..."
-                ) : canClaim ? (
-                  "✅ You can claim from the faucet"
-                ) : countdown !== null ? (
-                  <>
-                    ⏳ Next claim available in: <strong>{formatCountdown(countdown)}</strong>
-                  </>
+            isTestUSDC ? (
+              <Alert className="border-orange-500">
+                <AlertTriangle className="h-4 w-4 text-orange-500" />
+                <AlertDescription>
+                  <p className="font-semibold">TestUSDC Faucet Not Available</p>
+                  <p className="text-sm mt-1">
+                    The TestUSDC faucet is not currently available. Please:
+                  </p>
+                  <ul className="text-sm mt-2 list-disc list-inside space-y-1">
+                    <li>Ask a friend to send you TestUSDC</li>
+                    <li>Contact the admin for test tokens</li>
+                    <li>Wait for a MockIDRX campaign to be created</li>
+                  </ul>
+                </AlertDescription>
+              </Alert>
+            ) : (
+              <Alert className={canClaim ? "border-green-500" : "border-yellow-500"}>
+                {canClaim ? (
+                  <CheckCircle2 className="h-4 w-4 text-green-500" />
                 ) : (
-                  "You must wait 24 hours between claims"
+                  <Clock className="h-4 w-4 text-yellow-500" />
                 )}
-              </AlertDescription>
-            </Alert>
+                <AlertDescription>
+                  {isCheckingEligibility ? (
+                    "Checking eligibility..."
+                  ) : canClaim ? (
+                    "✅ You can claim from the faucet"
+                  ) : countdown !== null ? (
+                    <>
+                      ⏳ Next claim available in: <strong>{formatCountdown(countdown)}</strong>
+                    </>
+                  ) : (
+                    "You must wait 24 hours between claims"
+                  )}
+                </AlertDescription>
+              </Alert>
+            )
           ) : (
             <Alert variant="destructive">
               <XCircle className="h-4 w-4" />
@@ -185,7 +248,7 @@ export default function FaucetPage() {
           {/* Claim Button */}
           <Button
             onClick={handleClaim}
-            disabled={!isConnected || !canClaim || isClaimPending || isConfirming}
+            disabled={!isConnected || !canClaim || isClaimPending || isConfirming || isTestUSDC}
             className="w-full"
             size="lg"
           >
@@ -199,8 +262,10 @@ export default function FaucetPage() {
                 <CheckCircle2 className="mr-2 h-4 w-4" />
                 Claimed Successfully!
               </>
+            ) : isTestUSDC ? (
+              "Faucet Not Available"
             ) : (
-              "Claim MockIDRX"
+              `Claim ${isMockIDRX ? "MockIDRX" : "Tokens"}`
             )}
           </Button>
 
