@@ -78,7 +78,6 @@ function ChainEnforcer({ children }: { children: ReactNode }) {
 						});
 					},
 					onError: (error) => {
-						console.error("Failed to switch chain:", error);
 						toast({
 							variant: "destructive",
 							title: "Network Switch Required",
@@ -104,7 +103,6 @@ function ChainEnforcer({ children }: { children: ReactNode }) {
 					});
 				},
 				onError: (error) => {
-					console.error("Failed to switch chain:", error);
 					toast({
 						variant: "destructive",
 						title: "Switch Failed",
@@ -189,7 +187,6 @@ function WalletStateController({ children }: { children: ReactNode }) {
 			const { access_token } = signatureResponse.data;
 			localStorage.setItem("access_token", access_token);
 		} catch (error) {
-			console.error("Error requesting or signing message:", error);
 			toast({
 				variant: "destructive",
 				title: "Error",
@@ -269,8 +266,6 @@ function WalletStateController({ children }: { children: ReactNode }) {
 			const tokenAddress = CONTRACT_ADDRESSES.IDRX;
 			const tokenABI = MockIDRXABI;
 
-			console.log('🪙 Using New IDRX Token:', tokenAddress);
-
 			// Check current allowance (for infinite approval, skip re-approval)
 			const currentAllowance = await publicClient.readContract({
 				address: tokenAddress,
@@ -279,15 +274,9 @@ function WalletStateController({ children }: { children: ReactNode }) {
 				args: [address as `0x${string}`, ZKT_CAMPAIGN_POOL_ADDRESS],
 			}) as bigint;
 
-			console.log('💰 Current Allowance:', currentAllowance.toString());
-			console.log('💰 Required Amount:', amountIDRX.toString());
-
 			// Check if already approved with infinite amount or sufficient amount
 			const hasInfiniteApproval = currentAllowance > BigInt(2) ** BigInt(255) - BigInt(1);
 			const needsApproval = currentAllowance < amountIDRX && !hasInfiniteApproval;
-
-			console.log('🔍 Has Infinite Approval:', hasInfiniteApproval);
-			console.log('🔍 Needs Approval:', needsApproval);
 
 			// Step 1: Approve token to Donation contract (only if needed)
 			if (needsApproval) {
@@ -307,8 +296,6 @@ function WalletStateController({ children }: { children: ReactNode }) {
 					account: address as `0x${string}`,
 				});
 
-				console.log('✅ Approval TX Sent (infinite):', approvalTxHash);
-
 				// Wait for approval transaction to be confirmed
 				toast({
 					title: "Confirming Approval",
@@ -320,8 +307,6 @@ function WalletStateController({ children }: { children: ReactNode }) {
 					confirmations: 2, // Wait for 2 confirmations to be safe
 				});
 
-				console.log('✅ Approval Confirmed:', receipt);
-
 				if (receipt.status !== 'success') {
 					throw new Error('Approval transaction failed on-chain');
 				}
@@ -330,8 +315,6 @@ function WalletStateController({ children }: { children: ReactNode }) {
 					title: "Approval Confirmed ✓",
 					description: "You can now donate without approving again!",
 				});
-			} else {
-				console.log('✅ Already approved with sufficient amount');
 			}
 
 			// Step 2: Execute donation
@@ -364,8 +347,6 @@ function WalletStateController({ children }: { children: ReactNode }) {
 				gasPrice: gasPrice,
 			});
 
-			console.log('✅ Donation TX Sent:', donateTxHash);
-
 			// Wait for donation transaction to be confirmed and get receipt
 			toast({
 				title: "Confirming Donation",
@@ -376,8 +357,6 @@ function WalletStateController({ children }: { children: ReactNode }) {
 				hash: donateTxHash,
 				confirmations: 1,
 			});
-
-			console.log('✅ Donation Confirmed:', receipt);
 
 			// Parse logs to find the Donated event which contains the tokenId
 			let nftTokenId: bigint | null = null;
@@ -392,7 +371,6 @@ function WalletStateController({ children }: { children: ReactNode }) {
 						});
 
 						if (decoded && decoded.eventName === 'Donated') {
-							console.log('🎨 NFT Minted:', decoded);
 							// The Donated event has: campaignId, donor, amount, tokenId
 							// tokenId is at index 3
 							if (Array.isArray(decoded)) {
@@ -409,7 +387,6 @@ function WalletStateController({ children }: { children: ReactNode }) {
 			}
 
 			if (nftTokenId !== null) {
-				console.log('🎨 Your NFT Token ID:', nftTokenId.toString());
 				const donationAmount = Number(amountIDRX) / 1e6;
 				toast({
 					title: "Donation Successful! 🎉",
@@ -428,18 +405,6 @@ function WalletStateController({ children }: { children: ReactNode }) {
 
 			return { txHash: donateTxHash, nftTokenId };
 		} catch (error: any) {
-			console.error("❌ Donation error details:", {
-				message: error?.message,
-				code: error?.code,
-				reason: error?.reason,
-				data: error?.data,
-				cause: error?.cause,
-				chainId: error?.chainId,
-				contractAddress: ZKT_CAMPAIGN_POOL_ADDRESS,
-				senderAddress: address,
-				fullError: error,
-			});
-			
 			let errorMessage = "Transaction failed. Please try again.";
 			if (error?.reason) errorMessage = error.reason;
 			else if (error?.message) errorMessage = error.message;
@@ -501,7 +466,6 @@ function WalletStateController({ children }: { children: ReactNode }) {
 
 			return { txHash: lockAllocationTx };
 		} catch (error: any) {
-			console.error("❌ Lock allocations error:", error);
 			throw error;
 		}
 	};

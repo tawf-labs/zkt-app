@@ -77,8 +77,6 @@ export const useLockAllocations = (options?: UseLockAllocationsOptions) => {
         return { txHash: hash };
 
       } catch (error: any) {
-        console.error('❌ Error locking allocations:', error);
-
         let errorMsg = 'Failed to lock allocations';
 
         if (error?.message?.includes('user rejected')) {

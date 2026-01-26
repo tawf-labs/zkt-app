@@ -48,7 +48,7 @@ export function useCampaignStatusSync(
             .eq('campaign_id', campaignId);
 
           if (error) {
-            console.error('Failed to update campaign status:', error);
+            // Error updating status
           } else {
 
             // Trigger a page reload to reflect the new status

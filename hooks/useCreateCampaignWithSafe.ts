@@ -299,13 +299,6 @@ export const useCreateCampaignWithSafe = (): CreateCampaignWithSafeResult => {
           }
         ]
 
-        console.log(`📝 Creating Safe transaction with ${transactions.length} operations:`, {
-          create: 1,
-          setAllocations: params.allocations.length,
-          lock: 1,
-          total: transactions.length
-        })
-
         // Create Safe transaction with all calls
         const safeTransaction = await protocolKit.createTransaction({
           transactions

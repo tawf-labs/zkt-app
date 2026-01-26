@@ -21,7 +21,6 @@ function calculateDaysLeft(endDate: number): number {
 
 export async function GET(request: NextRequest) {
   try {
-    console.log('[API Campaigns] Fetching campaigns from Supabase...');
     const campaigns: Campaign[] = [];
 
     // Fetch campaigns from Supabase (for metadata only: title, description, images)
@@ -32,12 +31,6 @@ export async function GET(request: NextRequest) {
       .order('created_at', { ascending: false });
 
     if (error) {
-      console.error('[API Campaigns] Supabase error:', {
-        message: error.message,
-        code: error.code,
-        details: error.details,
-        hint: error.hint,
-      });
       return NextResponse.json(
         {
           success: false,
@@ -47,8 +40,6 @@ export async function GET(request: NextRequest) {
         { status: 500 }
       );
     }
-
-    console.log('[API Campaigns] Fetched', supabaseCampaigns?.length || 0, 'campaigns from Supabase');
 
     if (!supabaseCampaigns || supabaseCampaigns.length === 0) {
       return NextResponse.json(
@@ -97,7 +88,6 @@ export async function GET(request: NextRequest) {
         const exists = campaignData && campaignData[0];
         if (!exists) {
           // Campaign doesn't exist on contract - skip it
-          console.log(`[API] Campaign ${camp.campaign_id} does not exist on contract, skipping`);
           continue;
         }
 
@@ -106,7 +96,6 @@ export async function GET(request: NextRequest) {
         // Check if campaign is still active (not expired)
         if (endTime <= now) {
           // Campaign has expired - skip it
-          console.log(`[API] Campaign ${camp.campaign_id} has expired, skipping`);
           continue;
         }
 
@@ -117,7 +106,6 @@ export async function GET(request: NextRequest) {
 
         // Skip if campaign is closed or disbursed
         if (closed || disbursed) {
-          console.log(`[API] Campaign ${camp.campaign_id} is closed or disbursed, skipping`);
           continue;
         }
 
@@ -157,7 +145,6 @@ export async function GET(request: NextRequest) {
         const campaignAge = now - (Math.floor(new Date(camp.created_at).getTime() / 1000));
         // If campaign was created in the last 5 minutes, show it anyway (might still be indexing)
         if (campaignAge < 300) {
-          console.log(`[API] Campaign ${camp.campaign_id} recently created, showing despite contract error:`, error);
           let imageUrl = 'https://images.unsplash.com/photo-1532629345422-7515f3d16bb6?w=500';
           if (camp.image_urls && Array.isArray(camp.image_urls) && camp.image_urls.length > 0) {
             imageUrl = formatPinataImageUrl(camp.image_urls[0]);
@@ -185,13 +172,11 @@ export async function GET(request: NextRequest) {
           };
           campaigns.push(campaign);
         } else {
-          console.log(`[API] Error reading contract for campaign ${camp.campaign_id}, skipping:`, error);
+          // Error reading contract for old campaign
         }
         continue;
       }
     }
-
-    console.log('[API Campaigns] Returning', campaigns.length, 'campaigns');
 
     return NextResponse.json(
       {
@@ -210,7 +195,6 @@ export async function GET(request: NextRequest) {
     );
 
   } catch (error) {
-    console.error('[API Campaigns] Unexpected error:', error);
     return NextResponse.json(
       {
         success: false,

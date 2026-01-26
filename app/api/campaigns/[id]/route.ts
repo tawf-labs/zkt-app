@@ -15,8 +15,6 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
-    
-    console.log('[API] Fetching campaign with ID:', id);
 
     // Fetch all campaigns from Supabase
     const { data: campaigns, error } = await supabase
@@ -25,7 +23,6 @@ export async function GET(
       .order('created_at', { ascending: false });
 
     if (error) {
-      console.error('Supabase error:', error);
       return NextResponse.json(
         { success: false, error: 'Failed to fetch campaign' },
         { status: 500 }
@@ -34,14 +31,12 @@ export async function GET(
 
     // Find campaign by campaign_id (support both bytes32 hash and numeric ID)
     let campaign = null;
-    
+
     if (id.startsWith('0x')) {
       // It's a bytes32 hash - direct match
-      console.log('[API] Searching by bytes32 hash:', id);
       campaign = campaigns?.find((c: any) => c.campaign_id === id);
     } else {
       // Try numeric ID
-      console.log('[API] Searching by numeric ID:', id);
       const campaignId = parseInt(id, 10);
       campaign = campaigns?.find((c: any) => {
         // Try parsing campaign_id as numeric
@@ -51,7 +46,6 @@ export async function GET(
     }
 
     if (!campaign) {
-      console.log('[API] Campaign not found with ID:', id);
       return NextResponse.json(
         { success: false, error: 'Campaign not found' },
         { status: 404 }
@@ -140,7 +134,6 @@ export async function GET(
       }
     );
   } catch (error) {
-    console.error('Error fetching campaign detail:', error);
     return NextResponse.json(
       { success: false, error: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }

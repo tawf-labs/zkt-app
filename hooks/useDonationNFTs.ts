@@ -88,14 +88,12 @@ export function useDonationNFTs() {
             }
           } catch (error) {
             // Token might not exist, skip it
-            console.warn(`Failed to fetch token ${tokenId}:`, error);
           }
         }
 
         setBalance(userBalance);
         setNfts(nftsData);
       } catch (error) {
-        console.error('Error fetching NFTs:', error);
         setNfts([]);
       } finally {
         setIsLoading(false);

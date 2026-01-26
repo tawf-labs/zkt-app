@@ -40,7 +40,6 @@ export async function POST(request: NextRequest) {
       ipfsHash: upload.IpfsHash,
     });
   } catch (error) {
-    console.error('Error uploading to Pinata:', error);
     return NextResponse.json(
       { 
         error: error instanceof Error ? error.message : 'Failed to upload file',

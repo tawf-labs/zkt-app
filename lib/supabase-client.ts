@@ -37,23 +37,6 @@ export interface CampaignData {
 // Save campaign off-chain data to Supabase (with upsert to handle duplicates)
 export const saveCampaignData = async (data: CampaignData) => {
   try {
-    console.log('[Supabase] Attempting to save campaign:', {
-      campaignId: data.campaignId,
-      title: data.title,
-      hasDescription: !!data.description,
-      category: data.category,
-      location: data.location,
-      goal: data.goal,
-      organizationName: data.organizationName,
-      organizationVerified: data.organizationVerified,
-      imageUrlsCount: data.imageUrls?.length || 0,
-      tagsCount: data.tags?.length || 0,
-      startTime: data.startTime,
-      endTime: data.endTime,
-      status: data.status || 'active',
-      hasSafeTxHash: !!data.safeTxHash,
-    });
-
     // Check if campaign already exists
     const { data: existingCampaign, error: checkError } = await supabase
       .from('campaigns')
@@ -62,12 +45,10 @@ export const saveCampaignData = async (data: CampaignData) => {
       .maybeSingle();
 
     if (checkError && checkError.code !== 'PGRST116') {
-      console.error('[Supabase] Check existing campaign error:', checkError);
       throw checkError;
     }
 
     if (existingCampaign) {
-      console.log('[Supabase] Campaign already exists, returning existing:', existingCampaign);
       return existingCampaign;
     }
 
@@ -93,25 +74,12 @@ export const saveCampaignData = async (data: CampaignData) => {
       insertData.safe_tx_hash = data.safeTxHash;
     }
 
-    console.log('[Supabase] Insert data prepared:', {
-      keys: Object.keys(insertData),
-      dataTypes: Object.entries(insertData).map(([k, v]) => `${k}: ${typeof v}`),
-    });
-
     const { data: result, error } = await supabase
       .from('campaigns')
       .insert([insertData])
       .select();
 
     if (error) {
-      console.error('[Supabase Insert Error]', {
-        message: error.message,
-        details: error.details,
-        hint: error.hint,
-        code: error.code,
-        columns: error?.columns,
-        table: error?.table,
-      });
       throw new Error(`Supabase insert failed: ${error.message} (Code: ${error.code})`);
     }
 
@@ -119,10 +87,8 @@ export const saveCampaignData = async (data: CampaignData) => {
       throw new Error('No result returned from Supabase');
     }
 
-    console.log('[Supabase] Campaign saved successfully:', result[0]);
     return result[0];
   } catch (error) {
-    console.error('[Supabase] Unexpected error:', error);
     throw error;
   }
 };

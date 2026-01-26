@@ -43,7 +43,7 @@ export function LockAllocationButton({
       await lockAllocations(campaignId);
       setIsDialogOpen(false);
     } catch (error) {
-      console.error('Failed to lock allocations:', error);
+      // Error handled by toast
     }
   };
 

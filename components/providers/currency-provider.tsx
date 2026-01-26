@@ -45,7 +45,6 @@ export function CurrencyProvider({ children }: CurrencyProviderProps) {
 				setExchangeRate(response.data.rates.IDRX);
 			}
 		} catch (error) {
-			console.error("Failed to fetch exchange rate:", error);
 			// Keep using fallback rate
 		} finally {
 			setIsLoadingRate(false);

@@ -56,7 +56,6 @@ export function useCampaigns() {
     } catch (err) {
       const error = err instanceof Error ? err : new Error('Unknown error');
       setError(error);
-      console.error('Error fetching campaigns:', error);
     } finally {
       setIsLoading(false);
     }
