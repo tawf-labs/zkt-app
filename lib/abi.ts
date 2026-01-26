@@ -3,9 +3,10 @@
 export const CONTRACT_ADDRESSES = {
   ZKTCore: '0x827a10a3bcc12c315774e134235046f378c7699d' as const,
   MockIDRX: '0x8790ec119e8fcdc46305246662ddf6a4a5d9ad04' as const,
-  DonationReceiptNFT: '0xeE31189e2929c638aB8e4af049066cBF34aD3604' as const, // Updated ZKTReceiptNFT
-  TestUSDC: '0xa2a5ECC006CFF7A911BFb916AdB33321AF4865E87' as const,        // Updated TestUSDC
-  ZKTCampaignPool: '0xB2F02d389DC803a9823bDBa4a44B2d58c25738d7' as const, // Updated Campaign Pool
+  IDRX: '0xa2a5eC006CFF7A911BFb916AdB33321AF4865E87' as const,              // New IDRX Token (TestUSDC)
+  DonationReceiptNFT: '0xeE31189e2929c638aB8e4af049066cBF34aD3604' as const, // ZKTReceiptNFT
+  TestUSDC: '0xa2a5ECC006CFF7A911BFb916AdB33321AF4865E87' as const,        // Legacy name (same as IDRX)
+  ZKTCampaignPool: '0xB2F02d389DC803a9823bDBa4a44B2d58c25738d7' as const, // Campaign Pool
   VotingToken: '0x8b015d081f03cc7a7c329d1582d9ec43270c733b' as const,
   VotingManager: '0x6e2b5b1bbf99d44f01dc15d81a59a5caaddc37fa' as const,
   ShariaReviewManager: '0xce976dadd27e70e8a9fb2a7cad24ebb2c5b43b2e' as const,

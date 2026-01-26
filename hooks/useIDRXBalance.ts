@@ -7,15 +7,15 @@ import { formatIDRX } from "@/lib/abi";
 export function useIDRXBalance() {
   const { address } = useAccount();
 
-  // Always use MockIDRX (old version)
+  // Use new IDRX token (TestUSDC)
   const {
     data: balance,
     isLoading,
     error,
     refetch,
   } = useReadContract({
-    address: CONTRACT_ADDRESSES.MockIDRX,
-    abi: MockIDRXABI,
+    address: CONTRACT_ADDRESSES.IDRX,
+    abi: MockIDRXABI, // Same ERC20 ABI
     functionName: "balanceOf",
     args: address ? [address] : undefined,
     query: {

@@ -265,13 +265,13 @@ function WalletStateController({ children }: { children: ReactNode }) {
 				transport: http(),
 			});
 
-			// Always use MockIDRX (old version)
-			const tokenAddress = CONTRACT_ADDRESSES.MockIDRX;
+			// Use new IDRX token (TestUSDC)
+			const tokenAddress = CONTRACT_ADDRESSES.IDRX;
 			const tokenABI = MockIDRXABI;
 
-			console.log('🪙 Using MockIDRX Token:', tokenAddress);
+			console.log('🪙 Using New IDRX Token:', tokenAddress);
 
-			// Check current allowance
+			// Check current allowance (for infinite approval, skip re-approval)
 			const currentAllowance = await publicClient.readContract({
 				address: tokenAddress,
 				abi: tokenABI,
@@ -282,7 +282,11 @@ function WalletStateController({ children }: { children: ReactNode }) {
 			console.log('💰 Current Allowance:', currentAllowance.toString());
 			console.log('💰 Required Amount:', amountIDRX.toString());
 
-			const needsApproval = currentAllowance < amountIDRX;
+			// Check if already approved with infinite amount or sufficient amount
+			const hasInfiniteApproval = currentAllowance > BigInt(2) ** BigInt(255) - BigInt(1);
+			const needsApproval = currentAllowance < amountIDRX && !hasInfiniteApproval;
+
+			console.log('🔍 Has Infinite Approval:', hasInfiniteApproval);
 			console.log('🔍 Needs Approval:', needsApproval);
 
 			// Step 1: Approve token to Donation contract (only if needed)
@@ -292,15 +296,18 @@ function WalletStateController({ children }: { children: ReactNode }) {
 					description: "Please approve the contract to spend your IDRX tokens. Check your wallet...",
 				});
 
+				// Use infinite approval for better UX (approve once, donate many times)
+				const approvalAmount = BigInt(2) ** BigInt(256) - BigInt(1);
+
 				const approvalTxHash = await writeContractAsync({
 					address: tokenAddress,
 					abi: tokenABI,
 					functionName: "approve",
-					args: [ZKT_CAMPAIGN_POOL_ADDRESS, amountIDRX],
+					args: [ZKT_CAMPAIGN_POOL_ADDRESS, approvalAmount],
 					account: address as `0x${string}`,
 				});
 
-				console.log('✅ Approval TX Sent:', approvalTxHash);
+				console.log('✅ Approval TX Sent (infinite):', approvalTxHash);
 
 				// Wait for approval transaction to be confirmed
 				toast({
@@ -319,29 +326,12 @@ function WalletStateController({ children }: { children: ReactNode }) {
 					throw new Error('Approval transaction failed on-chain');
 				}
 
-				// Verify allowance was actually set
-				const newAllowance = await publicClient.readContract({
-					address: tokenAddress,
-					abi: tokenABI,
-					functionName: 'allowance',
-					args: [address as `0x${string}`, ZKT_CAMPAIGN_POOL_ADDRESS],
-				}) as bigint;
-
-				console.log('💰 New Allowance:', newAllowance.toString());
-
-				if (newAllowance < amountIDRX) {
-					throw new Error(`Approval set but insufficient: ${newAllowance.toString()} < ${amountIDRX.toString()}`);
-				}
-
 				toast({
 					title: "Approval Confirmed ✓",
-					description: "Now processing your donation...",
+					description: "You can now donate without approving again!",
 				});
 			} else {
-				toast({
-					title: "Already Approved",
-					description: "Using existing approval. Processing donation...",
-				});
+				console.log('✅ Already approved with sufficient amount');
 			}
 
 			// Step 2: Execute donation

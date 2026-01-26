@@ -5,7 +5,7 @@ import { CONTRACT_ADDRESSES, MockIDRXABI, formatIDRX } from "@/lib/abi";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Loader2, Droplet, CheckCircle2, XCircle, Clock } from "lucide-react";
+import { Loader2, Droplet, CheckCircle2, XCircle, Clock, ExternalLink } from "lucide-react";
 import { useIDRXBalance } from "@/hooks/useIDRXBalance";
 import { handleTransactionError, handleWalletError } from "@/lib/errors";
 import { useToast } from "@/hooks/use-toast";
@@ -17,25 +17,25 @@ export default function FaucetPage() {
   const { toast } = useToast();
   const [countdown, setCountdown] = useState<number | null>(null);
 
-  // Check if user can claim from faucet
+  // Try to check if new IDRX has faucet (it might not)
   const {
     data: canClaim,
     isLoading: isCheckingEligibility,
     refetch: refetchEligibility,
   } = useReadContract({
-    address: CONTRACT_ADDRESSES.MockIDRX,
+    address: CONTRACT_ADDRESSES.IDRX,
     abi: MockIDRXABI,
     functionName: "canClaimFaucet",
     args: address ? [address] : undefined,
     query: {
       enabled: !!address,
-      refetchInterval: 10_000, // Check every 10 seconds
+      refetchInterval: 10_000,
     },
   });
 
   // Get last claim timestamp for countdown
   const { data: lastClaimTime } = useReadContract({
-    address: CONTRACT_ADDRESSES.MockIDRX,
+    address: CONTRACT_ADDRESSES.IDRX,
     abi: MockIDRXABI,
     functionName: "lastClaimTime",
     args: address ? [address] : undefined,
@@ -101,7 +101,7 @@ export default function FaucetPage() {
 
     try {
       writeContract({
-        address: CONTRACT_ADDRESSES.MockIDRX,
+        address: CONTRACT_ADDRESSES.IDRX,
         abi: MockIDRXABI,
         functionName: "faucet",
         args: [],
@@ -116,7 +116,7 @@ export default function FaucetPage() {
     if (isConfirmed) {
       toast({
         title: "Faucet Claimed!",
-        description: "MockIDRX tokens have been sent to your wallet",
+        description: "IDRX tokens have been sent to your wallet",
       });
       refetchBalance();
       refetchEligibility();
@@ -138,13 +138,30 @@ export default function FaucetPage() {
           <div className="mx-auto mb-4 w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center">
             <Droplet className="w-8 h-8 text-primary" />
           </div>
-          <CardTitle className="text-3xl">MockIDRX Faucet</CardTitle>
+          <CardTitle className="text-3xl">IDRX Faucet</CardTitle>
           <CardDescription>
-            Get free testnet MockIDRX tokens for testing donations on Base Sepolia
+            Get free testnet IDRX tokens for testing donations on Base Sepolia
           </CardDescription>
         </CardHeader>
 
         <CardContent className="space-y-6">
+          {/* Token Info */}
+          <div className="bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 text-sm">
+            <p className="font-semibold text-blue-900 dark:text-blue-100 mb-2">🪙 Token Information</p>
+            <div className="space-y-1 text-blue-800 dark:text-blue-200">
+              <p>Token: <span className="font-mono text-xs">IDRX (TestUSDC)</span></p>
+              <p>Address: <span className="font-mono text-xs break-all">{CONTRACT_ADDRESSES.IDRX}</span></p>
+              <a
+                href={`https://sepolia.basescan.org/address/${CONTRACT_ADDRESSES.IDRX}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 text-xs hover:underline mt-2"
+              >
+                View on Explorer <ExternalLink className="h-3 w-3" />
+              </a>
+            </div>
+          </div>
+
           {/* Current Balance */}
           <div className="bg-muted/50 rounded-lg p-4 text-center">
             <p className="text-sm text-muted-foreground mb-1">Your Balance</p>
@@ -200,7 +217,7 @@ export default function FaucetPage() {
                 Claimed Successfully!
               </>
             ) : (
-              "Claim MockIDRX"
+              "Claim IDRX Tokens"
             )}
           </Button>
 
