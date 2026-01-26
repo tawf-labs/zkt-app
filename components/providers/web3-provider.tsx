@@ -265,7 +265,7 @@ function WalletStateController({ children }: { children: ReactNode }) {
 				transport: http(),
 			});
 
-			// Verify the token address used by the campaign pool contract
+			// Get the actual token address from the campaign pool contract
 			const contractTokenAddress = await publicClient.readContract({
 				address: ZKT_CAMPAIGN_POOL_ADDRESS as `0x${string}`,
 				abi: ZKTCampaignPoolABI,
@@ -273,21 +273,15 @@ function WalletStateController({ children }: { children: ReactNode }) {
 			}) as `0x${string}`;
 
 			console.log('🪙 Campaign Pool Token Address:', contractTokenAddress);
-			console.log('🪙 Configured IDRX Address:', CONTRACT_ADDRESSES.MockIDRX);
 
-			if (contractTokenAddress.toLowerCase() !== CONTRACT_ADDRESSES.MockIDRX.toLowerCase()) {
-				toast({
-					variant: "destructive",
-					title: "Configuration Error",
-					description: `Token address mismatch! Contract uses ${contractTokenAddress}, config has ${CONTRACT_ADDRESSES.MockIDRX}`,
-				});
-				throw new Error(`Token address mismatch: ${contractTokenAddress} vs ${CONTRACT_ADDRESSES.MockIDRX}`);
-			}
+			// Use the token address from the contract (could be IDRX or USDC)
+			const tokenAddress = contractTokenAddress;
+			const tokenABI = MockIDRXABI; // Both ERC20 tokens have the same approve/allowance interface
 
 			// Check current allowance
 			const currentAllowance = await publicClient.readContract({
-				address: CONTRACT_ADDRESSES.MockIDRX,
-				abi: MockIDRXABI,
+				address: tokenAddress,
+				abi: tokenABI,
 				functionName: 'allowance',
 				args: [address as `0x${string}`, ZKT_CAMPAIGN_POOL_ADDRESS],
 			}) as bigint;
@@ -302,12 +296,12 @@ function WalletStateController({ children }: { children: ReactNode }) {
 			if (needsApproval) {
 				toast({
 					title: "Step 1/2: Approval Required",
-					description: "Please approve the contract to spend your IDRX tokens. Check your wallet...",
+					description: "Please approve the contract to spend your tokens. Check your wallet...",
 				});
 
 				const approvalTxHash = await writeContractAsync({
-					address: CONTRACT_ADDRESSES.MockIDRX,
-					abi: MockIDRXABI,
+					address: tokenAddress,
+					abi: tokenABI,
 					functionName: "approve",
 					args: [ZKT_CAMPAIGN_POOL_ADDRESS, amountIDRX],
 					account: address as `0x${string}`,
@@ -334,8 +328,8 @@ function WalletStateController({ children }: { children: ReactNode }) {
 
 				// Verify allowance was actually set
 				const newAllowance = await publicClient.readContract({
-					address: CONTRACT_ADDRESSES.MockIDRX,
-					abi: MockIDRXABI,
+					address: tokenAddress,
+					abi: tokenABI,
 					functionName: 'allowance',
 					args: [address as `0x${string}`, ZKT_CAMPAIGN_POOL_ADDRESS],
 				}) as bigint;
