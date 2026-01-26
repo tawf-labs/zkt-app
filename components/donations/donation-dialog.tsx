@@ -116,8 +116,8 @@ export function DonationDialog({
       return;
     }
 
-    // Check if amount exceeds balance
-    const balance = parseFloat(formattedIdrxBalance || "0");
+    // Check if amount exceeds balance (use raw bigint balance, not formatted string)
+    const balance = idrxBalance ? Number(idrxBalance) / 1e6 : 0; // Convert from base units (6 decimals)
     if (donationAmount > balance) {
       toast({
         variant: "destructive",
