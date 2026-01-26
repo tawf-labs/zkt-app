@@ -2,7 +2,7 @@
 
 import { createContext, useContext, type ReactNode, useEffect, useState } from "react";
 import { useToast } from "@/hooks/use-toast";
-import { useSignMessage, WagmiProvider, type Config, useWriteContract, useWaitForTransactionReceipt, useSwitchChain, useChainId } from "wagmi";
+import { useSignMessage, WagmiProvider, type Config, useWriteContract, useSwitchChain, useChainId } from "wagmi";
 import { useAccount, useBalance, useDisconnect } from "wagmi";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { XellarKitProvider, defaultConfig, darkTheme, useConnectModal } from "@xellar/kit";
@@ -261,11 +261,10 @@ function WalletStateController({ children }: { children: ReactNode }) {
 		try {
 			// Step 1: Approve token to Donation contract
 			toast({
-				title: "Approval Required",
-				description: "Please approve the contract to spend your IDRX tokens",
+				title: "Step 1/2: Approval Required",
+				description: "Please approve the contract to spend your IDRX tokens. Waiting for confirmation...",
 			});
-			
-			
+
 			const approvalTxHash = await writeContractAsync({
 				address: CONTRACT_ADDRESSES.MockIDRX,
 				abi: MockIDRXABI,
@@ -273,20 +272,33 @@ function WalletStateController({ children }: { children: ReactNode }) {
 				args: [ZKT_CAMPAIGN_POOL_ADDRESS, amountIDRX],
 				account: address as `0x${string}`,
 			});
-			
-			
-			// Add delay to ensure approval is processed
-			await new Promise(resolve => setTimeout(resolve, 3000));
-			
+
+			// Create public client to wait for transaction receipt
+			const publicClient = createPublicClient({
+				chain: baseSepolia,
+				transport: http(),
+			});
+
+			// Wait for approval transaction to be confirmed
 			toast({
-				title: "Approval Confirmed",
+				title: "Confirming Approval",
+				description: "Waiting for blockchain confirmation...",
+			});
+
+			await publicClient.waitForTransactionReceipt({
+				hash: approvalTxHash,
+				confirmations: 1, // Wait for at least 1 block confirmation
+			});
+
+			toast({
+				title: "Approval Confirmed ✓",
 				description: "Now processing your donation...",
 			});
-			
+
 			// Step 2: Execute donation
 			// Convert poolId to bytes32 format for the contract
 			let campaignIdBytes32: string;
-			
+
 			if (typeof poolId === 'string' && poolId.startsWith('0x')) {
 				// It's already a hash, ensure it's padded to 32 bytes
 				campaignIdBytes32 = poolId.length === 66 ? poolId : pad(poolId as `0x${string}`, { size: 32 });
@@ -295,14 +307,8 @@ function WalletStateController({ children }: { children: ReactNode }) {
 				const numericId = typeof poolId === 'string' ? BigInt(poolId) : poolId;
 				campaignIdBytes32 = pad(toHex(numericId), { size: 32 });
 			}
-			
-			
-			// Get gas fees for better estimation
-			const publicClient = createPublicClient({
-				chain: baseSepolia,
-				transport: http(),
-			});
-			
+
+			// Get gas fees for better estimation (reuse publicClient)
 			let gasPrice = BigInt(1000000000); // 1 gwei default
 			try {
 				const feeData = await publicClient.getGasPrice();
