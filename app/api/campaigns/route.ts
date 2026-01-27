@@ -5,6 +5,7 @@ import { ZKT_CAMPAIGN_POOL_ADDRESS, ZKTCampaignPoolABI } from '@/lib/zkt-campaig
 import { Campaign } from '@/hooks/useCampaigns';
 import { formatPinataImageUrl } from '@/lib/pinata-client';
 import { supabase } from '@/lib/supabase-client';
+import { verifyCampaignExists, getCampaignOnChainStatus } from '@/lib/verify-campaign';
 
 // Create a public client for reading contract data
 const publicClient = createPublicClient({
@@ -25,6 +26,7 @@ export async function GET(request: NextRequest) {
 
     // Fetch campaigns from Supabase (for metadata only: title, description, images)
     // Select specific columns to avoid 406 errors
+    // Include both active and pending_execution campaigns
     const { data: supabaseCampaigns, error } = await supabase
       .from('campaigns')
       .select('id,campaign_id,title,description,category,location,goal,organization_name,organization_verified,image_urls,tags,start_time,end_time,status,total_raised,created_at')
@@ -67,6 +69,74 @@ export async function GET(request: NextRequest) {
         continue;
       }
 
+      // For pending campaigns, check if they now exist on-chain
+      if (camp.status === 'pending_execution') {
+        // Check if campaign was created on-chain
+        let existsOnChain = false;
+        try {
+          existsOnChain = await verifyCampaignExists(camp.campaign_id);
+        } catch (error) {
+          console.error('[API] Error checking campaign status:', error);
+          // If check fails, assume still pending
+          existsOnChain = false;
+        }
+
+        if (existsOnChain) {
+          // Campaign exists on-chain! Update database and show as active
+          const campaignIdShort = camp.campaign_id ? `${camp.campaign_id.slice(0, 10)}...` : 'unknown';
+          console.log(`[API] Campaign ${campaignIdShort} now exists on-chain, updating status...`);
+
+          // Update status in database (async, don't await)
+          supabase
+            .from('campaigns')
+            .update({ status: 'active' })
+            .eq('campaign_id', camp.campaign_id)
+            .then(({ error }) => {
+              if (error) {
+                console.error('[API] Failed to update campaign status:', error);
+              } else {
+                const shortId = camp.campaign_id ? `${camp.campaign_id.slice(0, 10)}...` : 'unknown';
+                console.log(`[API] ✅ Updated campaign ${shortId} to active`);
+              }
+            });
+
+          // Continue to contract read below - campaign exists on-chain so should be readable
+          // If contract read fails, the error handler will catch it
+        } else {
+          // Campaign still pending, show as pending
+          const endTime = camp.end_time || Math.floor(Date.now() / 1000) + 86400 * 90;
+
+          let imageUrl = 'https://images.unsplash.com/photo-1532629345422-7515f3d16bb6?w=500';
+          if (camp.image_urls && Array.isArray(camp.image_urls) && camp.image_urls.length > 0) {
+            imageUrl = formatPinataImageUrl(camp.image_urls[0]);
+          }
+
+          const campaign: Campaign = {
+            id: camp.campaign_id,
+            title: camp.title || '',
+            description: camp.description || '',
+            imageUrl: imageUrl,
+            image: imageUrl,
+            organizationName: camp.organization_name || 'Unknown',
+            organizationAddress: '',
+            category: camp.category || 'General',
+            location: camp.location || 'Global',
+            raised: camp.total_raised || 0,
+            goal: camp.goal || 0,
+            donors: 0,
+            daysLeft: camp.end_time ? calculateDaysLeft(camp.end_time) : 90,
+            isActive: false, // Not active until Safe executes
+            isVerified: camp.organization_verified || false,
+            startDate: camp.start_time || Math.floor(Date.now() / 1000),
+            endDate: endTime,
+            status: 'pending_execution',
+            safeTxHash: camp.safe_tx_hash || undefined,
+          };
+          campaigns.push(campaign);
+          continue;
+        }
+      }
+
       try {
         // Read campaign data from contract
         const campaignData = await publicClient.readContract({
@@ -91,18 +161,18 @@ export async function GET(request: NextRequest) {
           continue;
         }
 
-        const endTime = Number(campaignData[6]) || 0;
+        // Safely extract campaign data with null checks
+        const closed = campaignData[3] ?? false;
+        const disbursed = campaignData[2] ?? false;
+        const totalRaised = campaignData[4] ?? 0n;
+        const startTime = campaignData[5] ?? 0n;
+        const endTime = Number(campaignData[6] ?? 0n);
 
         // Check if campaign is still active (not expired)
         if (endTime <= now) {
           // Campaign has expired - skip it
           continue;
         }
-
-        const closed = campaignData[3];
-        const disbursed = campaignData[2];
-        const totalRaised = campaignData[4];
-        const startTime = campaignData[5];
 
         // Skip if campaign is closed or disbursed
         if (closed || disbursed) {
@@ -128,7 +198,7 @@ export async function GET(request: NextRequest) {
           organizationAddress: '', // No longer using this field from Supabase
           category: camp.category || 'General',
           location: camp.location || 'Global',
-          raised: Number(totalRaised) || camp.total_raised || 0,
+          raised: totalRaised !== undefined ? Number(totalRaised) : (camp.total_raised || 0),
           goal: camp.goal || 0,
           donors: 0, // No donors_count column in Supabase
           daysLeft: calculateDaysLeft(endTime),
@@ -141,6 +211,10 @@ export async function GET(request: NextRequest) {
         campaigns.push(campaign);
 
       } catch (error) {
+        // Log the specific error for debugging
+        const campaignIdShort = camp.campaign_id ? `${camp.campaign_id.slice(0, 10)}...` : 'unknown';
+        console.error(`[API] Error reading contract for campaign ${campaignIdShort}:`, error);
+
         // Error reading contract - log but don't skip if campaign was recently created
         const campaignAge = now - (Math.floor(new Date(camp.created_at).getTime() / 1000));
         // If campaign was created in the last 5 minutes, show it anyway (might still be indexing)
@@ -172,7 +246,8 @@ export async function GET(request: NextRequest) {
           };
           campaigns.push(campaign);
         } else {
-          // Error reading contract for old campaign
+          const campaignIdShort = camp.campaign_id ? `${camp.campaign_id.slice(0, 10)}...` : 'unknown';
+          console.warn(`[API] Skipping old campaign ${campaignIdShort} due to contract read error`);
         }
         continue;
       }
@@ -195,6 +270,12 @@ export async function GET(request: NextRequest) {
     );
 
   } catch (error) {
+    // Log the full error for debugging
+    console.error('[API] Fatal error fetching campaigns:', {
+      error: error instanceof Error ? error.message : error,
+      stack: error instanceof Error ? error.stack : undefined,
+    });
+
     return NextResponse.json(
       {
         success: false,

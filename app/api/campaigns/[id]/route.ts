@@ -13,6 +13,8 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  let campaign: any = null;
+
   try {
     const { id } = await params;
 
@@ -30,42 +32,92 @@ export async function GET(
     }
 
     // Find campaign by campaign_id (support both bytes32 hash and numeric ID)
-    let campaign = null;
 
     if (id.startsWith('0x')) {
-      // It's a bytes32 hash - direct match
+      // It's a bytes32 hash - exact match
       campaign = campaigns?.find((c: any) => c.campaign_id === id);
     } else {
-      // Try numeric ID
+      // Try numeric ID - parse both as numbers for comparison
       const campaignId = parseInt(id, 10);
       campaign = campaigns?.find((c: any) => {
-        // Try parsing campaign_id as numeric
         const cId = parseInt(c.campaign_id, 10);
-        return cId === campaignId;
+        return !isNaN(cId) && cId === campaignId;
       });
     }
 
-    if (!campaign) {
+    // Validate required fields
+    if (!campaign || !campaign.campaign_id) {
+      console.error('[API] Campaign not found or missing campaign_id:', {
+        id,
+        idType: id.startsWith('0x') ? 'bytes32' : 'numeric',
+        campaign: campaign ? 'found but invalid' : 'not found',
+      });
       return NextResponse.json(
-        { success: false, error: 'Campaign not found' },
+        { success: false, error: 'Campaign not found or invalid' },
         { status: 404 }
       );
     }
 
+    // Warn about missing optional fields
+    if (!campaign.title) {
+      console.warn('[API] Campaign missing title:', {
+        campaign_id: campaign.campaign_id,
+      });
+    }
+
+    // If campaign status is 'active', verify it exists on-chain
+    if (campaign.status === 'active') {
+      try {
+        const { verifyCampaignExists } = await import('@/lib/verify-campaign');
+        const existsOnChain = await verifyCampaignExists(campaign.campaign_id);
+
+        if (!existsOnChain) {
+          console.warn('[API] Campaign marked as active in DB but not found on-chain:', {
+            campaign_id: campaign.campaign_id,
+          });
+          // Return pending status instead of failing
+          campaign.status = 'pending_execution';
+        }
+      } catch (error) {
+        console.error('[API] Error verifying campaign on-chain:', error);
+        // Continue anyway - use Supabase data as source of truth
+      }
+    }
+
     const now = Math.floor(Date.now() / 1000);
-    const endTime = campaign.end_time || Math.floor(Date.now() / 1000) + 86400 * 90;
+    const endTime = Number(campaign.end_time ?? (Math.floor(Date.now() / 1000) + 86400 * 90));
 
     // Format image URLs
-    const images = [];
-    if (campaign.image_urls && Array.isArray(campaign.image_urls)) {
-      images.push(...campaign.image_urls.map((url: string) => formatPinataImageUrl(url)));
+    const images: string[] = [];
+    try {
+      if (campaign.image_urls && Array.isArray(campaign.image_urls) && campaign.image_urls.length > 0) {
+        for (const url of campaign.image_urls) {
+          if (typeof url === 'string' && url.length > 0) {
+            images.push(formatPinataImageUrl(url));
+          }
+        }
+      }
+    } catch (error) {
+      console.warn('[API] Error formatting image URLs:', error);
     }
+
     if (images.length === 0) {
       images.push('https://images.unsplash.com/photo-1532629345422-7515f3d16bb6?w=500');
     }
 
     // Use campaign_id as is (could be hash or numeric)
     const campaignIdValue = campaign.campaign_id;
+
+    // Safe number conversions with explicit checks
+    const raisedAmount = Number(campaign.total_raised ?? 0);
+    const goalAmount = Number(campaign.goal ?? 0);
+    const donorsCount = Number(campaign.donors_count ?? 0);
+    const startTime = Number(campaign.start_time ?? Math.floor(Date.now() / 1000));
+
+    // Validate conversions
+    if (isNaN(raisedAmount) || isNaN(goalAmount) || isNaN(donorsCount)) {
+      throw new Error('Invalid numeric data in campaign');
+    }
 
     const campaignDetail = {
       id: id.startsWith('0x') ? id : parseInt(id, 10),
@@ -81,9 +133,9 @@ export async function GET(
       },
       category: campaign.category || 'General',
       location: campaign.location || 'Global',
-      raised: campaign.total_raised || 0,
-      goal: campaign.goal || 0,
-      donors: campaign.donors_count || 0,
+      raised: raisedAmount,
+      goal: goalAmount,
+      donors: donorsCount,
       daysLeft: calculateDaysLeft(endTime),
       createdDate: campaign.created_at ? new Date(campaign.created_at).toLocaleDateString('en-US', {
         year: 'numeric',
@@ -102,19 +154,19 @@ export async function GET(
       ],
       milestones: [
         {
-          amount: campaign.goal * 0.33,
+          amount: goalAmount * 0.33,
           label: '33% of Goal - Initial Support',
-          achieved: (campaign.total_raised || 0) >= campaign.goal * 0.33,
+          achieved: raisedAmount >= goalAmount * 0.33,
         },
         {
-          amount: campaign.goal * 0.66,
+          amount: goalAmount * 0.66,
           label: '66% of Goal - Strong Progress',
-          achieved: (campaign.total_raised || 0) >= campaign.goal * 0.66,
+          achieved: raisedAmount >= goalAmount * 0.66,
         },
         {
-          amount: campaign.goal,
+          amount: goalAmount,
           label: '100% of Goal - Campaign Complete',
-          achieved: (campaign.total_raised || 0) >= campaign.goal,
+          achieved: raisedAmount >= goalAmount,
         },
       ],
     };
@@ -134,8 +186,25 @@ export async function GET(
       }
     );
   } catch (error) {
+    // Log the full error for debugging
+    console.error('[API] Error fetching campaign detail:', {
+      id,
+      idType: id.startsWith('0x') ? 'bytes32' : 'numeric',
+      error: error instanceof Error ? error.message : error,
+      stack: error instanceof Error ? error.stack : undefined,
+      campaignFound: !!campaign,
+      campaignId: campaign?.campaign_id,
+    });
+
     return NextResponse.json(
-      { success: false, error: error instanceof Error ? error.message : 'Unknown error' },
+      {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error',
+        details: process.env.NODE_ENV === 'development' ? {
+          id,
+          idType: id.startsWith('0x') ? 'bytes32' : 'numeric',
+        } : undefined,
+      },
       { status: 500 }
     );
   }

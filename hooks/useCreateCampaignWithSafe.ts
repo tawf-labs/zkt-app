@@ -1,18 +1,11 @@
 /**
- * SAFE MULTISIG INTEGRATION (DISABLED - Using Direct Contract Instead)
+ * SAFE MULTISIG INTEGRATION
  *
- * This hook is commented out to use direct contract interaction.
- *
- * TO RE-ENABLE SAFE MULTISIG:
- * 1. Uncomment this entire file
- * 2. Update app/campaigns/new/page.tsx to use useCreateCampaignWithSafe again
- * 3. Change status back to 'pending_execution'
- * 4. Uncomment Safe status polling in app/campaigns/[id]/page.tsx
+ * This hook provides Safe multisig functionality for campaign creation.
  *
  * Safe Address: 0xD264BE80817EAfaC5F7575698913FEc4cB38a016
  * Requires: 3/7 signatures for execution
  */
-/*
 'use client'
 
 import { useCallback, useState, useEffect } from 'react'
@@ -399,4 +392,3 @@ export const useCreateCampaignWithSafe = (): CreateCampaignWithSafeResult => {
     isHydrated,
   }
 }
-*/

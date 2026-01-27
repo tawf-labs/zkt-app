@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import {
   Upload, CheckCircle2, Loader2, X, AlertCircle,
   ChevronRight, Sparkles, Lock, ShieldCheck, ExternalLink
@@ -9,23 +10,23 @@ import { useAccount, useWriteContract, usePublicClient, useWaitForTransactionRec
 import { toast } from '@/components/ui/use-toast';
 import { keccak256, stringToBytes, pad } from 'viem';
 import { uploadFilesToPinata } from '@/lib/pinata-client';
-// import { useCreateCampaignWithSafe, type NGOAllocation } from '@/hooks/useCreateCampaignWithSafe'; // DISABLED - Using direct contract instead
+import { useCreateCampaignWithSafe, type NGOAllocation } from '@/hooks/useCreateCampaignWithSafe';
 import { useCampaignStatus } from '@/hooks/useCampaignStatus';
 import { saveCampaignData, type CampaignData } from '@/lib/supabase-client';
 import { ZKT_CAMPAIGN_POOL_ADDRESS, ZKTCampaignPoolABI } from '@/lib/zkt-campaign-pool';
 
-// Safe multisig constants (DISABLED - Not using Safe anymore)
-// const SAFE_ADDRESS = '0xD264BE80817EAfaC5F7575698913FEc4cB38a016';
-// const SAFE_TX_URL = 'https://app.safe.global/transactions/unsafe?safe=eth:0xD264BE80817EAfaC5F7575698913FEc4cB38a016';
-// const SAFE_SIGNERS = [
-//   '0x2e7AC5ED2e9359cEC39F82D050b915C518041ee8',
-//   '0x236c6ea9DDc48ae72DCFb8724BF8a136aa3C6EBB',
-//   '0xB4D04aFd15Fa8752EE94B1510A755e04d362876D',
-//   '0x9F5952826B61f1Aab3A4E7E8Fb238a8894D1D174',
-//   '0xeF4DB09D536439831FEcaA33F4250168976535E',
-//   '0xE509912bAA5Dd52F3f51E994bb9F9A79FDd2249a',
-//   '0x027822307511a055eB0f5907F2685DaB1204e14B',
-// ];
+// Safe multisig constants
+const SAFE_ADDRESS = '0xD264BE80817EAfaC5F7575698913FEc4cB38a016';
+const SAFE_TX_URL = `https://app.safe.global/transactions/unsafe?safe=base:${SAFE_ADDRESS}`;
+const SAFE_SIGNERS = [
+  '0x2e7AC5ED2e9359cEC39F82D050b915C518041ee8',
+  '0x236c6ea9DDc48ae72DCFb8724BF8a136aa3C6EBB',
+  '0xB4D04aFd15Fa8752EE94B1510A755e04d362876D',
+  '0x9F5952826B61f1Aab3A4E7E8Fb238a8894D1D174',
+  '0xeF4DB09D536439831FEcaA33F4250168976535E',
+  '0xE509912bAA5Dd52F3f51E994bb9F9A79FDd2249a',
+  '0x027822307511a055eB0f5907F2685DaB1204e14B',
+];
 
 // Helper to format date - properly handles local time for datetime-local input
 const dateToLocalString = (timestamp: number): string => {
@@ -303,13 +304,12 @@ function Step2NGOSelection({ selectedNGOs, setSelectedNGOs, onNext, onBack }: St
       wallet: '0x2ca80Cc5e254C45E99281F670d694B22E6a90FC4',
       name: 'Telaga Foundation (Test)',
     },
-    // Add more NGOs here after approving them on the contract
-    // {
-    //   id: keccak256(stringToBytes('NGO-2')),
-    //   wallet: '0x...', // Must be approved first via approveNGO()
-    //   name: 'Another NGO',
-    // },
   ]);
+
+  // Custom NGO input state
+  const [showCustomNGOForm, setShowCustomNGOForm] = useState(false);
+  const [customNGOName, setCustomNGOName] = useState('');
+  const [customNGOWallet, setCustomNGOWallet] = useState('');
 
   const toggleNGO = (ngo: NGO) => {
     const isSelected = selectedNGOs.some(s => s.id === ngo.id);
@@ -320,16 +320,77 @@ function Step2NGOSelection({ selectedNGOs, setSelectedNGOs, onNext, onBack }: St
     }
   };
 
+  // Validate Ethereum address
+  const isValidAddress = (address: string) => {
+    return /^0x[a-fA-F0-9]{40}$/.test(address);
+  };
+
+  // Add custom NGO
+  const handleAddCustomNGO = () => {
+    // Validate inputs
+    if (!customNGOName.trim() || customNGOName.length < 3) {
+      toast({
+        title: 'Invalid NGO Name',
+        description: 'NGO name must be at least 3 characters',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (!isValidAddress(customNGOWallet)) {
+      toast({
+        title: 'Invalid Wallet Address',
+        description: 'Please enter a valid Ethereum address (0x...)',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    // Check for duplicate
+    if (selectedNGOs.some(s => s.wallet.toLowerCase() === customNGOWallet.toLowerCase())) {
+      toast({
+        title: 'Duplicate NGO',
+        description: 'This NGO wallet address is already added',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    // Generate NGO ID from wallet address (deterministic)
+    const ngoId = keccak256(stringToBytes(customNGOWallet));
+
+    // Add to selected NGOs
+    const newNGO: NGO = {
+      id: ngoId,
+      wallet: customNGOWallet as `0x${string}`,
+      name: customNGOName.trim(),
+    };
+
+    setSelectedNGOs([...selectedNGOs, newNGO]);
+
+    // Reset form
+    setCustomNGOName('');
+    setCustomNGOWallet('');
+    setShowCustomNGOForm(false);
+
+    toast({
+      title: 'NGO Added',
+      description: `${customNGOName} has been added to the list`,
+    });
+  };
+
   return (
     <div className="space-y-6">
       <div>
         <h2 className="text-2xl font-bold mb-2">Step 2: Select NGOs</h2>
         <p className="text-muted-foreground mb-4">
-          Choose NGOs that will receive funds from this campaign.
+          Choose NGOs that will receive funds from this campaign, or add a custom NGO wallet address.
         </p>
       </div>
 
+      {/* Available NGOs List */}
       <div className="space-y-3">
+        <p className="text-sm font-semibold text-muted-foreground">Available NGOs</p>
         {availableNGOs.map((ngo) => (
           <div
             key={ngo.id}
@@ -350,11 +411,85 @@ function Step2NGOSelection({ selectedNGOs, setSelectedNGOs, onNext, onBack }: St
         ))}
       </div>
 
+      {/* Custom NGO Form */}
+      <div className="border-t pt-4">
+        {!showCustomNGOForm ? (
+          <button
+            onClick={() => setShowCustomNGOForm(true)}
+            className="w-full border-2 border-dashed border-primary/50 rounded-lg p-4 text-center hover:bg-primary/5 transition-colors"
+          >
+            <p className="font-semibold text-sm text-primary">+ Add Custom NGO</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              Add a custom NGO wallet address
+            </p>
+          </button>
+        ) : (
+          <div className="bg-secondary/30 border rounded-lg p-4 space-y-4">
+            <div className="flex items-center justify-between">
+              <p className="font-semibold text-sm">Add Custom NGO</p>
+              <button
+                onClick={() => {
+                  setShowCustomNGOForm(false);
+                  setCustomNGOName('');
+                  setCustomNGOWallet('');
+                }}
+                className="text-muted-foreground hover:text-foreground"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="space-y-3">
+              <div>
+                <label className="block text-sm font-semibold mb-2">NGO Name *</label>
+                <input
+                  type="text"
+                  placeholder="e.g., Red Cross Indonesia"
+                  value={customNGOName}
+                  onChange={(e) => setCustomNGOName(e.target.value)}
+                  className="w-full px-3 py-2 border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary transition-colors text-sm"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold mb-2">NGO Wallet Address *</label>
+                <input
+                  type="text"
+                  placeholder="0x..."
+                  value={customNGOWallet}
+                  onChange={(e) => setCustomNGOWallet(e.target.value)}
+                  className="w-full px-3 py-2 border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary transition-colors text-sm font-mono"
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Enter the Ethereum wallet address of the NGO
+                </p>
+              </div>
+
+              <button
+                onClick={handleAddCustomNGO}
+                className="w-full bg-primary text-white hover:bg-primary/90 rounded-lg h-10 font-semibold transition-all text-sm"
+              >
+                Add NGO
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Selected NGOs Summary */}
       {selectedNGOs.length > 0 && (
         <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-          <p className="text-sm font-semibold text-green-900">
+          <p className="text-sm font-semibold text-green-900 mb-2">
             ✅ {selectedNGOs.length} NGO{selectedNGOs.length !== 1 ? 's' : ''} selected
           </p>
+          <div className="space-y-1">
+            {selectedNGOs.map((ngo) => (
+              <div key={ngo.id} className="text-xs text-green-800 flex items-center justify-between">
+                <span>{ngo.name}</span>
+                <span className="font-mono">{ngo.wallet.slice(0, 8)}...{ngo.wallet.slice(-6)}</span>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 
@@ -988,14 +1123,121 @@ function Step6Review({
  */
 interface Step7Props {
   safeTxHash: string;
+  campaignId: string;
 }
 
-function Step7WaitingSafe({ safeTxHash }: Step7Props) {
-  const safeUrl = `${SAFE_TX_URL}`;
+function Step7WaitingSafe({ safeTxHash, campaignId }: Step7Props) {
+  const router = useRouter();
+  const safeUrl = SAFE_TX_URL;
+  const [isChecking, setIsChecking] = useState(false);
+  const [campaignExists, setCampaignExists] = useState(false);
+
+  // Auto-refresh to check if Safe executed
+  useEffect(() => {
+    if (!safeTxHash || !campaignId) return;
+
+    // Function to check campaign status
+    const checkStatus = async () => {
+      try {
+        console.log('[Step7] Checking if campaign exists on-chain...');
+
+        // Import the verification function dynamically to avoid SSR issues
+        const { verifyCampaignExists } = await import('@/lib/verify-campaign');
+        const exists = await verifyCampaignExists(campaignId);
+
+        if (exists) {
+          console.log('[Step7] ✅ Campaign exists! Redirecting...');
+          setCampaignExists(true);
+
+          // Update database status
+          const { supabase } = await import('@/lib/supabase-client');
+          await supabase
+            .from('campaigns')
+            .update({ status: 'active' })
+            .eq('campaign_id', campaignId);
+
+          // Redirect to campaigns list after 2 seconds
+          setTimeout(() => {
+            router.push('/campaigns');
+          }, 2000);
+        }
+      } catch (error) {
+        console.error('[Step7] Error checking status:', error);
+      }
+    };
+
+    // Check immediately on mount
+    checkStatus();
+
+    // Check every 15 seconds
+    const interval = setInterval(checkStatus, 15000);
+
+    return () => clearInterval(interval);
+  }, [safeTxHash, campaignId, router]);
+
+  // Manual check button handler
+  const handleManualCheck = async () => {
+    setIsChecking(true);
+    try {
+      const { verifyCampaignExists } = await import('@/lib/verify-campaign');
+      const exists = await verifyCampaignExists(campaignId);
+
+      if (exists) {
+        setCampaignExists(true);
+
+        // Update database
+        const { supabase } = await import('@/lib/supabase-client');
+        await supabase
+          .from('campaigns')
+          .update({ status: 'active' })
+          .eq('campaign_id', campaignId);
+
+        // Redirect
+        setTimeout(() => {
+          router.push('/campaigns');
+        }, 2000);
+      } else {
+        // Show toast that campaign is still pending
+        const { toast } = await import('@/components/ui/use-toast');
+        toast({
+          title: 'Still Pending',
+          description: 'Campaign not yet created on-chain. Please wait for Safe execution.',
+          variant: 'default',
+        });
+      }
+    } catch (error) {
+      console.error('[Step7] Manual check error:', error);
+    } finally {
+      setIsChecking(false);
+    }
+  };
+
+  if (campaignExists) {
+    return (
+      <div className="space-y-6 text-center">
+        <div className="inline-flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br from-green-400 to-green-600 shadow-lg mx-auto">
+          <CheckCircle2 className="h-10 w-10 text-white" />
+        </div>
+
+        <div className="space-y-2">
+          <h2 className="text-3xl font-bold">Campaign Created! 🎉</h2>
+          <p className="text-muted-foreground text-lg">
+            Your campaign has been successfully created on the blockchain.
+          </p>
+        </div>
+
+        <div className="bg-green-50 border border-green-200 rounded-lg p-6">
+          <p className="text-sm text-green-900 font-semibold">
+            Redirecting to campaigns page...
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 text-center">
-      <div className="inline-flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br from-amber-400 to-amber-600 shadow-lg mx-auto">
+      <div className="inline-flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br from-amber-400 to-amber-600 shadow-lg mx-auto animate-pulse">
         <ShieldCheck className="h-10 w-10 text-white" />
       </div>
 
@@ -1010,15 +1252,18 @@ function Step7WaitingSafe({ safeTxHash }: Step7Props) {
         <h3 className="font-semibold text-blue-900 mb-3">What happens next?</h3>
         <ol className="text-sm text-blue-800 space-y-2 list-decimal list-inside">
           <li>Open Safe app to review the transaction</li>
-          <li>{SAFE_SIGNERS.length} signers must approve</li>
+          <li>{SAFE_SIGNERS.length} signers must approve (minimum 3)</li>
           <li>After execution, campaign is created with allocations locked</li>
           <li>Campaign will automatically be ready for donations</li>
         </ol>
       </div>
 
-      <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+      <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 space-y-2">
         <p className="text-sm text-amber-900">
           <strong>Safe Transaction Hash:</strong> {safeTxHash?.slice(0, 12)}...{safeTxHash?.slice(-12)}
+        </p>
+        <p className="text-sm text-amber-900">
+          <strong>Campaign ID:</strong> {campaignId?.slice(0, 12)}...{campaignId?.slice(-12)}
         </p>
       </div>
 
@@ -1032,8 +1277,31 @@ function Step7WaitingSafe({ safeTxHash }: Step7Props) {
           <ExternalLink className="h-4 w-4" />
           Open Safe App
         </a>
+        <button
+          onClick={handleManualCheck}
+          disabled={isChecking}
+          className="w-full border-2 border-border rounded-xl h-12 px-6 font-semibold hover:bg-accent transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+        >
+          {isChecking ? (
+            <>
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Checking...
+            </>
+          ) : (
+            <>
+              <Loader2 className="h-4 w-4" />
+              Check Status Now
+            </>
+          )}
+        </button>
+        <button
+          onClick={() => window.location.reload()}
+          className="w-full border border-border rounded-xl h-12 px-6 font-semibold hover:bg-accent transition-all"
+        >
+          Refresh Page
+        </button>
         <p className="text-xs text-muted-foreground">
-          After approval and execution, refresh to see your campaign
+          ✨ This page auto-checks every 15 seconds. Once the campaign is created, you'll be redirected automatically.
         </p>
       </div>
     </div>
@@ -1058,9 +1326,9 @@ function SuccessScreen({ createdCampaign, onReset }: SuccessProps) {
       </div>
 
       <div className="space-y-2">
-        <h2 className="text-3xl font-bold">Campaign Created! 🎉</h2>
+        <h2 className="text-3xl font-bold">Campaign Proposed to Safe! 🎉</h2>
         <p className="text-muted-foreground text-lg">
-          Campaign with allocations created directly on the blockchain.
+          Campaign transaction has been proposed to Safe multisig. Waiting for 3/7 signers to approve.
         </p>
       </div>
 
@@ -1068,9 +1336,9 @@ function SuccessScreen({ createdCampaign, onReset }: SuccessProps) {
         <div className="flex items-start gap-4 p-5 rounded-xl border-2 border-green-500 bg-green-50">
           <CheckCircle2 className="h-6 w-6 text-green-600 flex-shrink-0 mt-0.5" />
           <div className="flex-1">
-            <div className="font-bold text-lg mb-1 text-green-900">✅ Campaign Created on Blockchain</div>
+            <div className="font-bold text-lg mb-1 text-green-900">✅ Transaction Proposed to Safe</div>
             <p className="text-sm text-green-800">
-              Campaign created with allocations locked. Ready to receive donations immediately.
+              Your campaign has been submitted to Safe multisig for approval. Once 3 out of 7 signers approve, the campaign will be created on the blockchain with allocations locked.
             </p>
           </div>
         </div>
@@ -1082,32 +1350,29 @@ function SuccessScreen({ createdCampaign, onReset }: SuccessProps) {
             <div className="space-y-2 text-xs text-gray-700">
               <p><strong>Campaign Name:</strong> {createdCampaign?.campaignTitle}</p>
               <p><strong>Campaign ID:</strong> <span className="font-mono break-all">{createdCampaign?.campaignId?.slice(0, 12)}...{createdCampaign?.campaignId?.slice(-12)}</span></p>
-              <p><strong>Allocation Status:</strong> 🔒 Allocations locked</p>
+              <p><strong>Allocation Status:</strong> 🔒 Will be locked after Safe approval</p>
+              {createdCampaign?.safeTxHash && (
+                <>
+                  <p><strong>Safe Transaction:</strong> <span className="font-mono">{createdCampaign.safeTxHash.slice(0, 12)}...{createdCampaign.safeTxHash.slice(-12)}</span></p>
+                </>
+              )}
             </div>
           </div>
         </div>
 
-        {createdCampaign?.txHashes && createdCampaign.txHashes.length > 0 && (
+        {createdCampaign?.safeTxHash && (
           <div className="flex items-start gap-4 p-5 rounded-xl border border-blue-200 bg-blue-50">
             <ExternalLink className="h-5 w-5 text-blue-600 flex-shrink-0 mt-0.5" />
             <div className="flex-1">
-              <div className="font-bold text-base mb-3 text-blue-900">🔗 Blockchain Transactions</div>
-              <div className="space-y-2">
-                {createdCampaign.txHashes.map((hash: string, idx: number) => (
-                  <a
-                    key={hash}
-                    href={`${explorerUrl}/tx/${hash}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="block text-xs text-blue-700 hover:text-blue-900 hover:underline"
-                  >
-                    {idx === 0 && 'Create Campaign: '}
-                    {idx > 0 && idx < createdCampaign.txHashes.length - 1 && `Set Allocation #${idx}: `}
-                    {idx === createdCampaign.txHashes.length - 1 && 'Lock Allocations: '}
-                    <span className="font-mono">{hash.slice(0, 10)}...{hash.slice(-8)}</span>
-                  </a>
-                ))}
-              </div>
+              <div className="font-bold text-base mb-3 text-blue-900">🔗 Safe Transaction</div>
+              <a
+                href={SAFE_TX_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-xs text-blue-700 hover:text-blue-900 hover:underline block"
+              >
+                View on Safe App →
+              </a>
             </div>
           </div>
         )}
@@ -1162,6 +1427,9 @@ function CreateCampaignInner() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [transactionStep, setTransactionStep] = useState('');
   const [txHashes, setTxHashes] = useState<string[]>([]);
+
+  // Safe multisig hook
+  const { createCampaignWithAllocations, isLoading: safeIsLoading, safeTxHash, error: safeError } = useCreateCampaignWithSafe();
 
   // Enhanced transaction progress tracking
   const [currentTransaction, setCurrentTransaction] = useState({
@@ -1300,7 +1568,7 @@ function CreateCampaignInner() {
     return receipt;
   };
 
-  // Submit to contract (Step 6)
+  // Submit to Safe multisig (Step 6)
   const handleSubmitToSafe = async () => {
     if (!isConnected || !userAddress) {
       toast({
@@ -1313,10 +1581,6 @@ function CreateCampaignInner() {
 
     setIsSubmitting(true);
     setTxHashes([]);
-    const hashes: string[] = [];
-
-    // Calculate total transactions
-    const totalTransactions = 2 + allocations.length; // create + allocations + lock
 
     try {
       // Generate campaign ID
@@ -1338,86 +1602,20 @@ function CreateCampaignInner() {
         }
       }
 
-      // Step 1: Create campaign on contract
-      setCurrentTransaction({
-        step: 1,
-        total: totalTransactions,
-        name: 'Creating campaign on blockchain...',
-        hash: '',
-      });
-      setTransactionStep('Creating campaign on blockchain...');
+      setTransactionStep('Proposing transaction to Safe multisig...');
 
-      const createHash = await writeContractAsync({
-        address: ZKT_CAMPAIGN_POOL_ADDRESS as `0x${string}`,
-        abi: ZKTCampaignPoolABI,
-        functionName: 'createCampaign',
-        args: [campaignIdHash, startTime, endTime],
-      });
-      hashes.push(createHash);
-      setTxHashes([...hashes]);
-      setCurrentTransaction(prev => ({ ...prev, hash: createHash }));
+      // Prepare allocations for Safe
+      const safeAllocations: NGOAllocation[] = allocations.map(alloc => ({
+        ngoId: alloc.ngoId,
+        ngoName: alloc.ngoName,
+        bps: alloc.bps,
+      }));
 
-      // Wait for confirmation
-      await waitForTransaction(createHash);
-
-      // Step 2: Set allocations for each NGO
-      for (let i = 0; i < allocations.length; i++) {
-        const alloc = allocations[i];
-        setCurrentTransaction({
-          step: 2 + i,
-          total: totalTransactions,
-          name: `Setting allocation ${i + 1}/${allocations.length} (${alloc.ngoName})...`,
-          hash: '',
-        });
-        setTransactionStep(`Setting allocation ${i + 1}/${allocations.length} (${alloc.ngoName})...`);
-
-        const allocHash = await writeContractAsync({
-          address: ZKT_CAMPAIGN_POOL_ADDRESS as `0x${string}`,
-          abi: ZKTCampaignPoolABI,
-          functionName: 'setAllocation',
-          args: [campaignIdHash, alloc.ngoId, BigInt(alloc.bps)],
-        });
-        hashes.push(allocHash);
-        setTxHashes([...hashes]);
-        setCurrentTransaction(prev => ({ ...prev, hash: allocHash }));
-
-        // Wait for each allocation to confirm
-        await waitForTransaction(allocHash);
-      }
-
-      // Step 3: Lock allocations
-      setCurrentTransaction({
-        step: totalTransactions,
-        total: totalTransactions,
-        name: 'Locking allocations...',
-        hash: '',
-      });
-      setTransactionStep('Locking allocations...');
-
-      const lockHash = await writeContractAsync({
-        address: ZKT_CAMPAIGN_POOL_ADDRESS as `0x${string}`,
-        abi: ZKTCampaignPoolABI,
-        functionName: 'lockAllocation',
-        args: [campaignIdHash],
-      });
-      hashes.push(lockHash);
-      setTxHashes([...hashes]);
-      setCurrentTransaction(prev => ({ ...prev, hash: lockHash }));
-
-      // Wait for lock to confirm
-      await waitForTransaction(lockHash);
-
-      // Step 4: Save to Supabase with 'active' status
-      setCurrentTransaction({
-        step: totalTransactions,
-        total: totalTransactions,
-        name: 'Saving campaign metadata...',
-        hash: '',
-      });
-      setTransactionStep('Saving campaign metadata...');
-
-      await saveCampaignData({
+      // Submit to Safe multisig
+      const result = await createCampaignWithAllocations({
         campaignId: campaignIdHash,
+        startTime: startTime,
+        endTime: endTime,
         title: campaignData.name,
         description: campaignData.description,
         category: campaignData.category,
@@ -1427,21 +1625,18 @@ function CreateCampaignInner() {
         organizationVerified: campaignData.organizationVerified,
         imageUrls: uploadedImageUrls,
         tags: campaignData.tags,
-        startTime: startTime,
-        endTime: endTime,
-        status: 'active',
+        allocations: safeAllocations,
       });
 
-      // Show success screen
+      // Success - go to Safe approval waiting screen
       setCreatedCampaign({
         campaignTitle: campaignData.name,
         campaignId: campaignIdHash,
-        allocationLocked: true,
-        txHashes: hashes,
+        safeTxHash: result.safeTxHash,
       });
       setTransactionStep('');
       setCurrentTransaction({ step: 0, total: 0, name: '', hash: '' });
-      setStep(8); // Go directly to success screen
+      setStep(7); // Go to Safe approval waiting screen
     } catch (error: any) {
       // Detailed error logging
       let errorMsg = 'Failed to create campaign';
@@ -1459,7 +1654,7 @@ function CreateCampaignInner() {
       if (error?.message?.includes('User rejected')) {
         errorMsg = 'Transaction rejected by user';
       } else if (error?.name === 'ContractFunctionExecutionError') {
-        errorMsg = `Access denied: You may not have permission to create campaigns. Only the admin can call this function.`;
+        errorMsg = `Access denied: You may not have permission to create campaigns.`;
       }
 
       toast({
@@ -1597,6 +1792,14 @@ function CreateCampaignInner() {
               isSubmitting={isSubmitting}
               transactionStep={transactionStep}
               currentTransaction={currentTransaction}
+            />
+          )}
+
+          {/* Step 7: Waiting for Safe execution */}
+          {step === 7 && createdCampaign && (
+            <Step7WaitingSafe
+              safeTxHash={createdCampaign.safeTxHash || ''}
+              campaignId={createdCampaign.campaignId || ''}
             />
           )}
         </div>

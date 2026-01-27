@@ -5,6 +5,7 @@ import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft, Users, Clock, CircleCheck, Share2, Heart, MapPin, Calendar, Target, TrendingUp, Shield, FileText, Loader2, AlertCircle, ExternalLink } from 'lucide-react';
 import { DonationDialog } from '@/components/donations/donation-dialog';
+import { useCampaignStatusSync } from '@/hooks/useCampaignStatusSync';
 import dynamic from 'next/dynamic';
 
 const CampaignMap = dynamic(() => import('@/components/campaigns/campaign-map'), {
@@ -50,6 +51,10 @@ export default function CampaignDetail() {
   const params = useParams();
   const campaignId = params.id as string;
 
+  // Get campaign ID hash (for Safe status polling)
+  const campaignIdHash = campaignId?.startsWith('0x') ? campaignId : null;
+
+  // State declarations MUST come before hook calls that use them
   const [campaignDetail, setCampaignDetail] = useState<CampaignDetailData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -58,6 +63,10 @@ export default function CampaignDetail() {
   const [activeTab, setActiveTab] = useState('story');
   const [selectedImage, setSelectedImage] = useState(0);
   const [showDonationDialog, setShowDonationDialog] = useState(false);
+
+  // Poll for Safe transaction execution (auto-updates status to 'active')
+  // This hook must be called AFTER campaignDetail state is declared
+  useCampaignStatusSync(campaignIdHash, campaignDetail?.status === 'pending_execution');
 
   // Fetch campaign detail
   useEffect(() => {
@@ -151,8 +160,8 @@ export default function CampaignDetail() {
           Back to Campaigns
         </Link>
 
-        {/* Pending Status Banner (DISABLED - Not using Safe anymore) */}
-        {/* {campaignDetail.status === 'pending_execution' && (
+        {/* Pending Status Banner */}
+        {campaignDetail.status === 'pending_execution' && (
           <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-lg flex items-start gap-3">
             <AlertCircle className="h-5 w-5 text-amber-600 mt-0.5 flex-shrink-0" />
             <div className="flex-1">
@@ -172,7 +181,7 @@ export default function CampaignDetail() {
               )}
             </div>
           </div>
-        )} */}
+        )}
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Main Content */}

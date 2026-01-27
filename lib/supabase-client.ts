@@ -37,6 +37,12 @@ export interface CampaignData {
 // Save campaign off-chain data to Supabase (with upsert to handle duplicates)
 export const saveCampaignData = async (data: CampaignData) => {
   try {
+    console.log('[saveCampaignData] Attempting to save campaign:', {
+      campaignId: data.campaignId,
+      title: data.title,
+      status: data.status,
+    });
+
     // Check if campaign already exists
     const { data: existingCampaign, error: checkError } = await supabase
       .from('campaigns')
@@ -45,10 +51,15 @@ export const saveCampaignData = async (data: CampaignData) => {
       .maybeSingle();
 
     if (checkError && checkError.code !== 'PGRST116') {
+      console.error('[saveCampaignData] Error checking existing campaign:', checkError);
       throw checkError;
     }
 
     if (existingCampaign) {
+      console.log('[saveCampaignData] Campaign already exists, skipping insert:', {
+        id: existingCampaign.id,
+        campaignId: data.campaignId,
+      });
       return existingCampaign;
     }
 
@@ -69,10 +80,13 @@ export const saveCampaignData = async (data: CampaignData) => {
       status: data.status || 'active',
     };
 
+    console.log('[saveCampaignData] Inserting campaign data:', insertData);
+
     // Only add safe_tx_hash if it exists (it's optional)
-    if (data.safeTxHash) {
-      insertData.safe_tx_hash = data.safeTxHash;
-    }
+    // Note: Column might not exist in DB yet, so we skip it if not provided
+    // if (data.safeTxHash) {
+    //   insertData.safe_tx_hash = data.safeTxHash;
+    // }
 
     const { data: result, error } = await supabase
       .from('campaigns')
@@ -80,15 +94,29 @@ export const saveCampaignData = async (data: CampaignData) => {
       .select();
 
     if (error) {
+      console.error('[saveCampaignData] Supabase insert error:', {
+        message: error.message,
+        code: error.code,
+        details: error.details,
+        hint: error.hint,
+      });
       throw new Error(`Supabase insert failed: ${error.message} (Code: ${error.code})`);
     }
 
     if (!result || result.length === 0) {
+      console.error('[saveCampaignData] No result returned from Supabase');
       throw new Error('No result returned from Supabase');
     }
 
+    console.log('[saveCampaignData] ✅ Campaign saved successfully:', {
+      id: result[0].id,
+      campaignId: result[0].campaign_id,
+      title: result[0].title,
+    });
+
     return result[0];
   } catch (error) {
+    console.error('[saveCampaignData] Fatal error:', error);
     throw error;
   }
 };
