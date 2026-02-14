@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { formatPinataImageUrl } from '@/lib/pinata-client';
-import { supabase } from '@/lib/supabase-client';
+import { supabase } from '@/lib/supabase-client-auth';
 
 // Helper function to calculate days left
 function calculateDaysLeft(endDate: number): number {

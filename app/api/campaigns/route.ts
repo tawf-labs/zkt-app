@@ -4,7 +4,7 @@ import { baseSepolia } from 'viem/chains';
 import { ZKT_CAMPAIGN_POOL_ADDRESS, ZKTCampaignPoolABI } from '@/lib/zkt-campaign-pool';
 import { Campaign } from '@/hooks/useCampaigns';
 import { formatPinataImageUrl } from '@/lib/pinata-client';
-import { supabase } from '@/lib/supabase-client';
+import { supabase } from '@/lib/supabase-client-auth';
 import { verifyCampaignExists, getCampaignOnChainStatus } from '@/lib/verify-campaign';
 
 // Create a public client for reading contract data

@@ -9,7 +9,7 @@ import { Loader2, AlertCircle, Lock, ExternalLink, Gift } from "lucide-react";
 import { useWallet } from "@/components/providers/web3-provider";
 import { useToast } from "@/hooks/use-toast";
 import { parseDonationAmount } from "@/lib/donate";
-import { supabase } from "@/lib/supabase-client";
+import { supabase } from "@/lib/supabase-client-auth";
 import { useCampaignStatus } from "@/hooks/useCampaignStatus";
 import { CONTRACT_ADDRESSES } from "@/lib/abi";
 

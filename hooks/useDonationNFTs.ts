@@ -12,6 +12,7 @@ export interface DonationNFT {
   amount: bigint;
   isImpact: boolean;
   ipfsCID: string;
+  blockNumber?: bigint;
 }
 
 export function useDonationNFTs() {
@@ -78,12 +79,18 @@ export function useDonationNFTs() {
               }) as [string, bigint, boolean, string, string];
 
               const [campaignId, amount, isImpact, ipfsCID] = receipt;
+
+              // Try to get block number from current block during iteration
+              // This is an approximation - for exact minting block, we'd need to query Minted events
+              const currentBlock = await publicClient.getBlockNumber();
+
               nftsData.push({
                 tokenId: BigInt(tokenId),
                 campaignId,
                 amount,
                 isImpact,
                 ipfsCID,
+                blockNumber: currentBlock, // Approximate with current block
               });
             }
           } catch (error) {

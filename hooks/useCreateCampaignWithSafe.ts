@@ -15,7 +15,7 @@ import SafeApiKit from '@safe-global/api-kit'
 import Safe from '@safe-global/protocol-kit'
 import { ethers } from 'ethers'
 import { ZKT_CAMPAIGN_POOL_ADDRESS, ZKTCampaignPoolABI } from '@/lib/zkt-campaign-pool'
-import { saveCampaignData, type CampaignData } from '@/lib/supabase-client'
+import { saveCampaignData, type CampaignData } from '@/lib/supabase-client-auth'
 
 export interface NGOAllocation {
   ngoId: string

@@ -4,16 +4,25 @@ import React, { useState } from 'react';
 import { Award, FileText, Vote, Wallet, ShieldCheck, Download, ExternalLink, TrendingUp, CheckCircle2, XCircle, Clock, Settings, Gift, RefreshCw, ImageIcon } from 'lucide-react';
 import { useAccount } from 'wagmi';
 import { useDonationNFTs, DonationNFT } from '@/hooks/useDonationNFTs';
+import { useVotingPower } from '@/hooks/useVotingPower';
+import { useProposals } from '@/hooks/useProposals';
 import { CONTRACT_ADDRESSES } from '@/lib/abi';
 import { formatIDRX } from '@/lib/abi';
+import { getCampaignName, getCampaignCategory } from '@/lib/campaign-utils';
 
 type SidebarTab = 'overview' | 'tax-reports' | 'governance-dao' | 'wallet-settings';
 
 const DonorDashboard: React.FC = () => {
   const { address, isConnected } = useAccount();
-  const { nfts, balance, isLoading, refetch } = useDonationNFTs();
+  const { nfts, balance, isLoading: isLoadingNFTs, refetch: refetchNFTs } = useDonationNFTs();
+  const { votingPower, isLoading: isLoadingVoting } = useVotingPower();
+  const { proposals, isLoading: isLoadingProposals } = useProposals([0, 1, 2, 3]);
   const [sidebarTab, setSidebarTab] = useState<SidebarTab>('overview');
   const [activeTab, setActiveTab] = useState<'receipts' | 'history' | 'governance'>('receipts');
+
+  // Calculate overview statistics from real data
+  const totalDonated = nfts.reduce((sum, nft) => sum + Number(nft.amount), 0);
+  const uniqueCampaigns = new Set(nfts.map((nft) => nft.campaignId)).size;
 
   return (
     <div className="min-h-screen bg-white">
@@ -92,18 +101,22 @@ const DonorDashboard: React.FC = () => {
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="text-card-foreground rounded-xl border shadow-sm bg-white/5 border-black p-6">
                   <div className="text-sm font-medium text-muted-foreground mb-2">Total Donated</div>
-                  <div className="text-2xl font-bold text-primary">$1,250.00</div>
-                  <p className="text-xs text-muted-foreground mt-1">+12% from last month</p>
+                  <div className="text-2xl font-bold text-primary">{formatIDRX(BigInt(totalDonated))} IDRX</div>
+                  <p className="text-xs text-muted-foreground mt-1">{nfts.length} donation{nfts.length !== 1 ? 's' : ''}</p>
                 </div>
                 <div className="bg-white text-card-foreground rounded-xl border border-black shadow-sm p-6">
                   <div className="text-sm font-medium text-muted-foreground mb-2">Campaigns Supported</div>
-                  <div className="text-2xl font-bold">14</div>
-                  <p className="text-xs text-muted-foreground mt-1">Across 3 categories</p>
+                  <div className="text-2xl font-bold">{uniqueCampaigns}</div>
+                  <p className="text-xs text-muted-foreground mt-1">Across multiple categories</p>
                 </div>
                 <div className="bg-white text-card-foreground rounded-xl border border-black shadow-sm p-6">
                   <div className="text-sm font-medium text-muted-foreground mb-2">Governance Power</div>
-                  <div className="text-2xl font-bold text-purple-600">850 vZKT</div>
-                  <p className="text-xs text-muted-foreground mt-1">Top 15% of donors</p>
+                  <div className="text-2xl font-bold text-purple-600">
+                    {isLoadingVoting ? '...' : `${votingPower?.toString() || '0'} vZKT`}
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {votingPower && Number(votingPower) > 0 ? 'Voting enabled' : 'Make donations to earn power'}
+                  </p>
                 </div>
               </div>
 
@@ -156,11 +169,11 @@ const DonorDashboard: React.FC = () => {
                           </p>
                         </div>
                         <button
-                          onClick={() => refetch()}
-                          disabled={isLoading}
+                          onClick={() => refetchNFTs()}
+                          disabled={isLoadingNFTs}
                           className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium border rounded-lg hover:bg-accent transition-colors disabled:opacity-50"
                         >
-                          <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+                          <RefreshCw className={`h-4 w-4 ${isLoadingNFTs ? 'animate-spin' : ''}`} />
                           Refresh
                         </button>
                       </div>
@@ -171,7 +184,7 @@ const DonorDashboard: React.FC = () => {
                           <Wallet className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
                           <p className="text-muted-foreground">Please connect your wallet to view your NFT receipts</p>
                         </div>
-                      ) : isLoading ? (
+                      ) : isLoadingNFTs ? (
                         <div className="text-center py-12">
                           <RefreshCw className="h-8 w-8 mx-auto mb-4 animate-spin text-primary" />
                           <p className="text-muted-foreground">Loading your NFT receipts...</p>
@@ -282,76 +295,76 @@ const DonorDashboard: React.FC = () => {
                                 </tr>
                               </thead>
                               <tbody>
-                                <tr className="border-b border-border hover:bg-accent/50">
-                                  <td className="py-4 px-4 text-sm">Nov 20, 2025</td>
-                                  <td className="py-4 px-4 text-sm font-medium">Emergency Relief Fund</td>
-                                  <td className="py-4 px-4 text-sm font-semibold">Rp 158.000</td>
-                                  <td className="py-4 px-4">
-                                    <span className="inline-flex items-center rounded-md border px-2 py-1 text-xs font-medium bg-primary/10 text-primary border-primary/20">Zakat</span>
-                                  </td>
-                                  <td className="py-4 px-4">
-                                    <a href="#" className="inline-flex items-center gap-1 text-sm text-primary hover:underline">
-                                      0x7f3d...a21c
-                                      <ExternalLink className="h-3 w-3" />
-                                    </a>
-                                  </td>
-                                </tr>
-                                <tr className="border-b border-border hover:bg-accent/50">
-                                  <td className="py-4 px-4 text-sm">Nov 18, 2025</td>
-                                  <td className="py-4 px-4 text-sm font-medium">Children Education Fund</td>
-                                  <td className="py-4 px-4 text-sm font-semibold">Rp 316.000</td>
-                                  <td className="py-4 px-4">
-                                    <span className="inline-flex items-center rounded-md border px-2 py-1 text-xs font-medium bg-purple-100 text-purple-700 border-purple-200">Education</span>
-                                  </td>
-                                  <td className="py-4 px-4">
-                                    <a href="#" className="inline-flex items-center gap-1 text-sm text-primary hover:underline">
-                                      0x9e2a...b34f
-                                      <ExternalLink className="h-3 w-3" />
-                                    </a>
-                                  </td>
-                                </tr>
-                                <tr className="border-b border-border hover:bg-accent/50">
-                                  <td className="py-4 px-4 text-sm">Nov 15, 2025</td>
-                                  <td className="py-4 px-4 text-sm font-medium">Clean Water Initiative</td>
-                                  <td className="py-4 px-4 text-sm font-semibold">Rp 158.000</td>
-                                  <td className="py-4 px-4">
-                                    <span className="inline-flex items-center rounded-md border px-2 py-1 text-xs font-medium bg-blue-100 text-blue-700 border-blue-200">Health</span>
-                                  </td>
-                                  <td className="py-4 px-4">
-                                    <a href="#" className="inline-flex items-center gap-1 text-sm text-primary hover:underline">
-                                      0x4c8e...d92a
-                                      <ExternalLink className="h-3 w-3" />
-                                    </a>
-                                  </td>
-                                </tr>
-                                <tr className="border-b border-border hover:bg-accent/50">
-                                  <td className="py-4 px-4 text-sm">Nov 12, 2025</td>
-                                  <td className="py-4 px-4 text-sm font-medium">Emergency Relief Fund</td>
-                                  <td className="py-4 px-4 text-sm font-semibold">Rp 79.000</td>
-                                  <td className="py-4 px-4">
-                                    <span className="inline-flex items-center rounded-md border px-2 py-1 text-xs font-medium bg-primary/10 text-primary border-primary/20">Zakat</span>
-                                  </td>
-                                  <td className="py-4 px-4">
-                                    <a href="#" className="inline-flex items-center gap-1 text-sm text-primary hover:underline">
-                                      0x1b5f...e87d
-                                      <ExternalLink className="h-3 w-3" />
-                                    </a>
-                                  </td>
-                                </tr>
-                                <tr className="hover:bg-accent/50">
-                                  <td className="py-4 px-4 text-sm">Nov 8, 2025</td>
-                                  <td className="py-4 px-4 text-sm font-medium">Medical Equipment Fund</td>
-                                  <td className="py-4 px-4 text-sm font-semibold">Rp 79.000</td>
-                                  <td className="py-4 px-4">
-                                    <span className="inline-flex items-center rounded-md border px-2 py-1 text-xs font-medium bg-blue-100 text-blue-700 border-blue-200">Health</span>
-                                  </td>
-                                  <td className="py-4 px-4">
-                                    <a href="#" className="inline-flex items-center gap-1 text-sm text-primary hover:underline">
-                                      0x6a9c...f13b
-                                      <ExternalLink className="h-3 w-3" />
-                                    </a>
-                                  </td>
-                                </tr>
+                                {isLoadingNFTs ? (
+                                  <tr>
+                                    <td colSpan={5} className="text-center py-8">
+                                      <RefreshCw className="h-6 w-6 mx-auto mb-2 animate-spin text-primary" />
+                                      <p className="text-muted-foreground">Loading donation history...</p>
+                                    </td>
+                                  </tr>
+                                ) : nfts.length === 0 ? (
+                                  <tr>
+                                    <td colSpan={5} className="text-center py-8">
+                                      <Gift className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+                                      <p className="text-muted-foreground">No donations yet</p>
+                                      <p className="text-sm text-muted-foreground mt-1">Your donation history will appear here after you make a donation</p>
+                                    </td>
+                                  </tr>
+                                ) : (
+                                  nfts.map((nft, index) => {
+                                    const category = getCampaignCategory(nft.campaignId);
+                                    const categoryStyles: Record<string, { bg: string; text: string; border: string }> = {
+                                      Zakat: { bg: 'bg-primary/10', text: 'text-primary', border: 'border-primary/20' },
+                                      Education: { bg: 'bg-purple-100', text: 'text-purple-700', border: 'border-purple-200' },
+                                      Health: { bg: 'bg-blue-100', text: 'text-blue-700', border: 'border-blue-200' },
+                                      Waqf: { bg: 'bg-green-100', text: 'text-green-700', border: 'border-green-200' },
+                                      Sadaqah: { bg: 'bg-yellow-100', text: 'text-yellow-700', border: 'border-yellow-200' },
+                                      Emergency: { bg: 'bg-red-100', text: 'text-red-700', border: 'border-red-200' },
+                                      Infaq: { bg: 'bg-orange-100', text: 'text-orange-700', border: 'border-orange-200' },
+                                    };
+                                    const style = categoryStyles[category] || categoryStyles.Zakat;
+
+                                    // Format date from block number (approximate)
+                                    const donationDate = nft.blockNumber
+                                      ? new Date(Number(nft.blockNumber) * 1000).toLocaleDateString('id-ID', {
+                                          year: 'numeric',
+                                          month: 'short',
+                                          day: 'numeric',
+                                        })
+                                      : 'Recently';
+
+                                    return (
+                                      <tr key={`${nft.tokenId}-${index}`} className="border-b border-border hover:bg-accent/50">
+                                        <td className="py-4 px-4 text-sm">{donationDate}</td>
+                                        <td className="py-4 px-4 text-sm font-medium">
+                                          <div className="flex flex-col">
+                                            <span>{getCampaignName(nft.campaignId)}</span>
+                                            <span className="text-xs text-muted-foreground font-mono">
+                                              ID: {nft.campaignId.slice(0, 10)}...
+                                            </span>
+                                          </div>
+                                        </td>
+                                        <td className="py-4 px-4 text-sm font-semibold">{formatIDRX(nft.amount)} IDRX</td>
+                                        <td className="py-4 px-4">
+                                          <span className={`inline-flex items-center rounded-md border px-2 py-1 text-xs font-medium ${style.bg} ${style.text} ${style.border}`}>
+                                            {category}
+                                          </span>
+                                        </td>
+                                        <td className="py-4 px-4">
+                                          <a
+                                            href={`https://sepolia.basescan.org/nft/${CONTRACT_ADDRESSES.DonationReceiptNFT}/${nft.tokenId}`}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="inline-flex items-center gap-1 text-sm text-primary hover:underline"
+                                          >
+                                            #{nft.tokenId.toString()}
+                                            <ExternalLink className="h-3 w-3" />
+                                          </a>
+                                        </td>
+                                      </tr>
+                                    );
+                                  })
+                                )}
                               </tbody>
                             </table>
                           </div>
@@ -366,21 +379,25 @@ const DonorDashboard: React.FC = () => {
                         <div className="flex items-start justify-between">
                           <div>
                             <h3 className="font-semibold text-lg mb-2">Your Voting Power</h3>
-                            <div className="text-3xl font-bold text-purple-600 mb-2">850 vZKT</div>
+                            <div className="text-3xl font-bold text-purple-600 mb-2">
+                              {isLoadingVoting ? '...' : `${votingPower?.toString() || '0'} vZKT`}
+                            </div>
                             <p className="text-sm text-muted-foreground mb-4">Soul-bound tokens earned through donations</p>
                             <div className="flex gap-4 text-sm">
                               <div>
                                 <div className="text-muted-foreground">Proposals Voted</div>
-                                <div className="font-semibold">12</div>
+                                <div className="font-semibold">0</div>
                               </div>
                               <div>
                                 <div className="text-muted-foreground">Participation Rate</div>
-                                <div className="font-semibold">85%</div>
+                                <div className="font-semibold">0%</div>
                               </div>
                             </div>
                           </div>
                           <div className="text-right">
-                            <span className="inline-flex items-center rounded-md border px-3 py-1 text-sm font-medium bg-purple-100 text-purple-700 border-purple-200">Top 15%</span>
+                            <span className="inline-flex items-center rounded-md border px-3 py-1 text-sm font-medium bg-purple-100 text-purple-700 border-purple-200">
+                              {votingPower && Number(votingPower) > 0 ? 'Voter' : 'New Donor'}
+                            </span>
                           </div>
                         </div>
                       </div>
@@ -388,128 +405,83 @@ const DonorDashboard: React.FC = () => {
                       {/* Active Proposals */}
                       <div>
                         <h3 className="font-semibold text-lg mb-4">Active Proposals</h3>
-                        <div className="space-y-4">
-                          {/* Proposal 1 */}
-                          <div className="bg-white text-card-foreground rounded-xl border border-black shadow-sm p-6">
-                            <div className="flex items-start justify-between mb-4">
-                              <div className="flex-1">
-                                <div className="flex items-center gap-2 mb-2">
-                                  <span className="inline-flex items-center rounded-md border px-2 py-1 text-xs font-medium bg-green-100 text-green-700 border-green-200">
-                                    <Clock className="h-3 w-3 mr-1" />
-                                    Active
-                                  </span>
-                                  <span className="text-xs text-muted-foreground">Proposal #17</span>
-                                </div>
-                                <h4 className="font-semibold text-base mb-2">Increase Education Fund Allocation to 35%</h4>
-                                <p className="text-sm text-muted-foreground mb-4">
-                                  Proposal to increase the percentage of total donations allocated to education-related campaigns from 25% to 35%, focusing on underprivileged children's access to quality education.
-                                </p>
-                              </div>
-                            </div>
-                            <div className="space-y-3">
-                              <div>
-                                <div className="flex justify-between text-sm mb-1">
-                                  <span className="text-muted-foreground">For: 2,450 vZKT (68%)</span>
-                                  <span className="text-muted-foreground">Against: 1,150 vZKT (32%)</span>
-                                </div>
-                                <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
-                                  <div className="bg-green-500 h-2" style={{ width: '68%' }}></div>
-                                </div>
-                              </div>
-                              <div className="flex items-center justify-between pt-2 border-t border-border">
-                                <span className="text-xs text-muted-foreground">Ends in 3 days</span>
-                                <div className="flex gap-2">
-                                  <button className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-all border shadow-xs h-9 px-4 py-2 bg-green-500 text-white border-green-600 hover:bg-green-600">
-                                    <CheckCircle2 className="h-4 w-4" />
-                                    Vote For
-                                  </button>
-                                  <button className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-all border shadow-xs h-9 px-4 py-2 bg-white border-black hover:bg-gray-50">
-                                    <XCircle className="h-4 w-4" />
-                                    Vote Against
-                                  </button>
-                                </div>
-                              </div>
-                            </div>
+                        {isLoadingProposals ? (
+                          <div className="text-center py-12">
+                            <RefreshCw className="h-8 w-8 mx-auto mb-4 animate-spin text-primary" />
+                            <p className="text-muted-foreground">Loading proposals...</p>
                           </div>
+                        ) : proposals.length === 0 ? (
+                          <div className="text-center py-12">
+                            <Vote className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+                            <p className="text-muted-foreground">No active proposals</p>
+                            <p className="text-sm text-muted-foreground mt-1">Check back later for new governance proposals</p>
+                          </div>
+                        ) : (
+                          <div className="space-y-4">
+                            {proposals.map((proposal) => {
+                              const totalVotes = proposal.votesFor + proposal.votesAgainst + proposal.votesAbstain;
+                              const forPercentage = totalVotes > 0 ? Number((proposal.votesFor * BigInt(100)) / totalVotes) : 0;
+                              const isActive = !proposal.executed && !proposal.cancelled;
+                              const hasEnded = Number(proposal.endTime) < Date.now() / 1000;
 
-                          {/* Proposal 2 */}
-                          <div className="bg-white text-card-foreground rounded-xl border border-black shadow-sm p-6">
-                            <div className="flex items-start justify-between mb-4">
-                              <div className="flex-1">
-                                <div className="flex items-center gap-2 mb-2">
-                                  <span className="inline-flex items-center rounded-md border px-2 py-1 text-xs font-medium bg-green-100 text-green-700 border-green-200">
-                                    <Clock className="h-3 w-3 mr-1" />
-                                    Active
-                                  </span>
-                                  <span className="text-xs text-muted-foreground">Proposal #16</span>
+                              return (
+                                <div key={proposal.id.toString()} className={`bg-white text-card-foreground rounded-xl border border-black shadow-sm p-6 ${hasEnded ? 'opacity-60' : ''}`}>
+                                  <div className="flex items-start justify-between mb-4">
+                                    <div className="flex-1">
+                                      <div className="flex items-center gap-2 mb-2">
+                                        <span className={`inline-flex items-center rounded-md border px-2 py-1 text-xs font-medium ${isActive && !hasEnded ? 'bg-green-100 text-green-700 border-green-200' : 'bg-blue-100 text-blue-700 border-blue-200'}`}>
+                                          {isActive && !hasEnded && <Clock className="h-3 w-3 mr-1" />}
+                                          {proposal.cancelled ? 'Cancelled' : hasEnded ? 'Ended' : isActive ? 'Active' : 'Executed'}
+                                        </span>
+                                        <span className="text-xs text-muted-foreground">Proposal #{proposal.id}</span>
+                                      </div>
+                                      <h4 className="font-semibold text-base mb-2">{proposal.title}</h4>
+                                      <p className="text-sm text-muted-foreground mb-4">{proposal.description}</p>
+                                    </div>
+                                  </div>
+                                  <div className="space-y-3">
+                                    <div>
+                                      <div className="flex justify-between text-sm mb-1">
+                                        <span className="text-muted-foreground">For: {proposal.votesFor.toString()} vZKT ({forPercentage}%)</span>
+                                        <span className="text-muted-foreground">Against: {proposal.votesAgainst.toString()} vZKT</span>
+                                      </div>
+                                      <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
+                                        <div className={`${isActive && !hasEnded ? 'bg-green-500' : 'bg-blue-500'} h-2`} style={{ width: `${forPercentage}%` }}></div>
+                                      </div>
+                                    </div>
+                                    {isActive && !hasEnded && (
+                                      <div className="flex items-center justify-between pt-2 border-t border-border">
+                                        <span className="text-xs text-muted-foreground">
+                                          Ends in {Math.ceil((Number(proposal.endTime) - Date.now() / 1000) / 86400)} days
+                                        </span>
+                                        <div className="flex gap-2">
+                                          <button className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-all border shadow-xs h-9 px-4 py-2 bg-green-500 text-white border-green-600 hover:bg-green-600">
+                                            <CheckCircle2 className="h-4 w-4" />
+                                            Vote For
+                                          </button>
+                                          <button className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-all border shadow-xs h-9 px-4 py-2 bg-white border-black hover:bg-gray-50">
+                                            <XCircle className="h-4 w-4" />
+                                            Vote Against
+                                          </button>
+                                        </div>
+                                      </div>
+                                    )}
+                                    {hasEnded && (
+                                      <div className="flex items-center justify-between pt-2 border-t border-border">
+                                        <span className="text-xs text-muted-foreground">
+                                          Ended {new Date(Number(proposal.endTime) * 1000).toLocaleDateString('id-ID')}
+                                        </span>
+                                        <span className="inline-flex items-center rounded-md border px-2 py-1 text-xs font-medium bg-blue-100 text-blue-700 border-blue-200">
+                                          {proposal.executed ? 'Executed' : 'Ended'}
+                                        </span>
+                                      </div>
+                                    )}
+                                  </div>
                                 </div>
-                                <h4 className="font-semibold text-base mb-2">Implement Quarterly Impact Reports</h4>
-                                <p className="text-sm text-muted-foreground mb-4">
-                                  Require all organizations to submit detailed quarterly impact reports with measurable outcomes and beneficiary testimonials to increase transparency.
-                                </p>
-                              </div>
-                            </div>
-                            <div className="space-y-3">
-                              <div>
-                                <div className="flex justify-between text-sm mb-1">
-                                  <span className="text-muted-foreground">For: 3,120 vZKT (82%)</span>
-                                  <span className="text-muted-foreground">Against: 685 vZKT (18%)</span>
-                                </div>
-                                <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
-                                  <div className="bg-green-500 h-2" style={{ width: '82%' }}></div>
-                                </div>
-                              </div>
-                              <div className="flex items-center justify-between pt-2 border-t border-border">
-                                <span className="text-xs text-muted-foreground">Ends in 5 days</span>
-                                <div className="flex gap-2">
-                                  <button className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-all border shadow-xs h-9 px-4 py-2 bg-green-500 text-white border-green-600 hover:bg-green-600">
-                                    <CheckCircle2 className="h-4 w-4" />
-                                    Vote For
-                                  </button>
-                                  <button className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-all border shadow-xs h-9 px-4 py-2 bg-white border-black hover:bg-gray-50">
-                                    <XCircle className="h-4 w-4" />
-                                    Vote Against
-                                  </button>
-                                </div>
-                              </div>
-                            </div>
+                              );
+                            })}
                           </div>
-
-                          {/* Proposal 3 */}
-                          <div className="bg-white text-card-foreground rounded-xl border border-black shadow-sm p-6 opacity-60">
-                            <div className="flex items-start justify-between mb-4">
-                              <div className="flex-1">
-                                <div className="flex items-center gap-2 mb-2">
-                                  <span className="inline-flex items-center rounded-md border px-2 py-1 text-xs font-medium bg-blue-100 text-blue-700 border-blue-200">
-                                    Passed
-                                  </span>
-                                  <span className="text-xs text-muted-foreground">Proposal #15</span>
-                                </div>
-                                <h4 className="font-semibold text-base mb-2">Add Emergency Response Category</h4>
-                                <p className="text-sm text-muted-foreground mb-4">
-                                  Create a new campaign category for emergency disaster response with expedited approval process for verified relief organizations.
-                                </p>
-                              </div>
-                            </div>
-                            <div className="space-y-3">
-                              <div>
-                                <div className="flex justify-between text-sm mb-1">
-                                  <span className="text-muted-foreground">For: 4,200 vZKT (91%)</span>
-                                  <span className="text-muted-foreground">Against: 415 vZKT (9%)</span>
-                                </div>
-                                <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
-                                  <div className="bg-blue-500 h-2" style={{ width: '91%' }}></div>
-                                </div>
-                              </div>
-                              <div className="flex items-center justify-between pt-2 border-t border-border">
-                                <span className="text-xs text-muted-foreground">Ended Nov 10, 2025</span>
-                                <span className="inline-flex items-center rounded-md border px-2 py-1 text-xs font-medium bg-blue-100 text-blue-700 border-blue-200">
-                                  Implemented
-                                </span>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
+                        )}
                       </div>
 
                       {/* How to Earn More Voting Power */}

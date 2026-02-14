@@ -3,7 +3,7 @@
 import { useCallback, useState } from 'react';
 import { useAccount } from 'wagmi';
 import { uploadFilesToPinata } from '@/lib/pinata-client';
-import { saveCampaignData, updateCampaignData, type CampaignData } from '@/lib/supabase-client';
+import { saveCampaignData, updateCampaignData, type CampaignData } from '@/lib/supabase-client-auth';
 import { toast } from '@/components/ui/use-toast';
 import { useCreateCampaignOnChain } from './useCreateCampaignOnChain';
 import { keccak256, stringToBytes } from 'viem';

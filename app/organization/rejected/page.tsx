@@ -1,0 +1,141 @@
+'use client';
+
+import { useEffect, useState } from 'react';
+import { XCircle } from 'lucide-react';
+import { Card } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { useRouter } from 'next/navigation';
+import { supabase } from '@/lib/supabase-client-auth';
+import type { Organization } from '@/lib/types/organization';
+
+export default function OrganizationRejectedPage() {
+  const router = useRouter();
+  const [organization, setOrganization] = useState<Organization | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const checkAuthAndOrg = async () => {
+      try {
+        // Check if user is authenticated
+        const { data: { session } } = await supabase.auth.getSession();
+
+        if (!session) {
+          // Not authenticated - redirect to login
+          router.push('/organization/login');
+          return;
+        }
+
+        // Get user's organization
+        const userId = session.user.id;
+        const { data: orgAdmin } = await supabase
+          .from('organization_admins')
+          .select('organizations (*)')
+          .eq('user_id', userId)
+          .maybeSingle();
+
+        if (!orgAdmin?.organizations) {
+          // No organization found - redirect to register
+          router.push('/organization/register');
+          return;
+        }
+
+        const org = orgAdmin.organizations as Organization;
+
+        // Check if org is approved - if so, redirect to dashboard
+        if (org.verification_status === 'approved') {
+          router.push('/organization/dashboard');
+          return;
+        }
+
+        // Check if org is pending - if so, redirect to pending page
+        if (org.verification_status === 'pending') {
+          router.push('/organization/pending');
+          return;
+        }
+
+        // Org is rejected - show rejected page
+        setOrganization(org);
+      } catch (error) {
+        console.error('Error checking organization status:', error);
+        router.push('/organization/login');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    checkAuthAndOrg();
+  }, [router]);
+
+  const handleSubmitNew = () => {
+    router.push('/organization/register');
+  };
+
+  const handleGoHome = () => {
+    router.push('/');
+  };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center p-4">
+        <Card className="w-full max-w-md p-8 text-center">
+          <div className="animate-pulse flex justify-center mb-6">
+            <div className="w-20 h-20 bg-red-100 rounded-full"></div>
+          </div>
+          <p className="text-gray-600">Loading...</p>
+        </Card>
+      </div>
+    );
+  }
+
+  if (!organization) {
+    return null; // Will redirect
+  }
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center p-4">
+      <Card className="w-full max-w-md p-8 text-center">
+        <div className="flex justify-center mb-6">
+          <div className="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center">
+            <XCircle className="w-10 h-10 text-red-600" />
+          </div>
+        </div>
+
+        <h1 className="text-2xl font-bold mb-2">Organization Not Approved</h1>
+
+        <p className="text-gray-600 mb-4">
+          Your organization <strong>{organization.name}</strong> was not approved at this time.
+        </p>
+
+        {organization.rejection_reason && (
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6 text-left">
+            <p className="text-sm font-semibold text-red-800 mb-1">Reason:</p>
+            <p className="text-sm text-red-700">{organization.rejection_reason}</p>
+          </div>
+        )}
+
+        <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-6">
+          <p className="text-sm text-gray-700">
+            If you believe this is an error, please contact support or submit a new application
+            with updated information.
+          </p>
+        </div>
+
+        <div className="space-y-3">
+          <Button
+            className="w-full"
+            onClick={handleSubmitNew}
+          >
+            Submit New Application
+          </Button>
+          <Button
+            variant="outline"
+            className="w-full"
+            onClick={handleGoHome}
+          >
+            Back to Home
+          </Button>
+        </div>
+      </Card>
+    </div>
+  );
+}

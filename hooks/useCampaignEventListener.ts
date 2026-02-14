@@ -3,7 +3,7 @@
 import { useEffect, useRef } from 'react'
 import { usePublicClient } from 'wagmi'
 import { ZKT_CAMPAIGN_POOL_ADDRESS, ZKTCampaignPoolABI } from '@/lib/zkt-campaign-pool'
-import { supabase } from '@/lib/supabase-client'
+import { supabase } from '@/lib/supabase-client-auth'
 
 /**
  * Hook that listens for CampaignCreated events from the contract

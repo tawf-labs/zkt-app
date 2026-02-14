@@ -12,7 +12,7 @@ import { keccak256, stringToBytes, pad } from 'viem';
 import { uploadFilesToPinata } from '@/lib/pinata-client';
 import { useCreateCampaignWithSafe, type NGOAllocation } from '@/hooks/useCreateCampaignWithSafe';
 import { useCampaignStatus } from '@/hooks/useCampaignStatus';
-import { saveCampaignData, type CampaignData } from '@/lib/supabase-client';
+import { saveCampaignData, type CampaignData } from '@/lib/supabase-client-auth';
 import { ZKT_CAMPAIGN_POOL_ADDRESS, ZKTCampaignPoolABI } from '@/lib/zkt-campaign-pool';
 
 // Safe multisig constants
@@ -288,6 +288,9 @@ interface NGO {
   id: string;
   wallet: string;
   name: string;
+  logo_url?: string;
+  organization_type?: string;
+  location?: string;
 }
 
 interface Step2Props {
@@ -298,13 +301,38 @@ interface Step2Props {
 }
 
 function Step2NGOSelection({ selectedNGOs, setSelectedNGOs, onNext, onBack }: Step2Props) {
-  const [availableNGOs] = useState<NGO[]>([
-    {
-      id: keccak256(stringToBytes('TELAGA-TEST')),
-      wallet: '0x2ca80Cc5e254C45E99281F670d694B22E6a90FC4',
-      name: 'Telaga Foundation (Test)',
-    },
-  ]);
+  const [availableNGOs, setAvailableNGOs] = useState<NGO[]>([]);
+  const [isLoadingNGOs, setIsLoadingNGOs] = useState(true);
+
+  // Fetch approved organizations from Supabase
+  useEffect(() => {
+    const fetchOrganizations = async () => {
+      try {
+        const response = await fetch('/api/organizations?status=approved');
+        if (response.ok) {
+          const data = await response.json();
+          // Map organizations to NGO format
+          const ngos: NGO[] = data.organizations
+            .filter((org: any) => org.verification_status === 'approved')
+            .map((org: any) => ({
+              id: org.id,
+              wallet: '0x2ca80Cc5e254C45E99281F670d694B22E6a90FC4', // Default wallet for now
+              name: org.name,
+              logo_url: org.logo_url,
+              organization_type: org.organization_type,
+              location: `${org.city}, ${org.country}`,
+            }));
+          setAvailableNGOs(ngos);
+        }
+      } catch (error) {
+        console.error('Error fetching organizations:', error);
+      } finally {
+        setIsLoadingNGOs(false);
+      }
+    };
+
+    fetchOrganizations();
+  }, []);
 
   // Custom NGO input state
   const [showCustomNGOForm, setShowCustomNGOForm] = useState(false);
@@ -390,25 +418,59 @@ function Step2NGOSelection({ selectedNGOs, setSelectedNGOs, onNext, onBack }: St
 
       {/* Available NGOs List */}
       <div className="space-y-3">
-        <p className="text-sm font-semibold text-muted-foreground">Available NGOs</p>
-        {availableNGOs.map((ngo) => (
-          <div
-            key={ngo.id}
-            className="flex items-center gap-3 p-4 border rounded-lg cursor-pointer hover:bg-accent transition-colors"
-            onClick={() => toggleNGO(ngo)}
-          >
-            <input
-              type="checkbox"
-              checked={selectedNGOs.some(s => s.id === ngo.id)}
-              onChange={() => {}}
-              className="w-4 h-4 rounded border-input"
-            />
-            <div className="flex-1">
-              <p className="font-semibold text-sm">{ngo.name}</p>
-              <p className="text-xs text-muted-foreground font-mono truncate">{ngo.wallet}</p>
-            </div>
+        <p className="text-sm font-semibold text-muted-foreground">
+          {isLoadingNGOs ? 'Loading verified organizations...' : 'Available Verified Organizations'}
+        </p>
+        {isLoadingNGOs ? (
+          <div className="flex items-center justify-center py-8">
+            <Loader2 className="w-6 h-6 animate-spin text-primary" />
           </div>
-        ))}
+        ) : availableNGOs.length === 0 ? (
+          <div className="text-center py-8 text-muted-foreground">
+            No verified organizations available. Please check back later.
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {availableNGOs.map((ngo) => {
+              const isSelected = selectedNGOs.some(s => s.id === ngo.id);
+              return (
+                <div
+                  key={ngo.id}
+                  className={`flex items-start gap-3 p-4 border rounded-lg cursor-pointer transition-colors ${
+                    isSelected ? 'border-primary bg-primary/5' : 'hover:bg-accent'
+                  }`}
+                  onClick={() => toggleNGO(ngo)}
+                >
+                  <input
+                    type="checkbox"
+                    checked={isSelected}
+                    onChange={() => {}}
+                    className="w-4 h-4 rounded border-input mt-1"
+                  />
+                  {ngo.logo_url && (
+                    <img
+                      src={ngo.logo_url}
+                      alt={ngo.name}
+                      className="w-12 h-12 rounded-lg object-cover flex-shrink-0"
+                    />
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold text-sm truncate">{ngo.name}</p>
+                    {ngo.organization_type && (
+                      <p className="text-xs text-muted-foreground">
+                        {ngo.organization_type.replace('_', ' ')}
+                      </p>
+                    )}
+                    {ngo.location && (
+                      <p className="text-xs text-muted-foreground truncate">{ngo.location}</p>
+                    )}
+                    <p className="text-xs text-muted-foreground font-mono truncate">{ngo.wallet}</p>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       {/* Custom NGO Form */}
@@ -1150,7 +1212,7 @@ function Step7WaitingSafe({ safeTxHash, campaignId }: Step7Props) {
           setCampaignExists(true);
 
           // Update database status
-          const { supabase } = await import('@/lib/supabase-client');
+          const { supabase } = await import('@/lib/supabase-client-auth');
           await supabase
             .from('campaigns')
             .update({ status: 'active' })
@@ -1186,7 +1248,7 @@ function Step7WaitingSafe({ safeTxHash, campaignId }: Step7Props) {
         setCampaignExists(true);
 
         // Update database
-        const { supabase } = await import('@/lib/supabase-client');
+        const { supabase } = await import('@/lib/supabase-client-auth');
         await supabase
           .from('campaigns')
           .update({ status: 'active' })

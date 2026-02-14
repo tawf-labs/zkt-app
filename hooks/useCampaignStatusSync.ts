@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from 'react';
 import { usePublicClient } from 'wagmi';
-import { supabase } from '@/lib/supabase-client';
+import { supabase } from '@/lib/supabase-client-auth';
 import { ZKT_CAMPAIGN_POOL_ADDRESS, ZKTCampaignPoolABI } from '@/lib/zkt-campaign-pool';
 import { verifyCampaignExists } from '@/lib/verify-campaign';
 
