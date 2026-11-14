@@ -1,10 +1,23 @@
-import Link from "next/link"
-import { Button } from "@/components/ui/button"
+import type { Metadata } from "next";
 
 import { Hero } from "@/components/landing/hero"
 import { HowItWorks } from "@/components/landing/how-it-works"
 import { FeaturedCampaigns } from "@/components/landing/featured-campaigns"
-import { Trusted } from "@/components/landing/badge"
+
+export const metadata: Metadata = {
+  title: "Transparent & Traceable Donation Platform",
+  description:
+    "Donate securely and transparently through zero-knowledge proofs and blockchain technology. Every donation is recorded and trackable in real-time.",
+  alternates: {
+    canonical: "/",
+  },
+  openGraph: {
+    title: "Transparent & Traceable Donation Platform | zkt.app",
+    description:
+      "Donate securely and transparently through zero-knowledge proofs and blockchain technology. Every donation is recorded and trackable in real-time.",
+    url: "/",
+  },
+};
 
 
 export default function HomePage() {

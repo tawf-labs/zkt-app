@@ -5,7 +5,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useSignMessage, WagmiProvider, type Config, useWriteContract, useSwitchChain, useChainId } from "wagmi";
 import { useAccount, useBalance, useDisconnect } from "wagmi";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { XellarKitProvider, defaultConfig, darkTheme, useConnectModal } from "@xellar/kit";
+import { XellarKitProvider, darkTheme, useConnectModal } from "@xellar/kit";
 import axios from "axios";
 import { baseSepolia } from "viem/chains";
 import { pad, toHex, createPublicClient, http } from "viem";
@@ -77,7 +77,7 @@ function ChainEnforcer({ children }: { children: ReactNode }) {
 							description: "Successfully connected to Base Sepolia",
 						});
 					},
-					onError: (error) => {
+					onError: () => {
 						toast({
 							variant: "destructive",
 							title: "Network Switch Required",
@@ -102,7 +102,7 @@ function ChainEnforcer({ children }: { children: ReactNode }) {
 						description: "Successfully connected to Base Sepolia",
 					});
 				},
-				onError: (error) => {
+				onError: () => {
 					toast({
 						variant: "destructive",
 						title: "Switch Failed",
@@ -164,7 +164,7 @@ function WalletStateController({ children }: { children: ReactNode }) {
 
 	const baseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
 
-	const signAuthMessage = async () => {
+	const _signAuthMessage = async () => {
 		// Check if access token already exists
 		const existingToken = localStorage.getItem("access_token");
 		if (existingToken) {
@@ -186,7 +186,7 @@ function WalletStateController({ children }: { children: ReactNode }) {
 
 			const { access_token } = signatureResponse.data;
 			localStorage.setItem("access_token", access_token);
-		} catch (error) {
+		} catch {
 			toast({
 				variant: "destructive",
 				title: "Error",
@@ -335,7 +335,7 @@ function WalletStateController({ children }: { children: ReactNode }) {
 			try {
 				const feeData = await publicClient.getGasPrice();
 				gasPrice = feeData;
-			} catch (error) {
+			} catch {
 			}
 			
 			const donateTxHash = await writeContractAsync({
@@ -380,7 +380,7 @@ function WalletStateController({ children }: { children: ReactNode }) {
 							}
 							break;
 						}
-					} catch (e) {
+					} catch {
 						// Not a Donated event, skip
 					}
 				}
@@ -404,10 +404,11 @@ function WalletStateController({ children }: { children: ReactNode }) {
 			await refetchBalance();
 
 			return { txHash: donateTxHash, nftTokenId };
-		} catch (error: any) {
+		} catch (error: unknown) {
+			const err = error as { reason?: string; message?: string } | null;
 			let errorMessage = "Transaction failed. Please try again.";
-			if (error?.reason) errorMessage = error.reason;
-			else if (error?.message) errorMessage = error.message;
+			if (err?.reason) errorMessage = err.reason;
+			else if (err?.message) errorMessage = err.message;
 			
 			toast({
 				variant: "destructive",

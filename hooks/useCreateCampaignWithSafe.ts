@@ -12,7 +12,7 @@ import { useCallback, useState, useEffect } from 'react'
 import { useAccount, useWalletClient } from 'wagmi'
 import { toast } from '@/components/ui/use-toast'
 import SafeApiKit from '@safe-global/api-kit'
-import Safe from '@safe-global/protocol-kit'
+import Safe, { type SafeConfig } from '@safe-global/protocol-kit'
 import { ethers } from 'ethers'
 import { ZKT_CAMPAIGN_POOL_ADDRESS, ZKTCampaignPoolABI } from '@/lib/zkt-campaign-pool'
 import { saveCampaignData, type CampaignData } from '@/lib/supabase-client-auth'
@@ -95,12 +95,9 @@ export const useCreateCampaignWithSafe = (): CreateCampaignWithSafeResult => {
       setError(null)
 
       try {
-        // Get provider from window.ethereum (ethers v5)
-        const provider = new ethers.providers.Web3Provider((window as any).ethereum)
-
         // Initialize Protocol Kit - for Protocol Kit v6 with ethers v5
         const protocolKit = await Safe.init({
-          provider: (window as any).ethereum,
+          provider: (window as unknown as { ethereum: SafeConfig['provider'] }).ethereum,
           signer: address,
           safeAddress: SAFE_ADDRESS
         })
@@ -174,7 +171,7 @@ export const useCreateCampaignWithSafe = (): CreateCampaignWithSafeResult => {
               title: '✅ Campaign Metadata Saved!',
               description: 'Campaign will appear after Safe executes the transaction.',
             })
-          } catch (dbError) {
+          } catch {
             // Don't throw error - the on-chain transaction is still valid
             toast({
               title: '⚠️ Metadata Save Failed',
@@ -191,8 +188,8 @@ export const useCreateCampaignWithSafe = (): CreateCampaignWithSafeResult => {
 
         return { safeTxHash }
 
-      } catch (err: any) {
-        const errorMsg = err?.message || String(err)
+      } catch (err: unknown) {
+        const errorMsg = err instanceof Error ? err.message : String(err)
         setError(errorMsg)
 
         toast({
@@ -248,12 +245,9 @@ export const useCreateCampaignWithSafe = (): CreateCampaignWithSafeResult => {
       setError(null)
 
       try {
-        // Get provider from window.ethereum (ethers v5)
-        const provider = new ethers.providers.Web3Provider((window as any).ethereum)
-
         // Initialize Protocol Kit
         const protocolKit = await Safe.init({
-          provider: (window as any).ethereum,
+          provider: (window as unknown as { ethereum: SafeConfig['provider'] }).ethereum,
           signer: address,
           safeAddress: SAFE_ADDRESS
         })
@@ -349,7 +343,7 @@ export const useCreateCampaignWithSafe = (): CreateCampaignWithSafeResult => {
               title: '✅ Campaign Metadata Saved!',
               description: 'Campaign will be fully created after Safe executes the transaction.',
             })
-          } catch (dbError) {
+          } catch {
             // Don't throw error - the on-chain transaction is still valid
             toast({
               title: '⚠️ Metadata Save Failed',
@@ -366,8 +360,8 @@ export const useCreateCampaignWithSafe = (): CreateCampaignWithSafeResult => {
 
         return { safeTxHash }
 
-      } catch (err: any) {
-        const errorMsg = err?.message || String(err)
+      } catch (err: unknown) {
+        const errorMsg = err instanceof Error ? err.message : String(err)
         setError(errorMsg)
 
         toast({

@@ -29,7 +29,7 @@ export default async function OrganizationDashboardPage() {
       <div>
         <h1 className="text-3xl font-bold mb-2">Welcome back, {organization?.name}!</h1>
         <p className="text-muted-foreground">
-          Here's what's happening with your organization today.
+          Here&apos;s what&apos;s happening with your organization today.
         </p>
       </div>
 

@@ -1,12 +1,11 @@
 import { Card } from '@/components/ui/card';
-import { formatIDRX } from '@/lib/abi';
-import { Heart, Calendar } from 'lucide-react';
+import { Heart } from 'lucide-react';
 
 interface RecentDonationsProps {
   organizationId: string;
 }
 
-export function RecentDonations({ organizationId }: RecentDonationsProps) {
+export function RecentDonations({ organizationId: _organizationId }: RecentDonationsProps) {
   // TODO: Fetch donations from the donations table when it's created
   // For now, this is a placeholder component
 

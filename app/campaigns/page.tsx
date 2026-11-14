@@ -1,6 +1,6 @@
 "use client";
 
-import { Search, Filter, SlidersHorizontal, Loader2 } from 'lucide-react';
+import { Search, SlidersHorizontal, Loader2 } from 'lucide-react';
 import { useCampaigns } from '@/hooks/useCampaigns';
 import { CampaignCard } from '@/components/shared/campaign-card';
 import { useSearch } from "@/components/shared/SearchContext"; 

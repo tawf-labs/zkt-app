@@ -1,5 +1,3 @@
-import { PinataSDK } from 'pinata-web3';
-
 // Upload file to Pinata via API route
 export const uploadFileToPinata = async (file: File): Promise<string> => {
   try {
@@ -35,7 +33,7 @@ export const uploadFilesToPinata = async (files: File[]): Promise<string[]> => {
 };
 
 // Upload JSON metadata to Pinata via API
-export const uploadMetadataToPinata = async (metadata: Record<string, any>): Promise<string> => {
+export const uploadMetadataToPinata = async (metadata: Record<string, unknown>): Promise<string> => {
   try {
     const blob = new Blob([JSON.stringify(metadata)], { type: 'application/json' });
     const file = new File([blob], 'metadata.json', { type: 'application/json' });
@@ -66,7 +64,7 @@ export const getFileFromPinata = async (ipfsHash: string): Promise<string> => {
   return `${gateway}/ipfs/${ipfsHash}`;
 };
 // Fetch JSON metadata from Pinata IPFS
-export const getMetadataFromPinata = async (ipfsHash: string): Promise<Record<string, any> | null> => {
+export const getMetadataFromPinata = async (ipfsHash: string): Promise<Record<string, unknown> | null> => {
   try {
     const gatewayDomain = process.env.NEXT_PUBLIC_PINATA_GATEWAY || 'gateway.pinata.cloud';
     const gateway = `https://${gatewayDomain.replace(/^https?:\/\//, '')}`;
@@ -83,7 +81,7 @@ export const getMetadataFromPinata = async (ipfsHash: string): Promise<Record<st
 
     const metadata = await response.json();
     return metadata;
-  } catch (error) {
+  } catch {
     return null;
   }
 };

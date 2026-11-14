@@ -8,7 +8,7 @@ import { getUser, getUserOrganization, isOrganizationAdmin } from '@/lib/supabas
  * Public access for approved organizations, admin access for own org
  */
 export async function GET(
-  request: NextRequest,
+  _request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
@@ -38,10 +38,10 @@ export async function GET(
     }
 
     return NextResponse.json({ organization: data });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error in GET /api/organizations/[id]:', error);
     return NextResponse.json(
-      { error: error.message || 'Internal server error' },
+      { error: error instanceof Error ? error.message : 'Internal server error' },
       { status: 500 }
     );
   }
@@ -94,7 +94,7 @@ export async function PATCH(
       'address',
     ];
 
-    const updateData: any = {};
+    const updateData: Record<string, unknown> = {};
     for (const field of allowedFields) {
       if (body[field] !== undefined) {
         // Convert field names from camelCase to snake_case for database
@@ -119,10 +119,10 @@ export async function PATCH(
     }
 
     return NextResponse.json({ organization: data });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error in PATCH /api/organizations/[id]:', error);
     return NextResponse.json(
-      { error: error.message || 'Internal server error' },
+      { error: error instanceof Error ? error.message : 'Internal server error' },
       { status: 500 }
     );
   }
@@ -134,7 +134,7 @@ export async function PATCH(
  * Only accessible by organization primary admin
  */
 export async function DELETE(
-  request: NextRequest,
+  _request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
@@ -178,10 +178,10 @@ export async function DELETE(
     }
 
     return NextResponse.json({ success: true });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error in DELETE /api/organizations/[id]:', error);
     return NextResponse.json(
-      { error: error.message || 'Internal server error' },
+      { error: error instanceof Error ? error.message : 'Internal server error' },
       { status: 500 }
     );
   }

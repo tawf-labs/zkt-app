@@ -3,10 +3,9 @@
 import { useCallback, useState } from 'react';
 import { useAccount } from 'wagmi';
 import { uploadFilesToPinata } from '@/lib/pinata-client';
-import { saveCampaignData, updateCampaignData, type CampaignData } from '@/lib/supabase-client-auth';
+import { saveCampaignData, type CampaignData } from '@/lib/supabase-client-auth';
 import { toast } from '@/components/ui/use-toast';
 import { useCreateCampaignOnChain } from './useCreateCampaignOnChain';
-import { keccak256, stringToBytes } from 'viem';
 
 interface CreateCampaignParams {
   title: string;
@@ -58,7 +57,6 @@ export const useCreateCampaign = () => {
         setUploadProgress(10);
         
         const campaignIdentifier = generateCampaignIdentifier(address, params.title);
-        const campaignIdHash = keccak256(stringToBytes(campaignIdentifier));
 
         // ============================================
         // STEP 2: Upload images to IPFS/Pinata
@@ -110,7 +108,7 @@ export const useCreateCampaign = () => {
           status: 'active',
         };
 
-        const supabaseResult = await saveCampaignData(campaignData);
+        await saveCampaignData(campaignData);
 
         // ============================================
         // STEP 5: Complete

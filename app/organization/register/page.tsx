@@ -3,8 +3,8 @@
 import { useState, memo, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import {
-  Loader2, CheckCircle2, Upload, X, FileText, Building2, User,
-  Mail, Phone, Globe, MapPin, FileCheck, AlertCircle, ChevronRight
+  Loader2, CheckCircle2, Upload, X, FileText, Building2,
+  Mail, FileCheck, ChevronRight
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -20,7 +20,6 @@ import {
 import { Card } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { useToast } from '@/hooks/use-toast';
-import { uploadFileToPinata } from '@/lib/pinata-client';
 import type { OrganizationRegistrationData } from '@/lib/types/organization';
 import { supabase } from '@/lib/supabase-client-auth';
 
@@ -549,10 +548,10 @@ export default function OrganizationRegisterPage() {
         if (file) {
           try {
             uploads[key] = await uploadFile(file);
-          } catch (error: any) {
+          } catch (error: unknown) {
             toast({
               title: 'Upload Error',
-              description: `Failed to upload ${field}: ${error.message}`,
+              description: `Failed to upload ${field}: ${error instanceof Error ? error.message : 'Unknown error'}`,
               variant: 'destructive',
             });
             setIsSubmitting(false);
@@ -579,7 +578,7 @@ export default function OrganizationRegisterPage() {
         throw new Error(error.error || 'Failed to create organization');
       }
 
-      const result = await response.json();
+      await response.json();
 
       toast({
         title: 'Registration Successful',
@@ -587,11 +586,11 @@ export default function OrganizationRegisterPage() {
       });
 
       router.push('/organization/pending');
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Registration error:', error);
       toast({
         title: 'Registration Error',
-        description: error.message || 'Failed to register organization',
+        description: error instanceof Error ? error.message : 'Failed to register organization',
         variant: 'destructive',
       });
     } finally {

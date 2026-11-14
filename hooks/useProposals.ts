@@ -18,37 +18,25 @@ export interface Proposal {
   proposalType: string;
 }
 
-function useProposalData(proposalId: number) {
+export function useProposals(proposalIds: number[] = [0, 1, 2, 3]) {
   const result = useReadContracts({
-    contracts: [
-      {
-        address: CONTRACT_ADDRESSES.ZKTCore,
-        abi: ZKTCoreABI,
-        functionName: "getProposal",
-        args: [BigInt(proposalId)],
-      },
-    ],
+    contracts: proposalIds.map((id) => ({
+      address: CONTRACT_ADDRESSES.ZKTCore,
+      abi: ZKTCoreABI,
+      functionName: "getProposal",
+      args: [BigInt(id)],
+    })),
     query: {
       staleTime: 30_000, // 30 seconds
       gcTime: 300_000, // 5 minutes
     },
   });
 
-  return result;
-}
+  const isLoading = result.isLoading;
+  const error = result.error;
 
-export function useProposals(proposalIds: number[] = [0, 1, 2, 3]) {
-  const proposals = proposalIds.map((id) => useProposalData(id));
-
-  const isLoading = proposals.some((p) => p.isLoading);
-  const error = proposals.find((p) => p.error)?.error;
-
-  const data: Proposal[] = proposals
-    .map((proposal, index) => {
-      if (!proposal.data) return null;
-
-      const [proposalData] = proposal.data;
-
+  const data: Proposal[] = (result.data || [])
+    .map((proposalData, index) => {
       if (
         !proposalData ||
         typeof proposalData !== "object" ||
@@ -57,19 +45,27 @@ export function useProposals(proposalIds: number[] = [0, 1, 2, 3]) {
         return null;
       }
 
-      const prop = proposalData.result as any;
+      const prop = proposalData.result as {
+        title?: string;
+        description?: string;
+        proposer?: string;
+        votesFor?: bigint;
+        votesAgainst?: bigint;
+        endTime?: bigint;
+        executed?: boolean;
+      } | null;
 
       return {
         id: BigInt(proposalIds[index]),
-        title: prop.title || `Proposal ${proposalIds[index]}`,
-        description: prop.description || "",
-        proposer: prop.proposer || "",
-        votesFor: prop.votesFor || BigInt(0),
-        votesAgainst: prop.votesAgainst || BigInt(0),
+        title: prop?.title || `Proposal ${proposalIds[index]}`,
+        description: prop?.description || "",
+        proposer: prop?.proposer || "",
+        votesFor: prop?.votesFor || BigInt(0),
+        votesAgainst: prop?.votesAgainst || BigInt(0),
         votesAbstain: BigInt(0),
         startTime: BigInt(0),
-        endTime: prop.endTime || BigInt(0),
-        executed: prop.executed || false,
+        endTime: prop?.endTime || BigInt(0),
+        executed: prop?.executed || false,
         cancelled: false,
         proposalType: "general",
       };
@@ -77,7 +73,7 @@ export function useProposals(proposalIds: number[] = [0, 1, 2, 3]) {
     .filter((p): p is Proposal => p !== null);
 
   const refetch = () => {
-    proposals.forEach((p) => p.refetch());
+    result.refetch();
   };
 
   return {

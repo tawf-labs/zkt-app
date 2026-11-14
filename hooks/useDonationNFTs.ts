@@ -1,6 +1,6 @@
 "use client";
 
-import { useAccount, useReadContract } from "wagmi";
+import { useAccount } from "wagmi";
 import { CONTRACT_ADDRESSES, DonationReceiptNFTABI } from "@/lib/abi";
 import { useState, useEffect } from "react";
 import { createPublicClient, http } from "viem";
@@ -93,14 +93,14 @@ export function useDonationNFTs() {
                 blockNumber: currentBlock, // Approximate with current block
               });
             }
-          } catch (error) {
+          } catch {
             // Token might not exist, skip it
           }
         }
 
         setBalance(userBalance);
         setNfts(nftsData);
-      } catch (error) {
+      } catch {
         setNfts([]);
       } finally {
         setIsLoading(false);

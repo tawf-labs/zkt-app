@@ -407,7 +407,7 @@ export default function CampaignDetail() {
                     <div className="space-y-1">
                       <div className="font-semibold">Blockchain Verified</div>
                       <p className="text-sm text-muted-foreground">
-                        All donations are recorded on the blockchain. You'll receive an NFT receipt as permanent proof.
+                        All donations are recorded on the blockchain. You&apos;ll receive an NFT receipt as permanent proof.
                       </p>
                     </div>
                   </div>

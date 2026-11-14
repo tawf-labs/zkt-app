@@ -1,12 +1,10 @@
 "use client";
 
 import React, { useState } from 'react';
-import { LayoutDashboard, TrendingUp, Users, FileText, Settings, Download, Plus, ArrowUpRight, ArrowDownRight, CheckCircle2, DollarSign, Calendar, Loader2 } from 'lucide-react';
-import { LockAllocationButton } from '@/components/shared/lock-allocation-button';
+import { LayoutDashboard, TrendingUp, Users, FileText, Settings, Download, Plus, ArrowUpRight, ArrowDownRight, CheckCircle2, Loader2 } from 'lucide-react';
 import { CampaignStatusBadge } from '@/components/campaigns/campaign-status-badge';
 import { AllocationProgress } from '@/components/campaigns/allocation-progress';
 import { useCampaignStatus } from '@/hooks/useCampaignStatus';
-import { Progress } from '@/components/ui/progress';
 
 type SidebarTab = 'overview' | 'campaigns' | 'donors' | 'reports' | 'settings';
 
@@ -169,7 +167,7 @@ export default function BaznasDashboard() {
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
           <div>
             <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
-            <p className="text-black">Welcome back, admin. Here's what's happening today.</p>
+            <p className="text-black">Welcome back, admin. Here&apos;s what&apos;s happening today.</p>
           </div>
           <div className="flex items-center gap-3">
             <button className="flex items-center gap-2 px-4 py-2 rounded-md border border-black bg-white shadow-sm">

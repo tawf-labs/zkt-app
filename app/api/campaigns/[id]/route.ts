@@ -9,11 +9,30 @@ function calculateDaysLeft(endDate: number): number {
   return Math.max(daysLeft, 0);
 }
 
+type CampaignRow = Record<string, unknown> & {
+  campaign_id?: string;
+  end_time?: number | string;
+  start_time?: number | string;
+  image_urls?: string[];
+  total_raised?: number;
+  goal?: number;
+  donors_count?: number;
+  title?: string;
+  description?: string;
+  status?: string;
+  safe_tx_hash?: string;
+  organization_name?: string;
+  organization_verified?: boolean;
+  category?: string;
+  location?: string;
+  created_at?: string;
+};
+
 export async function GET(
-  request: NextRequest,
+  _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  let campaign: any = null;
+  let campaign: CampaignRow | null = null;
 
   try {
     const { id } = await params;
@@ -35,14 +54,14 @@ export async function GET(
 
     if (id.startsWith('0x')) {
       // It's a bytes32 hash - exact match
-      campaign = campaigns?.find((c: any) => c.campaign_id === id);
+      campaign = (campaigns as CampaignRow[] | null)?.find((c: CampaignRow) => c.campaign_id === id) ?? null;
     } else {
       // Try numeric ID - parse both as numbers for comparison
       const campaignId = parseInt(id, 10);
-      campaign = campaigns?.find((c: any) => {
-        const cId = parseInt(c.campaign_id, 10);
+      campaign = (campaigns as CampaignRow[] | null)?.find((c: CampaignRow) => {
+        const cId = c.campaign_id ? parseInt(c.campaign_id, 10) : NaN;
         return !isNaN(cId) && cId === campaignId;
-      });
+      }) ?? null;
     }
 
     // Validate required fields
@@ -84,7 +103,6 @@ export async function GET(
       }
     }
 
-    const now = Math.floor(Date.now() / 1000);
     const endTime = Number(campaign.end_time ?? (Math.floor(Date.now() / 1000) + 86400 * 90));
 
     // Format image URLs
@@ -112,7 +130,6 @@ export async function GET(
     const raisedAmount = Number(campaign.total_raised ?? 0);
     const goalAmount = Number(campaign.goal ?? 0);
     const donorsCount = Number(campaign.donors_count ?? 0);
-    const startTime = Number(campaign.start_time ?? Math.floor(Date.now() / 1000));
 
     // Validate conversions
     if (isNaN(raisedAmount) || isNaN(goalAmount) || isNaN(donorsCount)) {

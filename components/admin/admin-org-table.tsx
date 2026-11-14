@@ -16,19 +16,20 @@ import { formatPinataImageUrl } from '@/lib/pinata-client';
 import { ApproveDialog } from './approve-dialog';
 import { RejectDialog } from './reject-dialog';
 import { Building2, MapPin, Calendar, FileText, CheckCircle, XCircle, Clock } from 'lucide-react';
+import type { Organization } from '@/lib/types/organization';
 
 interface AdminOrgTableProps {
-  organizations: any[];
+  organizations: Organization[];
 }
 
 export function AdminOrgTable({ organizations }: AdminOrgTableProps) {
-  const [selectedOrg, setSelectedOrg] = useState<any>(null);
+  const [selectedOrg, setSelectedOrg] = useState<Organization | null>(null);
   const [showApprove, setShowApprove] = useState(false);
   const [showReject, setShowReject] = useState(false);
 
   const handleApprove = async () => {
     try {
-      const response = await fetch(`/api/organizations/${selectedOrg.id}/approve`, {
+      const response = await fetch(`/api/organizations/${selectedOrg?.id}/approve`, {
         method: 'POST',
       });
 
@@ -38,15 +39,15 @@ export function AdminOrgTable({ organizations }: AdminOrgTableProps) {
       }
 
       window.location.reload();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error approving organization:', error);
-      alert(error.message || 'Failed to approve organization');
+      alert(error instanceof Error ? error.message : 'Failed to approve organization');
     }
   };
 
   const handleReject = async (reason: string) => {
     try {
-      const response = await fetch(`/api/organizations/${selectedOrg.id}/reject`, {
+      const response = await fetch(`/api/organizations/${selectedOrg?.id}/reject`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ rejection_reason: reason }),
@@ -58,9 +59,9 @@ export function AdminOrgTable({ organizations }: AdminOrgTableProps) {
       }
 
       window.location.reload();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error rejecting organization:', error);
-      alert(error.message || 'Failed to reject organization');
+      alert(error instanceof Error ? error.message : 'Failed to reject organization');
     }
   };
 

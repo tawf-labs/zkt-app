@@ -5,8 +5,6 @@
 
 import { createBrowserClient } from '@supabase/ssr'
 
-let supabaseInstance: ReturnType<typeof createBrowserClient> | null = null
-
 /**
  * Get or create the singleton Supabase browser client
  * Uses @supabase/ssr for proper cookie management with Next.js
@@ -84,7 +82,7 @@ export const saveCampaignData = async (data: CampaignData) => {
     }
 
     // Prepare insert data with proper type conversions
-    const insertData: any = {
+    const insertData: Record<string, unknown> = {
       campaign_id: data.campaignId,
       title: data.title,
       description: data.description,

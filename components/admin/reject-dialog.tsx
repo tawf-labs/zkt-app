@@ -13,11 +13,12 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { AlertTriangle, XCircle } from 'lucide-react';
+import type { Organization } from '@/lib/types/organization';
 
 interface RejectDialogProps {
   open: boolean;
   onClose: () => void;
-  organization: any;
+  organization: Organization | null;
   onReject: (reason: string) => void;
 }
 

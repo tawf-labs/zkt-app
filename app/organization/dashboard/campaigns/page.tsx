@@ -52,7 +52,7 @@ export default async function OrganizationCampaignsPage({
         <div>
           <h1 className="text-3xl font-bold">Campaigns</h1>
           <p className="text-muted-foreground">
-            Manage your organization's zakat campaigns
+            Manage your organization&apos;s zakat campaigns
           </p>
         </div>
         <Link href="/campaigns/new">

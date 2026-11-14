@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useState } from 'react';
-import { useAccount, useWriteContract, useReadContract } from 'wagmi';
+import { useAccount, useWriteContract } from 'wagmi';
 import { ZKT_CAMPAIGN_POOL_ADDRESS, ZKTCampaignPoolABI } from '@/lib/zkt-campaign-pool';
 import { toast } from '@/components/ui/use-toast';
 
@@ -76,12 +76,13 @@ export const useLockAllocations = (options?: UseLockAllocationsOptions) => {
         options?.onSuccess?.(hash);
         return { txHash: hash };
 
-      } catch (error: any) {
+      } catch (error: unknown) {
+        const err = error as { message?: string } | null;
         let errorMsg = 'Failed to lock allocations';
 
-        if (error?.message?.includes('user rejected')) {
+        if (err?.message?.includes('user rejected')) {
           errorMsg = 'Transaction rejected by user';
-        } else if (error?.message?.includes('Campaign does not exist')) {
+        } else if (err?.message?.includes('Campaign does not exist')) {
           errorMsg = 'Campaign does not exist. Create campaign first!';
         } else if (error?.message?.includes('Allocation not complete')) {
           errorMsg = 'Total allocation must be 100% before locking';

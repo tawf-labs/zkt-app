@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase-server'
 
 /**
@@ -6,7 +6,7 @@ import { createClient } from '@/lib/supabase-server'
  * Returns the current user's organization status
  * Requires authenticated session (reads from cookies)
  */
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
     const supabase = await createClient()
 
