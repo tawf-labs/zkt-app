@@ -52,11 +52,6 @@ interface CampaignCardProps {
   onDonationSuccess?: () => void;
 }
 
-const calculateProgress = (raised: number, goal: number) => {
-  const progress = (raised / goal) * 100;
-  return Math.min(progress, 100) - 100;
-};
-
 const formatCurrency = (amount: number) => {
   return `${amount.toLocaleString('id-ID', { maximumFractionDigits: 0 })} IDRX`;
 };
@@ -68,12 +63,9 @@ const calculateRealTimeDaysLeft = (endDate: number): number => {
   return Math.max(daysLeft, 0);
 };
 
-export function CampaignCard({ campaign, onDonationSuccess }: CampaignCardProps) {
+export function CampaignCard({ campaign, onDonationSuccess: _onDonationSuccess }: CampaignCardProps) {
   const router = useRouter();
   const [showDonationDialog, setShowDonationDialog] = useState(false);
-  const [daysLeft, setDaysLeft] = useState(calculateRealTimeDaysLeft(campaign.endDate));
-  const [raisedAmount, setRaisedAmount] = useState(campaign.raised);
-  const progress = calculateProgress(raisedAmount, campaign.goal);
 
   const handleCardClick = () => {
     router.push(`/campaigns/${campaign.id}`);

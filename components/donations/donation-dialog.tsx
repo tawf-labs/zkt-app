@@ -189,19 +189,19 @@ export function DonationDialog({
           .from('campaigns')
           .update({ total_raised: newTotalRaised })
           .eq('campaign_id', campaignId);
-      } catch (supabaseError) {
+      } catch {
       }
 
       // Trigger parent refresh (but don't close dialog yet)
       if (onSuccess) {
         onSuccess();
       }
-    } catch (error: any) {
-      
+    } catch (error: unknown) {
+      const err = error as { reason?: string; message?: string } | null;
       toast({
         variant: "destructive",
         title: "Donation Failed",
-        description: error?.reason || error?.message || "Transaction failed. Please try again.",
+        description: err?.reason || err?.message || "Transaction failed. Please try again.",
       });
     } finally {
       setIsProcessing(false);
@@ -268,7 +268,7 @@ export function DonationDialog({
             <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 text-xs text-yellow-900">
               <p className="font-semibold mb-1">⚠️ NFT Not Showing in Wallet?</p>
               <ul className="list-disc list-inside space-y-1 text-yellow-800">
-                <li>Check your wallet's NFT/Collectibles tab</li>
+                <li>Check your wallet&apos;s NFT/Collectibles tab</li>
                 <li>Import NFT with contract address above</li>
                 <li>Refresh your wallet or switch networks</li>
               </ul>
@@ -387,7 +387,7 @@ export function DonationDialog({
             <p className="font-semibold text-blue-900">ℹ️ Transaction Details</p>
             <ul className="list-disc list-inside text-blue-800 space-y-0.5 text-xs">
               <li>Approval required for first-time donation</li>
-              <li>You'll receive a soulbound NFT receipt</li>
+              <li>You&apos;ll receive a soulbound NFT receipt</li>
               <li>Earn vZKT governance tokens (1:1 ratio)</li>
               <li>All transactions recorded on Base Sepolia</li>
             </ul>

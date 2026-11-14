@@ -31,7 +31,7 @@ export function Header() {
         {/* LEFT */}
         <div className="flex items-center gap-10">
           <Link href="/" className="flex items-center">
-            <img src="/logo.png" className="h-8 object-contain" />
+            <img src="/logo.png" alt="ZKT.app Logo" className="h-8 object-contain" />
           </Link>
 
           <nav className="hidden md:flex items-center gap-8 text-[0.79rem] font-medium">

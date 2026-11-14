@@ -44,7 +44,7 @@ export function CurrencyProvider({ children }: CurrencyProviderProps) {
 			if (response.data && response.data.rates && response.data.rates.IDRX) {
 				setExchangeRate(response.data.rates.IDRX);
 			}
-		} catch (error) {
+		} catch {
 			// Keep using fallback rate
 		} finally {
 			setIsLoadingRate(false);

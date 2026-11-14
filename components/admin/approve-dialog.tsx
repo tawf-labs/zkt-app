@@ -13,12 +13,12 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { formatPinataImageUrl } from '@/lib/pinata-client';
 import { Building2, MapPin, Mail, Phone, Calendar, FileText, CheckCircle } from 'lucide-react';
-import { formatIDRX } from '@/lib/abi';
+import type { Organization } from '@/lib/types/organization';
 
 interface ApproveDialogProps {
   open: boolean;
   onClose: () => void;
-  organization: any;
+  organization: Organization;
   onApprove: () => void;
 }
 

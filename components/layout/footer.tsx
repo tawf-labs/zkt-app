@@ -19,7 +19,7 @@ export function Footer() {
           </Link>
 
             <p className="text-muted-foreground max-w-sm">
-              The world's first fully traceable Zakat and donation platform. Empowering transparent giving through blockchain technology.
+              The world&apos;s first fully traceable Zakat and donation platform. Empowering transparent giving through blockchain technology.
             </p>
 
             {/* Social Icons */}
@@ -46,7 +46,7 @@ export function Footer() {
           <div className="space-y-4">
             <h3 className="font-bold text-lg">Platform</h3>
             <ul className="space-y-2">
-              <li><a href="/campaigns" className="text-muted-foreground hover:text-primary transition-colors">Explore Campaigns</a></li>
+              <li><Link href="/campaigns" className="text-muted-foreground hover:text-primary transition-colors">Explore Campaigns</Link></li>
               <li><a href="/calculate-zakat" className="text-muted-foreground hover:text-primary transition-colors">Calculate Zakat</a></li>
               <li><a href="/governance" className="text-muted-foreground hover:text-primary transition-colors">DAO Governance</a></li>
               <li><a href="/impact" className="text-muted-foreground hover:text-primary transition-colors">Impact Reports</a></li>

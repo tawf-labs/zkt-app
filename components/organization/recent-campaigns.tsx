@@ -5,9 +5,10 @@ import { Badge } from '@/components/ui/badge';
 import { formatIDRX } from '@/lib/abi';
 import { formatPinataImageUrl } from '@/lib/pinata-client';
 import { Plus, ArrowRight, Calendar } from 'lucide-react';
+import type { OrganizationCampaign } from '@/lib/types/organization';
 
 interface RecentCampaignsProps {
-  campaigns: any[];
+  campaigns: OrganizationCampaign[];
 }
 
 export function RecentCampaigns({ campaigns }: RecentCampaignsProps) {

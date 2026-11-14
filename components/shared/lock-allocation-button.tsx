@@ -42,7 +42,7 @@ export function LockAllocationButton({
     try {
       await lockAllocations(campaignId);
       setIsDialogOpen(false);
-    } catch (error) {
+    } catch {
       // Error handled by toast
     }
   };
