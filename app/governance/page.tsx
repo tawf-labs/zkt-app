@@ -1,8 +1,6 @@
 "use client"
 
 import { useState } from "react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Progress } from "@/components/ui/progress"
@@ -17,28 +15,27 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
-import { Vote, Users, Clock, CheckCircle2, Shield, Plus, ThumbsUp, ThumbsDown, LayoutDashboard, FileText, Settings, Download, TrendingUp, Loader2 } from "lucide-react"
+import { Vote, Users, Clock, CheckCircle2, Shield, Plus, ThumbsUp, ThumbsDown, Loader2 } from "lucide-react"
 import { useProposals } from "@/hooks/useProposals"
 import { useVotingPower } from "@/hooks/useVotingPower"
-import { useAccount, useWriteContract, useWaitForTransactionReceipt } from "wagmi"
+import { useAccount, useWriteContract } from "wagmi"
 import { CONTRACT_ADDRESSES, ZKTCoreABI } from "@/lib/abi"
 import { handleTransactionError, handleWalletError } from "@/lib/errors"
 import { useToast } from "@/hooks/use-toast"
 
 export default function GovernancePage() {
   const { toast } = useToast()
-  const { address, isConnected } = useAccount()
+  const { isConnected } = useAccount()
   const [hasVoted, setHasVoted] = useState<Record<string, boolean>>({})
   
   // Get real voting power from blockchain
   const { votingPower, formattedVotingPower, isLoading: isLoadingVotingPower } = useVotingPower()
   
   // Get real proposals from blockchain
-  const { proposals: blockchainProposals, isLoading: isLoadingProposals, refetch: refetchProposals } = useProposals([0, 1, 2, 3])
+  const { proposals: blockchainProposals, refetch: refetchProposals } = useProposals([0, 1, 2, 3])
   
   // Contract write for voting
-  const { writeContractAsync, isPending: isVoting } = useWriteContract()
-  const [pendingVoteProposalId, setPendingVoteProposalId] = useState<string | null>(null)
+  const { writeContractAsync } = useWriteContract()
 
   const handleVote = async (proposalId: string, voteType: "for" | "against") => {
     if (!isConnected) {
@@ -46,12 +43,10 @@ export default function GovernancePage() {
       return
     }
 
-    setPendingVoteProposalId(proposalId)
-    
     try {
       const voteSupport = voteType === "for" // true = for, false = against
       
-      const txHash = await writeContractAsync({
+      await writeContractAsync({
         address: CONTRACT_ADDRESSES.ZKTCore,
         abi: ZKTCoreABI,
         functionName: "vote",
@@ -67,13 +62,10 @@ export default function GovernancePage() {
       await refetchProposals()
     } catch (error) {
       handleTransactionError(error, { toast, action: "vote" })
-    } finally {
-      setPendingVoteProposalId(null)
     }
   }
 
   const userVotingPower = Number(votingPower || BigInt(0))
-  const isLoading = isLoadingVotingPower || isLoadingProposals
 
   // Map blockchain proposals to UI format
   const proposals = blockchainProposals.map((p) => {
@@ -109,7 +101,7 @@ export default function GovernancePage() {
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
           <div>
             <h1 className="text-3xl font-bold tracking-tight">Governance Portal</h1>
-            <p className="text-black">Participate in ZKT.app's dual-layer DAO governance system</p>
+            <p className="text-black">Participate in ZKT.app&apos;s dual-layer DAO governance system</p>
           </div>
           <div className="flex items-center gap-3">
             <Dialog>
@@ -246,7 +238,7 @@ export default function GovernancePage() {
         <div className="bg-white rounded-xl border border-black shadow-sm">
           <div className="p-6 border-b border-black">
             <h2 className="font-semibold">Active Proposals</h2>
-            <p className="text-sm text-black mt-1">Vote on proposals to shape the platform's future</p>
+            <p className="text-sm text-black mt-1">Vote on proposals to shape the platform&apos;s future</p>
           </div>
           
           <Tabs defaultValue="active" className="p-6">

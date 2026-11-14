@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { useAccount, useWriteContract } from "wagmi"
-import { Upload, Building2, FileText, Shield, CheckCircle2, AlertCircle, Loader2, Users } from "lucide-react"
+import { Building2, FileText, Shield, CheckCircle2, AlertCircle, Loader2, Users } from "lucide-react"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
@@ -54,7 +54,7 @@ interface OrganizationFormData {
 export default function PartnersPage() {
   const { address, isConnected } = useAccount()
   const { toast } = useToast()
-  const { writeContractAsync, isPending } = useWriteContract()
+  const { writeContractAsync } = useWriteContract()
   
   const [step, setStep] = useState(1)
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -204,7 +204,7 @@ This proposal requests the community and Sharia Council to:
       const votingPeriodSeconds = BigInt(parseInt(formData.projectDuration) * 24 * 60 * 60)
 
       // Submit proposal to blockchain
-      const txHash = await writeContractAsync({
+      await writeContractAsync({
         address: CONTRACT_ADDRESSES.ZKTCore,
         abi: ZKTCoreABI,
         functionName: "createProposal",
@@ -249,7 +249,7 @@ This proposal requests the community and Sharia Council to:
               { num: 3, label: "Details" },
               { num: 4, label: "Proposal" },
               { num: 5, label: "Submit" }
-            ].map((s, idx) => (
+            ].map((s) => (
               <div key={s.num} className="flex items-center">
                 <div className={`flex flex-col items-center ${s.num < 5 ? 'flex-1' : ''}`}>
                   <div className={`w-10 h-10 rounded-full flex items-center justify-center border-2 font-semibold transition-all ${
@@ -605,7 +605,7 @@ This proposal requests the community and Sharia Council to:
                   rows={6}
                 />
                 <p className="text-xs text-muted-foreground">
-                  Explain your organization's goals, the campaigns you plan to create, and how you'll ensure transparency
+                  Explain your organization&apos;s goals, the campaigns you plan to create, and how you&apos;ll ensure transparency
                 </p>
               </div>
 

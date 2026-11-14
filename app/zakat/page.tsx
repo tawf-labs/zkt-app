@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Calculator, Wallet, Heart, Users, Home, Loader2, Info, ChevronDown, Check } from "lucide-react";
+import { Wallet, Heart, Users, Home, Loader2, ChevronDown, Check } from "lucide-react";
 import { useWallet } from "@/components/providers/web3-provider";
 import { useLanguage } from "@/components/providers/language-provider";
 import { campaigns, formatCurrency } from "@/data/campaigns";
@@ -95,12 +95,12 @@ export default function ZakatPage() {
         setPeopleCount("");
       }
       setSelectedCampaign(null);
-    } catch (error: any) {
+    } catch (error: unknown) {
       setIsProcessing(false);
       toast({
         variant: "destructive",
         title: t("toast.error"),
-        description: error?.message || t("toast.paymentFailed"),
+        description: error instanceof Error ? error.message : t("toast.paymentFailed"),
       });
     }
   };

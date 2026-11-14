@@ -16,10 +16,10 @@ export default function ContactUsPage() {
           <div className="max-w-3xl mx-auto text-center space-y-8">
             <div className="space-y-4">
               <h1 className="text-5xl lg:text-6xl font-extrabold tracking-tight text-foreground">
-                Let's <span className="text-primary">Connect</span>
+                Let&apos;s <span className="text-primary">Connect</span>
               </h1>
               <p className="text-xl text-muted-foreground max-w-2xl mx-auto leading-relaxed">
-                Have questions or need assistance? We're just an email away.
+                Have questions or need assistance? We&apos;re just an email away.
               </p>
             </div>
           </div>
@@ -46,7 +46,7 @@ export default function ContactUsPage() {
                     <div>
                       <h3 className="text-2xl font-bold text-foreground mb-2">Get in Touch</h3>
                       <p className="text-muted-foreground">
-                        Have questions about campaigns, partnerships, or technical support? We're here to help.
+                        Have questions about campaigns, partnerships, or technical support? We&apos;re here to help.
                       </p>
                     </div>
                   </div>

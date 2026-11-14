@@ -3,17 +3,30 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import {
-  Upload, CheckCircle2, Loader2, X, AlertCircle,
+  Upload, CheckCircle2, Loader2, X,
   ChevronRight, Sparkles, Lock, ShieldCheck, ExternalLink
 } from 'lucide-react';
-import { useAccount, useWriteContract, usePublicClient, useWaitForTransactionReceipt } from 'wagmi';
+import { useAccount } from 'wagmi';
 import { toast } from '@/components/ui/use-toast';
-import { keccak256, stringToBytes, pad } from 'viem';
+import { keccak256, stringToBytes } from 'viem';
 import { uploadFilesToPinata } from '@/lib/pinata-client';
 import { useCreateCampaignWithSafe, type NGOAllocation } from '@/hooks/useCreateCampaignWithSafe';
 import { useCampaignStatus } from '@/hooks/useCampaignStatus';
-import { saveCampaignData, type CampaignData } from '@/lib/supabase-client-auth';
-import { ZKT_CAMPAIGN_POOL_ADDRESS, ZKTCampaignPoolABI } from '@/lib/zkt-campaign-pool';
+import type { Organization } from '@/lib/types/organization';
+
+interface NewCampaignData {
+  name: string;
+  description: string;
+  category: string;
+  location: string;
+  goal: string;
+  organizationName: string;
+}
+
+interface CreatedCampaignInfo {
+  safeTxHash?: string;
+  campaignId?: string;
+}
 
 // Safe multisig constants
 const SAFE_ADDRESS = '0xD264BE80817EAfaC5F7575698913FEc4cB38a016';
@@ -122,7 +135,7 @@ function StepIndicator({ currentStep, steps }: StepIndicatorProps) {
   return (
     <div className="mb-8">
       <div className="flex items-center justify-between">
-        {steps.map((step, idx) => (
+        {steps.map((_step, idx) => (
           <div key={idx} className="flex items-center flex-1">
             <div
               className={`flex items-center justify-center w-8 h-8 rounded-full font-semibold text-sm ${
@@ -146,7 +159,7 @@ function StepIndicator({ currentStep, steps }: StepIndicatorProps) {
         ))}
       </div>
       <div className="flex items-center justify-between mt-2">
-        {steps.map((step, idx) => (
+        {steps.map((_step, idx) => (
           <span
             key={idx}
             className={`text-xs font-medium flex-1 text-center ${
@@ -313,8 +326,8 @@ function Step2NGOSelection({ selectedNGOs, setSelectedNGOs, onNext, onBack }: St
           const data = await response.json();
           // Map organizations to NGO format
           const ngos: NGO[] = data.organizations
-            .filter((org: any) => org.verification_status === 'approved')
-            .map((org: any) => ({
+            .filter((org: Organization) => org.verification_status === 'approved')
+            .map((org: Organization) => ({
               id: org.id,
               wallet: '0x2ca80Cc5e254C45E99281F670d694B22E6a90FC4', // Default wallet for now
               name: org.name,
@@ -778,8 +791,8 @@ function Step4ConfirmAllocation({
  * STEP 5: CAMPAIGN DETAILS (OFF-CHAIN)
  */
 interface Step5Props {
-  campaignData: any;
-  setCampaignData: (data: any) => void;
+  campaignData: NewCampaignData;
+  setCampaignData: (data: NewCampaignData) => void;
   imageFiles: File[];
   imagePreviewUrls: string[];
   onImageUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
@@ -1019,7 +1032,7 @@ function Step5CampaignDetails({
  * STEP 6: REVIEW & SUBMIT TO SAFE
  */
 interface Step6Props {
-  campaignData: any;
+  campaignData: NewCampaignData;
   selectedNGOs: NGO[];
   allocations: AllocationWithNgo[];
   imageCount: number;
@@ -1363,7 +1376,7 @@ function Step7WaitingSafe({ safeTxHash, campaignId }: Step7Props) {
           Refresh Page
         </button>
         <p className="text-xs text-muted-foreground">
-          ✨ This page auto-checks every 15 seconds. Once the campaign is created, you'll be redirected automatically.
+          ✨ This page auto-checks every 15 seconds. Once the campaign is created, you&apos;ll be redirected automatically.
         </p>
       </div>
     </div>
@@ -1374,13 +1387,11 @@ function Step7WaitingSafe({ safeTxHash, campaignId }: Step7Props) {
  * SUCCESS SCREEN
  */
 interface SuccessProps {
-  createdCampaign: any;
+  createdCampaign: CreatedCampaignInfo | null;
   onReset: () => void;
 }
 
 function SuccessScreen({ createdCampaign, onReset }: SuccessProps) {
-  const explorerUrl = 'https://sepolia.basescan.org';
-
   return (
     <div className="space-y-6 text-center">
       <div className="inline-flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br from-primary to-primary/80 shadow-lg shadow-primary/30 mx-auto">
@@ -1484,14 +1495,11 @@ export default function CreateCampaignPage() {
 
 function CreateCampaignInner() {
   const { address: userAddress, isConnected } = useAccount();
-  const { writeContractAsync } = useWriteContract();
-  const publicClient = usePublicClient();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [transactionStep, setTransactionStep] = useState('');
-  const [txHashes, setTxHashes] = useState<string[]>([]);
 
   // Safe multisig hook
-  const { createCampaignWithAllocations, isLoading: safeIsLoading, safeTxHash, error: safeError } = useCreateCampaignWithSafe();
+  const { createCampaignWithAllocations } = useCreateCampaignWithSafe();
 
   // Enhanced transaction progress tracking
   const [currentTransaction, setCurrentTransaction] = useState({
@@ -1502,7 +1510,7 @@ function CreateCampaignInner() {
   });
 
   const [step, setStep] = useState(1);
-  const [createdCampaign, setCreatedCampaign] = useState<any>(null);
+  const [createdCampaign, setCreatedCampaign] = useState<CreatedCampaignInfo | null>(null);
 
   // Check if user is a Safe signer (DISABLED - Not using Safe anymore)
   // const [isSigner, setIsSigner] = useState(false);
@@ -1571,7 +1579,7 @@ function CreateCampaignInner() {
   }, [selectedNGOs]);
 
   // Check campaign status after Safe (for Step 8)
-  const { campaign, allocationLocked: contractAllocationLocked } = useCampaignStatus(
+  useCampaignStatus(
     campaignId?.startsWith('0x') ? campaignId : null
   );
 
@@ -1612,24 +1620,6 @@ function CreateCampaignInner() {
     setImagePreviewUrls(prev => prev.filter((_, i) => i !== idx));
   };
 
-  // Helper function to wait for transaction confirmation
-  const waitForTransaction = async (hash: string, timeout = 60000) => {
-    if (!publicClient) throw new Error('Public client not available');
-
-    setTransactionStep(`Waiting for transaction ${hash.slice(0, 10)}... to be mined...`);
-
-    const receipt = await publicClient.waitForTransactionReceipt({
-      hash: hash as `0x${string}`,
-      timeout: timeout,
-    });
-
-    if (receipt.status !== 'success') {
-      throw new Error(`Transaction failed: ${hash}`);
-    }
-
-    return receipt;
-  };
-
   // Submit to Safe multisig (Step 6)
   const handleSubmitToSafe = async () => {
     if (!isConnected || !userAddress) {
@@ -1642,7 +1632,6 @@ function CreateCampaignInner() {
     }
 
     setIsSubmitting(true);
-    setTxHashes([]);
 
     try {
       // Generate campaign ID
@@ -1655,7 +1644,7 @@ function CreateCampaignInner() {
       if (imageFiles.length > 0) {
         try {
           uploadedImageUrls = await uploadFilesToPinata(imageFiles);
-        } catch (uploadError) {
+        } catch {
           toast({
             title: '⚠️ Image Upload Warning',
             description: 'Using local previews instead.',
@@ -1699,16 +1688,17 @@ function CreateCampaignInner() {
       setTransactionStep('');
       setCurrentTransaction({ step: 0, total: 0, name: '', hash: '' });
       setStep(7); // Go to Safe approval waiting screen
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const err = error as { message?: string; reason?: string; data?: { message?: string } } | null;
       // Detailed error logging
       let errorMsg = 'Failed to create campaign';
-      if (error?.message) {
-        errorMsg = error.message;
+      if (err?.message) {
+        errorMsg = err.message;
       }
-      if (error?.reason) {
-        errorMsg = `Contract error: ${error.reason}`;
+      if (err?.reason) {
+        errorMsg = `Contract error: ${err.reason}`;
       }
-      if (error?.data?.message) {
+      if (err?.data?.message) {
         errorMsg = `Contract error: ${error.data.message}`;
       }
 
@@ -1754,7 +1744,6 @@ function CreateCampaignInner() {
     setImageFiles([]);
     imagePreviewUrls.forEach(url => URL.revokeObjectURL(url));
     setImagePreviewUrls([]);
-    setTxHashes([]);
     setTransactionStep('');
     setCurrentTransaction({ step: 0, total: 0, name: '', hash: '' });
   };

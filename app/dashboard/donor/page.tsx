@@ -1,9 +1,9 @@
 "use client";
 
 import React, { useState } from 'react';
-import { Award, FileText, Vote, Wallet, ShieldCheck, Download, ExternalLink, TrendingUp, CheckCircle2, XCircle, Clock, Settings, Gift, RefreshCw, ImageIcon } from 'lucide-react';
+import { Award, FileText, Vote, Wallet, ShieldCheck, Download, ExternalLink, TrendingUp, CheckCircle2, XCircle, Clock, Settings, Gift, RefreshCw } from 'lucide-react';
 import { useAccount } from 'wagmi';
-import { useDonationNFTs, DonationNFT } from '@/hooks/useDonationNFTs';
+import { useDonationNFTs } from '@/hooks/useDonationNFTs';
 import { useVotingPower } from '@/hooks/useVotingPower';
 import { useProposals } from '@/hooks/useProposals';
 import { CONTRACT_ADDRESSES } from '@/lib/abi';
@@ -13,7 +13,7 @@ import { getCampaignName, getCampaignCategory } from '@/lib/campaign-utils';
 type SidebarTab = 'overview' | 'tax-reports' | 'governance-dao' | 'wallet-settings';
 
 const DonorDashboard: React.FC = () => {
-  const { address, isConnected } = useAccount();
+  const { isConnected } = useAccount();
   const { nfts, balance, isLoading: isLoadingNFTs, refetch: refetchNFTs } = useDonationNFTs();
   const { votingPower, isLoading: isLoadingVoting } = useVotingPower();
   const { proposals, isLoading: isLoadingProposals } = useProposals([0, 1, 2, 3]);

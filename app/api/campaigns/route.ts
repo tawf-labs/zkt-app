@@ -1,11 +1,11 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { createPublicClient, http } from 'viem';
 import { baseSepolia } from 'viem/chains';
 import { ZKT_CAMPAIGN_POOL_ADDRESS, ZKTCampaignPoolABI } from '@/lib/zkt-campaign-pool';
 import { Campaign } from '@/hooks/useCampaigns';
 import { formatPinataImageUrl } from '@/lib/pinata-client';
 import { supabase } from '@/lib/supabase-client-auth';
-import { verifyCampaignExists, getCampaignOnChainStatus } from '@/lib/verify-campaign';
+import { verifyCampaignExists } from '@/lib/verify-campaign';
 
 // Create a public client for reading contract data
 const publicClient = createPublicClient({
@@ -20,7 +20,7 @@ function calculateDaysLeft(endDate: number): number {
   return Math.max(daysLeft, 0);
 }
 
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
     const campaigns: Campaign[] = [];
 
@@ -139,12 +139,12 @@ export async function GET(request: NextRequest) {
 
       try {
         // Read campaign data from contract
-        const campaignData = await publicClient.readContract({
+        const campaignData = (await publicClient.readContract({
           address: ZKT_CAMPAIGN_POOL_ADDRESS,
           abi: ZKTCampaignPoolABI,
           functionName: 'campaigns',
           args: [camp.campaign_id as `0x${string}`],
-        }) as any;
+        })) as [boolean, boolean, boolean, boolean, bigint, bigint, bigint];
 
         // campaignData returns:
         // [0] exists (bool)

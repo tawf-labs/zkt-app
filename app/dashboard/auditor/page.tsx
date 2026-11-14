@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from 'react';
-import { Shield, LayoutDashboard, Building2, FileCheck, TriangleAlert, Search, Download, Activity, AlertCircle, TrendingUp, Users } from 'lucide-react';
+import { Shield, LayoutDashboard, Building2, FileCheck, TriangleAlert, Search, Download, Activity, AlertCircle } from 'lucide-react';
 
 type SidebarTab = 'overview' | 'organizations' | 'audit' | 'alerts';
 

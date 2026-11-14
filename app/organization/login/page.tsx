@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -10,7 +10,6 @@ import { supabase } from '@/lib/supabase-client-auth';
 
 export default function OrganizationLoginPage() {
   const [isLoading, setIsLoading] = useState(false);
-  const router = useRouter();
   const { toast } = useToast();
 
   const handleGoogleLogin = async () => {
@@ -36,11 +35,11 @@ export default function OrganizationLoginPage() {
       if (data.url) {
         window.location.href = data.url;
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error signing in with Google:', error);
       toast({
         title: 'Login Error',
-        description: error.message || 'Failed to sign in with Google',
+        description: error instanceof Error ? error.message : 'Failed to sign in with Google',
         variant: 'destructive',
       });
       setIsLoading(false);
@@ -55,7 +54,7 @@ export default function OrganizationLoginPage() {
             Organization Login
           </h1>
           <p className="text-gray-600">
-            Sign in to manage your organization's campaigns
+            Sign in to manage your organization&apos;s campaigns
           </p>
         </div>
 
@@ -98,7 +97,7 @@ export default function OrganizationLoginPage() {
 
           <div className="text-center mt-6">
             <p className="text-sm text-gray-600">
-              Don't have an organization yet?{' '}
+              Don&apos;t have an organization yet?{' '}
               <a
                 href="/organization/register"
                 className="text-primary font-semibold hover:underline"
@@ -109,12 +108,12 @@ export default function OrganizationLoginPage() {
           </div>
 
           <div className="text-center mt-4">
-            <a
+            <Link
               href="/"
               className="text-sm text-gray-500 hover:text-gray-700"
             >
               ← Back to home
-            </a>
+            </Link>
           </div>
         </div>
       </Card>

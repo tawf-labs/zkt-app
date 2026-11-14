@@ -1,7 +1,7 @@
 "use client";
 
 import { useAccount, useReadContract, useWriteContract, useWaitForTransactionReceipt } from "wagmi";
-import { CONTRACT_ADDRESSES, MockIDRXABI, formatIDRX } from "@/lib/abi";
+import { CONTRACT_ADDRESSES, MockIDRXABI } from "@/lib/abi";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -13,7 +13,7 @@ import { useEffect, useState } from "react";
 
 export default function FaucetPage() {
   const { address, isConnected } = useAccount();
-  const { balance, formattedBalance, refetch: refetchBalance } = useIDRXBalance();
+  const { formattedBalance, refetch: refetchBalance } = useIDRXBalance();
   const { toast } = useToast();
   const [countdown, setCountdown] = useState<number | null>(null);
 

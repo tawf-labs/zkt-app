@@ -8,7 +8,7 @@ import { getUser } from '@/lib/supabase-auth';
  * In production, you should check if the user has admin privileges
  */
 export async function POST(
-  request: NextRequest,
+  _request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
@@ -76,10 +76,10 @@ export async function POST(
       organization: data,
       message: 'Organization approved successfully',
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error in POST /api/organizations/[id]/approve:', error);
     return NextResponse.json(
-      { error: error.message || 'Internal server error' },
+      { error: error instanceof Error ? error.message : 'Internal server error' },
       { status: 500 }
     );
   }

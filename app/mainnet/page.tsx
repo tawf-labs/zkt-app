@@ -2,7 +2,6 @@
 
 import React from 'react';
 import { Wrench, Rocket, ArrowRight } from 'lucide-react';
-import Link from 'next/link';
 
 export function UnderDevelopment() {
   return (
@@ -30,7 +29,7 @@ export function UnderDevelopment() {
 
           {/* Description */}
           <p className="text-lg text-muted-foreground max-w-2xl leading-relaxed">
-            We're building a better mainnet platform for you. Meanwhile, you can try all our features on testnet to experience transparent and verified blockchain charity.
+            We&apos;re building a better mainnet platform for you. Meanwhile, you can try all our features on testnet to experience transparent and verified blockchain charity.
           </p>
 
           {/* CTA Button */}
