@@ -1,7 +1,7 @@
 "use client";
 
 import { useAccount, usePublicClient } from "wagmi";
-import { ZKT_CAMPAIGN_POOL_ADDRESS, ZKTCampaignPoolABI } from "@/lib/zkt-campaign-pool";
+import { ZKT_CAMPAIGN_POOL_ADDRESS } from "@/lib/zkt-campaign-pool";
 import { useState, useEffect, useRef } from "react";
 
 export interface DonationEvent {

@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from 'react'
 import { usePublicClient } from 'wagmi'
-import { ZKT_CAMPAIGN_POOL_ADDRESS, ZKTCampaignPoolABI } from '@/lib/zkt-campaign-pool'
+import { ZKT_CAMPAIGN_POOL_ADDRESS } from '@/lib/zkt-campaign-pool'
 import { supabase } from '@/lib/supabase-client-auth'
 
 /**
@@ -40,7 +40,7 @@ export const useCampaignEventListener = () => {
             if (latestBlock <= lastBlockRef.current) {
               return // No new blocks
             }
-            const logs = await (publicClient as any).getLogs({
+            const logs = await publicClient.getLogs({
               address: ZKT_CAMPAIGN_POOL_ADDRESS,
               event: {
                 name: 'CampaignCreated',
@@ -77,20 +77,20 @@ export const useCampaignEventListener = () => {
                   // Campaign exists in Supabase
                   if (data.status === 'pending_execution') {
                     // Update status to 'active' since Safe transaction executed
-                    const { error: updateError } = await supabase
+                    await supabase
                       .from('campaigns')
                       .update({ status: 'active' })
                       .eq('campaign_id', campaignId)
                   }
                 }
-              } catch (err) {
+              } catch {
               }
             }
-          } catch (pollError) {
+          } catch {
           }
         }, 15000) // Poll every 15 seconds
 
-      } catch (err) {
+      } catch {
       }
     }
 

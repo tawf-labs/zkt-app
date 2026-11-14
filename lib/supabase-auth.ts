@@ -78,7 +78,7 @@ export async function getUserOrganization(): Promise<OrganizationWithAdmin | nul
     // Return organization with admin role info
     return {
       ...(data.organizations as Organization),
-      admin_role: data.role as any,
+      admin_role: data.role as OrganizationRole,
       is_primary: data.is_primary,
     };
   } catch (error) {
