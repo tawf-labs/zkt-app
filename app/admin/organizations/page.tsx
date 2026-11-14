@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import { createClient } from '@/lib/supabase-server';
 import { AdminOrgTable } from '@/components/admin/admin-org-table';
 import { Card } from '@/components/ui/card';
@@ -8,6 +9,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+
+export const metadata: Metadata = {
+  title: 'Admin Organizations',
+  robots: {
+    index: false,
+    follow: false,
+  },
+};
 
 export default async function AdminOrganizationsPage({
   searchParams,

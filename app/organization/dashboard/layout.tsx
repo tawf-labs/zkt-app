@@ -1,6 +1,15 @@
+import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 import { getUserOrganization } from '@/lib/supabase-auth';
 import { OrgNav } from '@/components/organization/org-nav';
+
+export const metadata: Metadata = {
+  title: 'Organization Dashboard',
+  robots: {
+    index: false,
+    follow: false,
+  },
+};
 
 export default async function OrganizationDashboardLayout({
   children,
