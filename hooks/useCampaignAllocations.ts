@@ -36,21 +36,47 @@ export interface NGOAllocation {
  * Returns an array of NGOs with their allocated basis points
  */
 export function useCampaignAllocations(campaignIdHash: string | null) {
-  // Query allocationBps for each NGO
-  const allocationQueries = AVAILABLE_NGOS.map((ngo) => {
-    return useReadContract({
-      address: ZKT_CAMPAIGN_POOL_ADDRESS,
-      abi: ZKTCampaignPoolABI,
-      functionName: 'allocationBps',
-      args: campaignIdHash ? [campaignIdHash as `0x${string}`, ngo.id as `0x${string}`] : undefined,
-      query: {
-        enabled: !!campaignIdHash,
-        staleTime: 10_000, // 10 seconds
-        gcTime: 60_000,
-        refetchOnWindowFocus: true,
-      },
-    });
+  // Query allocationBps for each NGO unconditionally at top level
+  const query0 = useReadContract({
+    address: ZKT_CAMPAIGN_POOL_ADDRESS,
+    abi: ZKTCampaignPoolABI,
+    functionName: 'allocationBps',
+    args: campaignIdHash ? [campaignIdHash as `0x${string}`, AVAILABLE_NGOS[0].id as `0x${string}`] : undefined,
+    query: {
+      enabled: !!campaignIdHash,
+      staleTime: 10_000, // 10 seconds
+      gcTime: 60_000,
+      refetchOnWindowFocus: true,
+    },
   });
+
+  const query1 = useReadContract({
+    address: ZKT_CAMPAIGN_POOL_ADDRESS,
+    abi: ZKTCampaignPoolABI,
+    functionName: 'allocationBps',
+    args: campaignIdHash ? [campaignIdHash as `0x${string}`, AVAILABLE_NGOS[1].id as `0x${string}`] : undefined,
+    query: {
+      enabled: !!campaignIdHash,
+      staleTime: 10_000, // 10 seconds
+      gcTime: 60_000,
+      refetchOnWindowFocus: true,
+    },
+  });
+
+  const query2 = useReadContract({
+    address: ZKT_CAMPAIGN_POOL_ADDRESS,
+    abi: ZKTCampaignPoolABI,
+    functionName: 'allocationBps',
+    args: campaignIdHash ? [campaignIdHash as `0x${string}`, AVAILABLE_NGOS[2].id as `0x${string}`] : undefined,
+    query: {
+      enabled: !!campaignIdHash,
+      staleTime: 10_000, // 10 seconds
+      gcTime: 60_000,
+      refetchOnWindowFocus: true,
+    },
+  });
+
+  const allocationQueries = [query0, query1, query2];
 
   // Combine results
   const allocations: NGOAllocation[] = AVAILABLE_NGOS
